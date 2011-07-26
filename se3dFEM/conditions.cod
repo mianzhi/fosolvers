@@ -1,0 +1,34 @@
+INSTRUCTION:
+
+$Material
+001
+$EndMaterial
+
+$DispSurf
+46 0d0 0d0 0d0
+$EndDispSurf
+
+$DispLine
+$EndDispLine
+
+$DispPoint
+$EndDispPoint
+
+$ForceBody
+$EndForceBody
+
+$ForceSurf
+54 0d0 -1d0 0d0
+$EndForceSurf
+
+$ForceLine
+$EndForceLine
+
+$ForcePoint
+$EndForcePoint
+
+$PresSurf
+$EndPresSurf
+
+$ForceNode
+$EndForceNode

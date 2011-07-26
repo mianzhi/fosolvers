@@ -1,0 +1,52 @@
+$001_Steel#45
+2                  number of data sets for rho (at least 2)
+0d0 7850d0         T[K] vs. rho[kg/m^3]
+1d3 7850d0
+8                  number of data sets for c (at least 2)
+373d0 0.473d3      T[k] vs. c[J/(kg*K)]
+473d0 0.482d3
+573d0 0.507d3
+673d0 0.523d3
+773d0 0.536d3
+873d0 0.573d3
+973d0 0.603d3
+1073d0 0.691d3
+4                  number of data sets for k (at least 2)
+4d2 49.8d0         T[K] vs. k[w/(m*K)]
+6d2 44.0d0
+8d2 37.4d0
+1d3 29.3d0
+$End001
+
+----------------------------------------------------------------------------------------------------
+THE FOLLOWING MATERIALS ARE FOR THE RESEARCH OF TEFLON ABLATION
+
+$950_Teflon-Clark-mean
+4                  number of data sets for rho (at least 2)
+296d0 1933d0       T[K] vs. rho[kg/m^3]
+600d0 2174d0
+600d0 1740d0
+889d0 1086d0
+4                  number of data sets for c (at least 2)
+296d0 708.3d0      T[k] vs. c[J/(kg*K)]
+600d0 1220d0
+600d0 1476d0
+889d0 1537d0
+4                  number of data sets for k (at least 2)
+296d0 24.85d-2     T[K] vs. k[w/(m*K)]
+600d0 36.19d-2
+600d0 24.53d-2
+889d0 24.72d-2
+$End950
+
+$999_validation-fictional
+2                  number of data sets for rho (at least 2)
+296d0 1d0          T[K] vs. rho[kg/m^3]
+600d0 1d0
+2                  number of data sets for c (at least 2)
+296d0 1d0          T[k] vs. c[J/(kg*K)]
+600d0 1d0
+2                  number of data sets for k (at least 2)
+296d0 1d0          T[K] vs. k[w/(m*K)]
+600d0 1d0
+$End999

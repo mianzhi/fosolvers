@@ -1,0 +1,86 @@
+----------------------------------------------------------------------------------------------------
+$SimTime
+5d5 2d3
+$EndSimTime
+  INSTRUCTION:
+  simulation_time output_interval
+            [sec]           [sec]
+
+----------------------------------------------------------------------------------------------------
+$Material
+2
+91 001
+90 950
+$EndMaterial
+  INSTRUCTION:
+  number_of_sub-regions
+  geometric_entity material_tag
+
+----------------------------------------------------------------------------------------------------
+$InitTemp
+300d0
+$EndInitTemp
+  INSTRUCTION:
+  initial_temperature
+                  [K]
+
+----------------------------------------------------------------------------------------------------
+$TempSurf
+42 1
+103 2
+$EndTempSurf
+  INSTRUCTION:
+  geometric_entity variable_index
+  NOTE: the variable linked should be in [K].
+  NOTE: surface temperature is mutually exclusive with other BCs.
+
+----------------------------------------------------------------------------------------------------
+$FluxSurf
+$EndFluxSurf
+  INSTRUCTION:
+  geometric_entity variable_index
+  NOTE: the default BC is adiabatic.
+  NOTE: the variable linked should be in [w/m^2].
+  NOTE: flux will be superpositioned with other Neumann type BCs.
+
+----------------------------------------------------------------------------------------------------
+$RadSurf
+$EndRadSurf
+  INSTRUCTION:
+  geometric_entity surrounding_temperature emissivity
+                                       [K]
+
+----------------------------------------------------------------------------------------------------
+$ConvSurf
+$EndConvSurf
+  INSTRUCTION:
+  geometric_entity fluid_temperature convection_coefficient
+                                 [K]            [w/(m^2*K)]
+
+----------------------------------------------------------------------------------------------------
+$SourceBody
+$EndSourceBody
+  INSTRUCTION:
+  geometric_entity variable_index
+  NOTE: the variable linked should be in [w/m^3]
+  NOTE: source for geometric domains is mutually exclusive source for elements.
+
+----------------------------------------------------------------------------------------------------
+$SourceEle
+$EndSourceEle
+  INSTRUCTION:
+  element_index variable_index
+  NOTE: the variable linked should be in [w/m^3]
+  NOTE: this is for non-uniform source
+
+$Data
+4 3
+0d5 200d0 0.9d3 0d0
+2d5 200d0 0.9d3 0d0
+3d5 0.9d3 200d0 0d0
+5d5 0.9d3 200d0 0d0
+$EndData
+  INSTRUCTION:
+  number_time_points number_of_variables
+  time number_of_variables*data
+ [sec]
