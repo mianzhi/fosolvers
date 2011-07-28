@@ -25,7 +25,7 @@ module globalvar
   double precision,save,allocatable::Temp(:),e(:),rho(:),c(:),cond(:),&
   &                                  Vol(:),Paux(:,:,:),gradT(:,:)
   integer,save::countWrite,numIt(3)
-  double precision::beta
+  double precision,save::beta
   
 end module
 
