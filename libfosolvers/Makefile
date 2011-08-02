@@ -1,7 +1,8 @@
+objects=grid.o fileio.o misc.o
+target=libfosolvers.a
+
 FC=gfortran
 FFLAGS=-Wall -fopenmp -O2 -mtune=native
-objects=grid.o fileio.o
-target=libfosolvers.a
 
 %.o:%.f90
 	$(FC) -c $(FFLAGS) -o $@ $<

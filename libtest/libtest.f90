@@ -1,9 +1,9 @@
 program libtest
   use moduleGrid
+  double precision range(2,3)
   call readmsh()
-  do i=1,nFacet
-    write(*,*),i,Facet(i)%findGeoEnti(),Facet(i)%ShapeType,Facet(i)%findArea()
-  end do
-  write(*,*),size(Facet)
+  call findBound(range)
+  write(*,*),range(1,:)
+  write(*,*),range(2,:)
 end program
 
