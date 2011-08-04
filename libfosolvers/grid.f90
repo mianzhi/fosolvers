@@ -107,7 +107,7 @@ module moduleGrid
     procedure,public::findPC=>findFacetPC
     procedure,public::findArea=>findFacetArea
     procedure,public::findNorm=>findFacetNorm
-    procedure,public::findGeoEnti=>findFacetGeoEnti
+    procedure,public::getGeoEnti=>getFacetGeoEnti
   end type
   type(typeFacet),public,allocatable,save::Facet(:)
   integer,public,save::nFacet
@@ -124,7 +124,7 @@ module moduleGrid
   contains
     procedure,public::findPC=>findElePC
     procedure,public::findVol=>findEleVol
-    procedure,public::findGeoEnti=>findEleGeoEnti
+    procedure,public::getGeoEnti=>getEleGeoEnti
   end type
   type(typeEle),public,allocatable,save::Ele(:)
   integer,public,save::nEle
@@ -134,11 +134,11 @@ contains
   !---------------------------------
   ! find the position of this point
   !---------------------------------
-  subroutine findPointPos(this,rst)
+  function findPointPos(this)
     class(typePoint),intent(in)::this
-    double precision,intent(out)::rst(3)
-    rst(:)=Node(this%NodeInd)%Pos(:)
-  end subroutine
+    double precision findPointPos(3)
+    findPointPos(:)=Node(this%NodeInd)%Pos(:)
+  end function
   
   !------------------------------
   ! find the center of this line
@@ -330,17 +330,17 @@ contains
     end select
   end subroutine
   
-  !-------------------------------------------
-  ! find the geometrical entity of this facet
-  !-------------------------------------------
-  function findFacetGeoEnti(this)
+  !------------------------------------------
+  ! get the geometrical entity of this facet
+  !------------------------------------------
+  function getFacetGeoEnti(this)
     class(typeFacet),intent(in)::this
-    integer findFacetGeoEnti
+    integer getFacetGeoEnti
     select case(this%ShapeType)
       case(2)
-        findFacetGeoEnti=Tri(this%ShapeInd)%GeoEnti
+        getFacetGeoEnti=Tri(this%ShapeInd)%GeoEnti
       case(3)
-        findFacetGeoEnti=Quad(this%ShapeInd)%GeoEnti
+        getFacetGeoEnti=Quad(this%ShapeInd)%GeoEnti
       case default
         write(*,'(a,i2)'),'ERROR: unknown facet shapeType: ',this%shapeType
         stop
@@ -382,17 +382,17 @@ contains
     end select
   end function
   
-  !---------------------------------------------
-  ! find the geometrical entity of this element
-  !---------------------------------------------
-  function findEleGeoEnti(this)
+  !--------------------------------------------
+  ! get the geometrical entity of this element
+  !--------------------------------------------
+  function getEleGeoEnti(this)
     class(typeEle),intent(in)::this
-    integer findEleGeoEnti
+    integer getEleGeoEnti
     select case(this%ShapeType)
       case(4)
-        findEleGeoEnti=Tet(this%ShapeInd)%GeoEnti
+        getEleGeoEnti=Tet(this%ShapeInd)%GeoEnti
       case(5)
-        findEleGeoEnti=Hex(this%ShapeInd)%GeoEnti
+        getEleGeoEnti=Hex(this%ShapeInd)%GeoEnti
       case default
         write(*,'(a,i2)'),'ERROR: unknown element shapeType: ',this%shapeType
         stop

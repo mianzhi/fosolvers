@@ -1,9 +1,8 @@
 program libtest
   use moduleGrid
-  double precision range(2,3)
   call readmsh()
-  call findBound(range)
-  write(*,*),range(1,:)
-  write(*,*),range(2,:)
+  do i=1,nPoint
+    write(*,*),i,Point(i)%findPos()
+  end do
 end program
 
