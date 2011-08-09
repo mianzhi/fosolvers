@@ -26,7 +26,7 @@ end subroutine
 !***************
 subroutine showProg(v,vtot)
   double precision,intent(in)::v,vtot
-  real prog
+  double precision prog
   prog=v/vtot*100d0
   write(*,'(15a,a,f5.1,a,$)'),(char(8),i=1,15),'progress:',prog,'%'
 end subroutine
