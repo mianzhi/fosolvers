@@ -1,8 +1,6 @@
 program libtest
   use moduleGrid
   call readmsh()
-  do i=1,nPoint
-    write(*,*),i,Point(i)%findPos()
-  end do
+  write(*,*),find3PNorm(Node(1)%Pos(:),Node(2)%Pos(:),Node(3)%Pos(:))
 end program
 

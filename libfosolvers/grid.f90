@@ -6,12 +6,14 @@
 module moduleGrid
   private
   
+  ! make some functions properly accessible (both privately & publicly)
   interface
     function find3PNorm(P1,P2,P3)
       double precision,intent(in)::P1(3),P2(3),P3(3)
       double precision find3PNorm(3)
     end function
   end interface
+  public::find3PNorm
   
   !----------
   ! typeNode
