@@ -143,11 +143,11 @@ contains
   !------------------------------
   ! find the center of this line
   !------------------------------
-  subroutine findLinePC(this,rst)
+  function findLinePC(this)
     class(typeLine),intent(in)::this
-    double precision,intent(out)::rst(3)
-    rst(:)=(Node(this%NodeInd(1))%Pos(:)+Node(this%NodeInd(2))%Pos(:))/2d0
-  end subroutine
+    double precision findLinePC(3)
+    findLinePC(:)=(Node(this%NodeInd(1))%Pos(:)+Node(this%NodeInd(2))%Pos(:))/2d0
+  end function
   
   !------------------------------
   ! find the length of this line
@@ -163,12 +163,12 @@ contains
   ! find the center of this triangle
   !----------------------------------
   ! Note: actually we are finding the average position of the vertices
-  subroutine findTriPC(this,rst)
+  function findTriPC(this)
     class(typeTri),intent(in)::this
-    double precision,intent(out)::rst(3)
-    rst(:)=(Node(this%NodeInd(1))%Pos(:)+Node(this%NodeInd(2))%Pos(:)&
-    &      +Node(this%NodeInd(3))%Pos(:))/3d0
-  end subroutine
+    double precision findTriPC(3)
+    findTriPC(:)=(Node(this%NodeInd(1))%Pos(:)+Node(this%NodeInd(2))%Pos(:)&
+    &            +Node(this%NodeInd(3))%Pos(:))/3d0
+  end function
   
   !--------------------------------
   ! find the area of this triangle
@@ -183,23 +183,23 @@ contains
   !-----------------------------------------
   ! find the normal vector of this triangle
   !-----------------------------------------
-  subroutine findTriNorm(this,rst)
+  function findTriNorm(this)
     class(typeTri),intent(in)::this
-    double precision,intent(out)::rst(3)
+    double precision findTriNorm(3)
     call find3PNorm(Node(this%NodeInd(1))%Pos(:),Node(this%NodeInd(2))%Pos(:),&
-    &               Node(this%NodeInd(3))%Pos(:),rst)
-  end subroutine
+    &               Node(this%NodeInd(3))%Pos(:),findTriNorm)
+  end function
   
   !---------------------------------------
   ! find the center of this quadrilateral
   !---------------------------------------
   ! Note: actually we are finding the average position of the vertices
-  subroutine findQuadPC(this,rst)
+  function findQuadPC(this)
     class(typeQuad),intent(in)::this
-    double precision,intent(out)::rst(3)
-    rst(:)=(Node(this%NodeInd(1))%Pos(:)+Node(this%NodeInd(2))%Pos(:)&
-    &      +Node(this%NodeInd(3))%Pos(:)+Node(this%NodeInd(4))%Pos(:))/4d0
-  end subroutine
+    double precision findQuadPC(3)
+    findQuadPC(:)=(Node(this%NodeInd(1))%Pos(:)+Node(this%NodeInd(2))%Pos(:)&
+    &             +Node(this%NodeInd(3))%Pos(:)+Node(this%NodeInd(4))%Pos(:))/4d0
+  end function
   
   !-------------------------------------
   ! find the area of this quadrilateral
@@ -216,23 +216,23 @@ contains
   !----------------------------------------------
   ! find the normal vector of this quadrilateral
   !----------------------------------------------
-  subroutine findQuadNorm(this,rst)
+  function findQuadNorm(this)
     class(typeQuad),intent(in)::this
-    double precision,intent(out)::rst(3)
+    double precision findQuadNorm(3)
     call find3PNorm(Node(this%NodeInd(1))%Pos(:),Node(this%NodeInd(2))%Pos(:),&
-    &               Node(this%NodeInd(3))%Pos(:),rst)
-  end subroutine
+    &               Node(this%NodeInd(3))%Pos(:),findQuadNorm)
+  end function
   
   !-------------------------------------
   ! find the center of this tetrahedron
   !-------------------------------------
   ! Note: actually we are finding the average position of the vertices
-  subroutine findTetPC(this,rst)
+  function findTetPC(this)
     class(typeTet),intent(in)::this
-    double precision,intent(out)::rst(3)
-    rst(:)=(Node(this%NodeInd(1))%Pos(:)+Node(this%NodeInd(2))%Pos(:)&
-    &      +Node(this%NodeInd(3))%Pos(:)+Node(this%NodeInd(4))%Pos(:))/4d0
-  end subroutine
+    double precision findTetPC(3)
+    findTetPC(:)=(Node(this%NodeInd(1))%Pos(:)+Node(this%NodeInd(2))%Pos(:)&
+    &            +Node(this%NodeInd(3))%Pos(:)+Node(this%NodeInd(4))%Pos(:))/4d0
+  end function
   
   !-------------------------------------
   ! find the volume of this tetrahedron
@@ -248,14 +248,14 @@ contains
   ! find the center of this hexahedron
   !------------------------------------
   ! Note: actually we are finding the average position of the vertices
-  subroutine findHexPC(this,rst)
+  function findHexPC(this)
     class(typeHex),intent(in)::this
-    double precision,intent(out)::rst(3)
-    rst(:)=(Node(this%NodeInd(1))%Pos(:)+Node(this%NodeInd(2))%Pos(:)&
-    &      +Node(this%NodeInd(3))%Pos(:)+Node(this%NodeInd(4))%Pos(:)&
-    &      +Node(this%NodeInd(5))%Pos(:)+Node(this%NodeInd(6))%Pos(:)&
-    &      +Node(this%NodeInd(7))%Pos(:)+Node(this%NodeInd(8))%Pos(:))/8d0
-  end subroutine
+    double precision findHexPC(3)
+    findHexPC(:)=(Node(this%NodeInd(1))%Pos(:)+Node(this%NodeInd(2))%Pos(:)&
+    &            +Node(this%NodeInd(3))%Pos(:)+Node(this%NodeInd(4))%Pos(:)&
+    &            +Node(this%NodeInd(5))%Pos(:)+Node(this%NodeInd(6))%Pos(:)&
+    &            +Node(this%NodeInd(7))%Pos(:)+Node(this%NodeInd(8))%Pos(:))/8d0
+  end function
   
   !------------------------------------
   ! find the volume of this hexahedron
@@ -281,19 +281,19 @@ contains
   ! find the center of this facet
   !-------------------------------
   ! Note: actually we are finding the average position of the vertices
-  subroutine findFacetPC(this,rst)
+  function findFacetPC(this)
     class(typeFacet),intent(in)::this
-    double precision,intent(out)::rst(3)
+    double precision findFacetPC(3)
     select case(this%ShapeType)
       case(2)
-        call Tri(this%ShapeInd)%findPC(rst(:))
+        findFacetPC(:)=Tri(this%ShapeInd)%findPC()
       case(3)
-        call Quad(this%ShapeInd)%findPC(rst(:))
+        findFacetPC(:)=Quad(this%ShapeInd)%findPC()
       case default
         write(*,'(a,i2)'),'ERROR: unknown facet shapeType: ',this%shapeType
         stop
     end select
-  end subroutine
+  end function
   
   !-----------------------------
   ! find the area of this facet
@@ -316,19 +316,19 @@ contains
   ! find the normal vector of this facet
   !--------------------------------------
   ! Note: actually we are finding the average position of the vertices
-  subroutine findFacetNorm(this,rst)
+  function findFacetNorm(this)
     class(typeFacet),intent(in)::this
-    double precision,intent(out)::rst(3)
+    double precision findFacetNorm(3)
     select case(this%ShapeType)
       case(2)
-        call Tri(this%ShapeInd)%findNorm(rst(:))
+        findFacetNorm(:)=Tri(this%ShapeInd)%findNorm()
       case(3)
-        call Quad(this%ShapeInd)%findNorm(rst(:))
+        findFacetNorm(:)=Quad(this%ShapeInd)%findNorm()
       case default
         write(*,'(a,i2)'),'ERROR: unknown facet shapeType: ',this%shapeType
         stop
     end select
-  end subroutine
+  end function
   
   !------------------------------------------
   ! get the geometrical entity of this facet
@@ -351,19 +351,19 @@ contains
   ! find the center of this element
   !---------------------------------
   ! Note: actually we are finding the average position of the vertices
-  subroutine findElePC(this,rst)
+  function findElePC(this)
     class(typeEle),intent(in)::this
-    double precision,intent(out)::rst(3)
+    double precision findElePC(3)
     select case(this%ShapeType)
       case(4)
-        call Tet(this%ShapeInd)%findPC(rst(:))
+        findElePC(:)=Tet(this%ShapeInd)%findPC()
       case(5)
-        call Hex(this%ShapeInd)%findPC(rst(:))
+        findElePC(:)=Hex(this%ShapeInd)%findPC()
       case default
         write(*,'(a,i2)'),'ERROR: unknown element shapeType: ',this%shapeType
         stop
     end select
-  end subroutine
+  end function
   
   !---------------------------------
   ! find the volume of this element
