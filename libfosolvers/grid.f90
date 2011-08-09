@@ -6,6 +6,13 @@
 module moduleGrid
   private
   
+  interface
+    function find3PNorm(P1,P2,P3)
+      double precision,intent(in)::P1(3),P2(3),P3(3)
+      double precision find3PNorm(3)
+    end function
+  end interface
+  
   !----------
   ! typeNode
   !----------
@@ -186,8 +193,8 @@ contains
   function findTriNorm(this)
     class(typeTri),intent(in)::this
     double precision findTriNorm(3)
-    call find3PNorm(Node(this%NodeInd(1))%Pos(:),Node(this%NodeInd(2))%Pos(:),&
-    &               Node(this%NodeInd(3))%Pos(:),findTriNorm)
+    findTriNorm(:)=find3PNorm(Node(this%NodeInd(1))%Pos(:),Node(this%NodeInd(2))%Pos(:),&
+    &                         Node(this%NodeInd(3))%Pos(:))
   end function
   
   !---------------------------------------
@@ -219,8 +226,8 @@ contains
   function findQuadNorm(this)
     class(typeQuad),intent(in)::this
     double precision findQuadNorm(3)
-    call find3PNorm(Node(this%NodeInd(1))%Pos(:),Node(this%NodeInd(2))%Pos(:),&
-    &               Node(this%NodeInd(3))%Pos(:),findQuadNorm)
+    findQuadNorm(:)=find3PNorm(Node(this%NodeInd(1))%Pos(:),Node(this%NodeInd(2))%Pos(:),&
+    &                          Node(this%NodeInd(3))%Pos(:))
   end function
   
   !-------------------------------------
@@ -417,17 +424,16 @@ end function
 !***************************************************************
 ! find the normal vector of a triangle having P1~P3 as vertices
 !***************************************************************
-subroutine find3PNorm(P1,P2,P3,rst)
+function find3PNorm(P1,P2,P3)
   double precision,intent(in)::P1(3),P2(3),P3(3)
-  double precision,intent(out)::rst(3)
-  double precision a(3),b(3)
+  double precision find3PNorm(3),a(3),b(3),c(3)
   a(:)=P2(:)-P1(:)
   b(:)=P3(:)-P2(:)
-  rst(1)=a(2)*b(3)-a(3)*b(2)
-  rst(2)=a(3)*b(1)-a(1)*b(3)
-  rst(3)=a(1)*b(2)-a(2)*b(1)
-  rst(:)=rst(:)/sqrt(dot_product(rst(:),rst(:)))
-end subroutine
+  c(1)=a(2)*b(3)-a(3)*b(2)
+  c(2)=a(3)*b(1)-a(1)*b(3)
+  c(3)=a(1)*b(2)-a(2)*b(1)
+  find3PNorm(:)=c(:)/sqrt(dot_product(c(:),c(:)))
+end function
 
 !***********************************************************
 ! find the volume of a tetrahedron having P1~P4 as vertices
