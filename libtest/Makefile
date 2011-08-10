@@ -6,7 +6,7 @@ target=libtest
 FC=gfortran
 FFLAGS=-Wall -fopenmp -O2 -mtune=native -I$(libpath)
 
-%.o:%.f90 $(libpath)$(libs)
+%.o:%.f90
 	$(FC) -c $(FFLAGS) -o $@ $^
 
 $(target):$(objects) $(libpath)$(libs)
