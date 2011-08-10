@@ -26,12 +26,14 @@ end subroutine
 !**************************************
 subroutine updateNeib()
   use moduleGrid
+  !$omp parallel do
   do i=1,nEle
     Ele(i)%Neib(:)=0
     do j=1,Ele(i)%SurfNum
       Ele(i)%Neib(j)=Ele(i)%getNeib(j)
     end do
   end do
+  !$omp end parallel do
 end subroutine
 
 !***************
