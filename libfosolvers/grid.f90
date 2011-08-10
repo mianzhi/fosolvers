@@ -90,6 +90,9 @@ module moduleGrid
     procedure,public::findPC=>findTetPC
     procedure,public::findVol=>findTetVol
     procedure,public::getNeib=>getTetNeib
+    procedure,public::findSurfPC=>findTetSurfPC
+    procedure,public::findSurfArea=>findTetSurfArea
+    procedure,public::findSurfNorm=>findTetSurfNorm
   end type
   type(typeTet),public,allocatable,save::Tet(:)
   integer,public,save::nTet
@@ -104,6 +107,9 @@ module moduleGrid
     procedure,public::findPC=>findHexPC
     procedure,public::findVol=>findHexVol
     procedure,public::getNeib=>getHexNeib
+    procedure,public::findSurfPC=>findHexSurfPC
+    procedure,public::findSurfArea=>findHexSurfArea
+    procedure,public::findSurfNorm=>findHexSurfNorm
   end type
   type(typeHex),public,allocatable,save::Hex(:)
   integer,public,save::nHex
@@ -144,6 +150,9 @@ module moduleGrid
     procedure,public::findVol=>findEleVol
     procedure,public::getGeoEnti=>getEleGeoEnti
     procedure,public::getNeib=>getEleNeib
+    procedure,public::findSurfPC=>findEleSurfPC
+    procedure,public::findSurfArea=>findEleSurfArea
+    procedure,public::findSurfNorm=>findEleSurfNorm
   end type
   type(typeEle),public,allocatable,save::Ele(:)
   integer,public,save::nEle
@@ -298,6 +307,55 @@ contains
     end do
   end function
   
+  !----------------------------------------------------
+  ! find the center of this tetrahedron's k_th surface
+  !----------------------------------------------------
+  ! Note: actually we are finding the average position of the vertices
+  function findTetSurfPC(this,k)
+    class(typeTet),intent(in)::this
+    integer,intent(in)::k
+    double precision findTetSurfPC(3)
+    if(k<1.or.k>4)then
+      write(*,'(a,i2,a)'),'ERROR: a tetrahedron can not have ',k,'th surface'
+      stop
+    end if
+    findTetSurfPC(:)=(Node(this%NodeInd(SurfTabTet(k,1)))%Pos(:)&
+    &                +Node(this%NodeInd(SurfTabTet(k,2)))%Pos(:)&
+    &                +Node(this%NodeInd(SurfTabTet(k,3)))%Pos(:))/3d0
+  end function
+  
+  !--------------------------------------------------
+  ! find the area of this tetrahedron's k_th surface
+  !--------------------------------------------------
+  function findTetSurfArea(this,k)
+    class(typeTet),intent(in)::this
+    integer,intent(in)::k
+    double precision findTetSurfArea
+    if(k<1.or.k>4)then
+      write(*,'(a,i2,a)'),'ERROR: a tetrahedron can not have ',k,'th surface'
+      stop
+    end if
+    findTetSurfArea=find3PArea(Node(this%NodeInd(SurfTabTet(k,1)))%Pos(:),&
+    &                          Node(this%NodeInd(SurfTabTet(k,2)))%Pos(:),&
+    &                          Node(this%NodeInd(SurfTabTet(k,3)))%Pos(:))
+  end function
+  
+  !-----------------------------------------------------------
+  ! find the normal vector of this tetrahedron's k_th surface
+  !-----------------------------------------------------------
+  function findTetSurfNorm(this,k)
+    class(typeTet),intent(in)::this
+    integer,intent(in)::k
+    double precision findTetSurfNorm(3)
+    if(k<1.or.k>4)then
+      write(*,'(a,i2,a)'),'ERROR: a tetrahedron can not have ',k,'th surface'
+      stop
+    end if
+    findTetSurfNorm(:)=find3PNorm(Node(this%NodeInd(SurfTabTet(k,1)))%Pos(:),&
+    &                             Node(this%NodeInd(SurfTabTet(k,2)))%Pos(:),&
+    &                             Node(this%NodeInd(SurfTabTet(k,3)))%Pos(:))
+  end function
+  
   !------------------------------------
   ! find the center of this hexahedron
   !------------------------------------
@@ -342,7 +400,7 @@ contains
     integer getHexNeib,lPHex(8)
     logical maskHex(8)
     getHexNeib=0
-    if(k<1.or.k>8)then
+    if(k<1.or.k>6)then
       write(*,'(a,i2,a)'),'ERROR: a hexahedron can not have ',k,'th surface'
       stop
     end if
@@ -366,6 +424,59 @@ contains
         case default
       end select
     end do
+  end function
+  
+  !---------------------------------------------------
+  ! find the center of this hexahedron's k_th surface
+  !---------------------------------------------------
+  ! Note: actually we are finding the average position of the vertices
+  function findHexSurfPC(this,k)
+    class(typeHex),intent(in)::this
+    integer,intent(in)::k
+    double precision findHexSurfPC(3)
+    if(k<1.or.k>6)then
+      write(*,'(a,i2,a)'),'ERROR: a hexahedron can not have ',k,'th surface'
+      stop
+    end if
+    findHexSurfPC(:)=(Node(this%NodeInd(SurfTabHex(k,1)))%Pos(:)&
+    &                +Node(this%NodeInd(SurfTabHex(k,2)))%Pos(:)&
+    &                +Node(this%NodeInd(SurfTabHex(k,3)))%Pos(:)&
+    &                +Node(this%NodeInd(SurfTabHex(k,4)))%Pos(:))/4d0
+  end function
+  
+  !-------------------------------------------------
+  ! find the area of this hexahedron's k_th surface
+  !-------------------------------------------------
+  function findHexSurfArea(this,k)
+    class(typeHex),intent(in)::this
+    integer,intent(in)::k
+    double precision findHexSurfArea
+    if(k<1.or.k>6)then
+      write(*,'(a,i2,a)'),'ERROR: a hexahedron can not have ',k,'th surface'
+      stop
+    end if
+    findHexSurfArea=find3PArea(Node(this%NodeInd(SurfTabHex(k,1)))%Pos(:),&
+    &                          Node(this%NodeInd(SurfTabHex(k,2)))%Pos(:),&
+    &                          Node(this%NodeInd(SurfTabHex(k,3)))%Pos(:))&
+    &              +find3PArea(Node(this%NodeInd(SurfTabHex(k,3)))%Pos(:),&
+    &                          Node(this%NodeInd(SurfTabHex(k,4)))%Pos(:),&
+    &                          Node(this%NodeInd(SurfTabHex(k,1)))%Pos(:))
+  end function
+  
+  !----------------------------------------------------------
+  ! find the normal vector of this hexahedron's k_th surface
+  !----------------------------------------------------------
+  function findHexSurfNorm(this,k)
+    class(typeHex),intent(in)::this
+    integer,intent(in)::k
+    double precision findHexSurfNorm(3)
+    if(k<1.or.k>6)then
+      write(*,'(a,i2,a)'),'ERROR: a hexahedron can not have ',k,'th surface'
+      stop
+    end if
+    findHexSurfNorm(:)=find3PNorm(Node(this%NodeInd(SurfTabHex(k,1)))%Pos(:),&
+    &                             Node(this%NodeInd(SurfTabHex(k,2)))%Pos(:),&
+    &                             Node(this%NodeInd(SurfTabHex(k,3)))%Pos(:))
   end function
   
   !-------------------------------
@@ -503,6 +614,61 @@ contains
         getEleNeib=Tet(this%ShapeInd)%getNeib(k)
       case(5)
         getEleNeib=Hex(this%ShapeInd)%getNeib(k)
+      case default
+        write(*,'(a,i2)'),'ERROR: unknown element shapeType: ',this%shapeType
+        stop
+    end select
+  end function
+  
+  !---------------------------------------------------
+  ! find the center of this hexahedron's k_th surface
+  !---------------------------------------------------
+  ! Note: actually we are finding the average position of the vertices
+  function findEleSurfPC(this,k)
+    class(typeEle),intent(in)::this
+    integer,intent(in)::k
+    double precision findEleSurfPC(3)
+    select case(this%ShapeType)
+      case(4)
+        findEleSurfPC(:)=Tet(this%ShapeInd)%findSurfPC(k)
+      case(5)
+        findEleSurfPC(:)=Hex(this%ShapeInd)%findSurfPC(k)
+      case default
+        write(*,'(a,i2)'),'ERROR: unknown element shapeType: ',this%shapeType
+        stop
+    end select
+  end function
+  
+  !---------------------------------------------------
+  ! find the area of this hexahedron's k_th surface
+  !---------------------------------------------------
+  function findEleSurfArea(this,k)
+    class(typeEle),intent(in)::this
+    integer,intent(in)::k
+    double precision findEleSurfArea
+    select case(this%ShapeType)
+      case(4)
+        findEleSurfArea=Tet(this%ShapeInd)%findSurfArea(k)
+      case(5)
+        findEleSurfArea=Hex(this%ShapeInd)%findSurfArea(k)
+      case default
+        write(*,'(a,i2)'),'ERROR: unknown element shapeType: ',this%shapeType
+        stop
+    end select
+  end function
+  
+  !----------------------------------------------------------
+  ! find the normal vector of this hexahedron's k_th surface
+  !----------------------------------------------------------
+  function findEleSurfNorm(this,k)
+    class(typeEle),intent(in)::this
+    integer,intent(in)::k
+    double precision findEleSurfNorm(3)
+    select case(this%ShapeType)
+      case(4)
+        findEleSurfNorm(:)=Tet(this%ShapeInd)%findSurfNorm(k)
+      case(5)
+        findEleSurfNorm(:)=Hex(this%ShapeInd)%findSurfNorm(k)
       case default
         write(*,'(a,i2)'),'ERROR: unknown element shapeType: ',this%shapeType
         stop

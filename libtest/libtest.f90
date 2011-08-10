@@ -1,11 +1,9 @@
 program libtest
   use moduleGrid
   call readmsh()
-  call updateNeib()
   do i=1,nEle
-    do j=1,6
-      k=Ele(i)%Neib(j)
-      write(*,*),i,j,k
+    do j=1,Ele(i)%SurfNum
+      write(*,*),i,j,Ele(i)%findSurfNorm(j)
     end do
   end do
 end program
