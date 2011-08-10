@@ -86,6 +86,7 @@ module moduleGrid
   contains
     procedure,public::findPC=>findTetPC
     procedure,public::findVol=>findTetVol
+    procedure,public::getNeib=>getTetNeib
   end type
   type(typeTet),public,allocatable,save::Tet(:)
   integer,public,save::nTet
@@ -99,6 +100,7 @@ module moduleGrid
   contains
     procedure,public::findPC=>findHexPC
     procedure,public::findVol=>findHexVol
+    procedure,public::getNeib=>getHexNeib
   end type
   type(typeHex),public,allocatable,save::Hex(:)
   integer,public,save::nHex
@@ -112,6 +114,7 @@ module moduleGrid
     ! 2: 3-node triangle
     ! 3: 4-node quadrilateral
     integer ShapeInd
+    integer NodeNum
   contains
     procedure,public::findPC=>findFacetPC
     procedure,public::findArea=>findFacetArea
@@ -130,10 +133,14 @@ module moduleGrid
     ! 4: 4-node tetrahedron
     ! 5: 8-node hexahedron
     integer ShapeInd
+    integer NodeNum
+    integer SurfNum
+    integer Neib(6) ! 6 is the maximum possible number of neighbours
   contains
     procedure,public::findPC=>findElePC
     procedure,public::findVol=>findEleVol
     procedure,public::getGeoEnti=>getEleGeoEnti
+    procedure,public::getNeib=>getEleNeib
   end type
   type(typeEle),public,allocatable,save::Ele(:)
   integer,public,save::nEle
@@ -253,6 +260,45 @@ contains
     &                    Node(this%NodeInd(3))%Pos(:),Node(this%NodeInd(4))%Pos(:))
   end function
   
+  !----------------------------------------------------------
+  ! get the k_th neighbour element index of this tetrahedron
+  !----------------------------------------------------------
+  ! Note: we are getting neighbour element index, not neighbour tetrahedron index, though the
+  !       neighbour element is likely to be a tetrahedron
+  function getTetNeib(this,k)
+    class(typeTet),intent(in)::this
+    integer,intent(in)::k
+    integer getTetNeib,SurfTab(4,3),lPTet(4)
+    logical maskTet(4)
+    getTetNeib=0
+    SurfTab(1,:)=[1,3,2] ! surface node list
+    SurfTab(2,:)=[1,2,4]
+    SurfTab(3,:)=[1,4,3]
+    SurfTab(4,:)=[2,3,4]
+    if(k<1.or.k>4)then
+      write(*,'(a,i2,a)'),'ERROR: a tetrahedron can not have ',k,'th surface'
+      stop
+    end if
+    do i=1,nEle
+      select case(Ele(i)%ShapeType)
+        case(4) ! the neigbour element can be a tetrahedron
+          maskTet(:)=.false.
+          lPTet(:)=Tet(Ele(i)%ShapeInd)%NodeInd(:)
+          do j=1,4
+            if(this%NodeInd(j)==lPTet(1).or.this%NodeInd(j)==lPTet(2).or.&
+            &  this%NodeInd(j)==lPTet(3).or.this%NodeInd(j)==lPTet(4))then
+              maskTet(j)=.true.
+            end if
+          end do
+          if(all(maskTet(SurfTab(k,:))).and.any(maskTet(:).eqv..false.))then
+            getTetNeib=i
+            exit
+          end if
+        case default
+      end select
+    end do
+  end function
+  
   !------------------------------------
   ! find the center of this hexahedron
   !------------------------------------
@@ -284,6 +330,49 @@ contains
     &                    Node(this%NodeInd(6))%Pos(:),Node(this%NodeInd(7))%Pos(:))&
     &         +find4PVol(Node(this%NodeInd(4))%Pos(:),Node(this%NodeInd(5))%Pos(:),&
     &                    Node(this%NodeInd(7))%Pos(:),Node(this%NodeInd(8))%Pos(:))
+  end function
+  
+  !---------------------------------------------------------
+  ! get the k_th neighbour element index of this hexahedron
+  !---------------------------------------------------------
+  ! Note: we are getting neighbour element index, not neighbour hexahedron index, though the
+  !       neighbour element is likely to be a hexahedron
+  function getHexNeib(this,k)
+    class(typeHex),intent(in)::this
+    integer,intent(in)::k
+    integer getHexNeib,SurfTab(6,4),lPHex(8)
+    logical maskHex(8)
+    getHexNeib=0
+    SurfTab(1,:)=[2,3,7,6] ! surface node list
+    SurfTab(2,:)=[1,5,8,4]
+    SurfTab(3,:)=[3,4,8,7]
+    SurfTab(4,:)=[1,2,6,5]
+    SurfTab(5,:)=[5,6,7,8]
+    SurfTab(6,:)=[1,4,3,2]
+    if(k<1.or.k>8)then
+      write(*,'(a,i2,a)'),'ERROR: a hexahedron can not have ',k,'th surface'
+      stop
+    end if
+    do i=1,nEle
+      select case(Ele(i)%ShapeType)
+        case(5) ! the neigbour element can be a hexahedron
+          maskHex(:)=.false.
+          lPHex(:)=Hex(Ele(i)%ShapeInd)%NodeInd(:)
+          do j=1,8
+            if(this%NodeInd(j)==lPHex(1).or.this%NodeInd(j)==lPHex(2).or.&
+            &  this%NodeInd(j)==lPHex(3).or.this%NodeInd(j)==lPHex(4).or.&
+            &  this%NodeInd(j)==lPHex(5).or.this%NodeInd(j)==lPHex(6).or.&
+            &  this%NodeInd(j)==lPHex(7).or.this%NodeInd(j)==lPHex(8))then
+              maskHex(j)=.true.
+            end if
+          end do
+          if(all(maskHex(SurfTab(k,:))).and.any(maskHex(:).eqv..false.))then
+            getHexNeib=i
+            exit
+          end if
+        case default
+      end select
+    end do
   end function
   
   !-------------------------------
@@ -402,6 +491,25 @@ contains
         getEleGeoEnti=Tet(this%ShapeInd)%GeoEnti
       case(5)
         getEleGeoEnti=Hex(this%ShapeInd)%GeoEnti
+      case default
+        write(*,'(a,i2)'),'ERROR: unknown element shapeType: ',this%shapeType
+        stop
+    end select
+  end function
+  
+  !------------------------------------------------------
+  ! get the k_th neighbour element index of this element
+  !------------------------------------------------------
+  function getEleNeib(this,k)
+    class(typeEle),intent(in)::this
+    integer,intent(in)::k
+    integer getEleNeib
+    getEleNeib=0
+    select case(this%ShapeType)
+      case(4)
+        getEleNeib=Tet(this%ShapeInd)%getNeib(k)
+      case(5)
+        getEleNeib=Hex(this%ShapeInd)%getNeib(k)
       case default
         write(*,'(a,i2)'),'ERROR: unknown element shapeType: ',this%shapeType
         stop

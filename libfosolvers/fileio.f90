@@ -176,20 +176,26 @@ subroutine readmsh()
       forall(i=1:nTri)
         Facet(i)%ShapeType=2
         Facet(i)%ShapeInd=i
+        Facet(i)%NodeNum=3
       end forall
       forall(i=1:nQuad)
         Facet(nTri+i)%ShapeType=3
         Facet(nTri+i)%ShapeInd=i
+        Facet(nTri+i)%NodeNum=4
       end forall
       nEle=nTet+nHex
       allocate(Ele(nEle))
       forall(i=1:nTet)
         Ele(i)%ShapeType=4
         Ele(i)%ShapeInd=i
+        Ele(i)%NodeNum=4
+        Ele(i)%SurfNum=4
       end forall
       forall(i=1:nHex)
         Ele(nTet+i)%ShapeType=5
         Ele(nTet+i)%ShapeInd=i
+        Ele(nTet+i)%NodeNum=8
+        Ele(nTet+i)%SurfNum=6
       end forall
       cycle
     end if

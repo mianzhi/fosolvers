@@ -1,6 +1,11 @@
 program libtest
   use moduleGrid
   call readmsh()
-  write(*,*),find3PNorm(Node(1)%Pos(:),Node(2)%Pos(:),Node(3)%Pos(:))
+  call updateNeib()
+  do i=1,nEle
+    do j=1,6
+      k=Ele(i)%Neib(j)
+      write(*,*),i,j,k
+    end do
+  end do
 end program
-

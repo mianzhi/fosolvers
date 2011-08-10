@@ -21,6 +21,19 @@ subroutine findBound(rst)
   end do
 end subroutine
 
+!**************************************
+! update the neighbour of all elements
+!**************************************
+subroutine updateNeib()
+  use moduleGrid
+  do i=1,nEle
+    Ele(i)%Neib(:)=0
+    do j=1,Ele(i)%SurfNum
+      Ele(i)%Neib(j)=Ele(i)%getNeib(j)
+    end do
+  end do
+end subroutine
+
 !***************
 ! show progress
 !***************
