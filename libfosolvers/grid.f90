@@ -15,6 +15,9 @@ module moduleGrid
   end interface
   public::find3PNorm
   
+  ! table of surface nodes for all kinds of elements
+  integer,public,save::SurfTabTet(4,3),SurfTabHex(6,4)
+  
   !----------
   ! typeNode
   !----------
@@ -268,13 +271,9 @@ contains
   function getTetNeib(this,k)
     class(typeTet),intent(in)::this
     integer,intent(in)::k
-    integer getTetNeib,SurfTab(4,3),lPTet(4)
+    integer getTetNeib,lPTet(4)
     logical maskTet(4)
     getTetNeib=0
-    SurfTab(1,:)=[1,3,2] ! surface node list
-    SurfTab(2,:)=[1,2,4]
-    SurfTab(3,:)=[1,4,3]
-    SurfTab(4,:)=[2,3,4]
     if(k<1.or.k>4)then
       write(*,'(a,i2,a)'),'ERROR: a tetrahedron can not have ',k,'th surface'
       stop
@@ -290,7 +289,7 @@ contains
               maskTet(j)=.true.
             end if
           end do
-          if(all(maskTet(SurfTab(k,:))).and.any(maskTet(:).eqv..false.))then
+          if(all(maskTet(SurfTabTet(k,:))).and.any(maskTet(:).eqv..false.))then
             getTetNeib=i
             exit
           end if
@@ -340,15 +339,9 @@ contains
   function getHexNeib(this,k)
     class(typeHex),intent(in)::this
     integer,intent(in)::k
-    integer getHexNeib,SurfTab(6,4),lPHex(8)
+    integer getHexNeib,lPHex(8)
     logical maskHex(8)
     getHexNeib=0
-    SurfTab(1,:)=[2,3,7,6] ! surface node list
-    SurfTab(2,:)=[1,5,8,4]
-    SurfTab(3,:)=[3,4,8,7]
-    SurfTab(4,:)=[1,2,6,5]
-    SurfTab(5,:)=[5,6,7,8]
-    SurfTab(6,:)=[1,4,3,2]
     if(k<1.or.k>8)then
       write(*,'(a,i2,a)'),'ERROR: a hexahedron can not have ',k,'th surface'
       stop
@@ -366,7 +359,7 @@ contains
               maskHex(j)=.true.
             end if
           end do
-          if(all(maskHex(SurfTab(k,:))).and.any(maskHex(:).eqv..false.))then
+          if(all(maskHex(SurfTabHex(k,:))).and.any(maskHex(:).eqv..false.))then
             getHexNeib=i
             exit
           end if

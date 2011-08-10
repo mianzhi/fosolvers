@@ -201,6 +201,18 @@ subroutine readmsh()
     end if
   end do
   
+  ! auxiliary operations
+  SurfTabTet(1,:)=[1,3,2] ! table of surface nodes for all kinds of elements
+  SurfTabTet(2,:)=[1,2,4]
+  SurfTabTet(3,:)=[1,4,3]
+  SurfTabTet(4,:)=[2,3,4]
+  SurfTabHex(1,:)=[2,3,7,6]
+  SurfTabHex(2,:)=[1,5,8,4]
+  SurfTabHex(3,:)=[3,4,8,7]
+  SurfTabHex(4,:)=[1,2,6,5]
+  SurfTabHex(5,:)=[5,6,7,8]
+  SurfTabHex(6,:)=[1,4,3,2]
+  
   write(*,'(a)'),'grid summary:'
   write(*,'(a,i8)'),'  number of nodes: ',nNode
   write(*,'(a,i8)'),'  number of points:',nPoint
