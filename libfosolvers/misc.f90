@@ -1,23 +1,22 @@
 !----------------------------------------------------------------------------- best with 100 columns
 
-!***************************************
-! find the bounding box of the geometry
-!***************************************
-subroutine findBound(rst)
+!*****************************************
+! update the bounding box of the geometry
+!*****************************************
+subroutine updateBoundBox()
   use moduleGrid
-  double precision,intent(out)::rst(2,3)
-  ! rst:
+  ! BoundBox:
   !   xmin | ymin | zmin
   !   xmax | ymax | zmax
-  rst(1,:)=Node(1)%Pos(:)
-  rst(2,:)=Node(1)%Pos(:)
+  BoundBox(1,:)=Node(1)%Pos(:)
+  BoundBox(2,:)=Node(1)%Pos(:)
   do i=2,nNode
-    rst(1,1)=min(rst(1,1),Node(i)%Pos(1))
-    rst(1,2)=min(rst(1,2),Node(i)%Pos(2))
-    rst(1,3)=min(rst(1,3),Node(i)%Pos(3))
-    rst(2,1)=max(rst(2,1),Node(i)%Pos(1))
-    rst(2,2)=max(rst(2,2),Node(i)%Pos(2))
-    rst(2,3)=max(rst(2,3),Node(i)%Pos(3))
+    BoundBox(1,1)=min(BoundBox(1,1),Node(i)%Pos(1))
+    BoundBox(1,2)=min(BoundBox(1,2),Node(i)%Pos(2))
+    BoundBox(1,3)=min(BoundBox(1,3),Node(i)%Pos(3))
+    BoundBox(2,1)=max(BoundBox(2,1),Node(i)%Pos(1))
+    BoundBox(2,2)=max(BoundBox(2,2),Node(i)%Pos(2))
+    BoundBox(2,3)=max(BoundBox(2,3),Node(i)%Pos(3))
   end do
 end subroutine
 

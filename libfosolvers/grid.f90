@@ -18,6 +18,9 @@ module moduleGrid
   ! table of surface nodes for all kinds of elements
   integer,public,save::SurfTabTet(4,3),SurfTabHex(6,4)
   
+  ! bounding box of the geometry
+  double precision,public,save::BoundBox(2,3)
+  
   !----------
   ! typeNode
   !----------
