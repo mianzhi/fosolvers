@@ -35,6 +35,38 @@ subroutine updateNeib()
   !$omp end parallel do
 end subroutine
 
+!*******************
+! sort the elements
+!*******************
+subroutine sortEle()
+  use moduleGrid
+  double precision sortData(nEle),tempData,tempPos(3)
+  integer m
+  type(typeEle)::tempEle
+  ! decide which direction we will sort along
+  call updateBoundBox()
+  m=maxloc(BoundBox(:,2)-BoundBox(:,1),1)
+  ! find the elements' center (according to which they will be sorted)
+  do i=1,nEle
+    tempPos(:)=Ele(i)%findPC()
+    sortData(i)=tempPos(m)
+  end do
+  ! insertion sort
+  do i=2,nEle
+    do j=i,2,-1
+      if(sortData(j-1)<=sortData(j))then
+        exit
+      end if
+      tempEle=Ele(j)
+      Ele(j)=Ele(j-1)
+      Ele(j-1)=tempEle
+      tempData=sortData(j)
+      sortData(j)=sortData(j-1)
+      sortData(j-1)=tempData
+    end do
+  end do
+end subroutine
+
 !***************
 ! show progress
 !***************
