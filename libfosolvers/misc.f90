@@ -20,6 +20,23 @@ subroutine updateBoundBox()
   end do
 end subroutine
 
+!*************************************
+! update the parameters of all facets
+!*************************************
+subroutine updateFacetPara()
+  use moduleGrid
+  !$omp parallel do
+  do i=1,nFacet
+    ! position of the center
+    Facet(i)%PC(:)=Facet(i)%findPC()
+    ! area
+    Facet(i)%Area=Facet(i)%findArea()
+    ! normal vector
+    Facet(i)%Norm=Facet(i)%findNorm()
+  end do
+  !$omp end parallel do
+end subroutine
+
 !***************************************
 ! update the parameters of all elements
 !***************************************
