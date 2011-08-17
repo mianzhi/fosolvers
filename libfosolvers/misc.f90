@@ -23,6 +23,8 @@ end subroutine
 !**************************************
 ! update the neighbour of all elements
 !**************************************
+!TODO make this subroutine updating all elment parameters
+!TODO PC, Vol, SurfPC, SurfArea, SurfNorm
 subroutine updateNeib()
   use moduleGrid
   !$omp parallel do
@@ -44,6 +46,7 @@ subroutine sortEle()
   integer m
   type(typeEle)::tempEle
   ! decide which direction we will sort along
+  ! Note: updateBoundBox() is embeded because of its small consumption of computation time
   call updateBoundBox()
   m=maxloc(BoundBox(:,2)-BoundBox(:,1),1)
   ! find the elements' center (according to which they will be sorted)

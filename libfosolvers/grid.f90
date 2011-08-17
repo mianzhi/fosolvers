@@ -127,6 +127,9 @@ module moduleGrid
     ! 3: 4-node quadrilateral
     integer ShapeInd
     integer NodeNum
+    double precision PC(3)
+    double precision Area
+    double precision Norm(3)
   contains
     procedure,public::findPC=>findFacetPC
     procedure,public::findArea=>findFacetArea
@@ -148,6 +151,11 @@ module moduleGrid
     integer NodeNum
     integer SurfNum
     integer Neib(6) ! 6 is the maximum possible number of neighbours
+    double precision PC(3)
+    double precision Vol
+    double precision SurfPC(6,3)
+    double precision SurfArea(6)
+    double precision SurfNorm(6,3)
   contains
     procedure,public::findPC=>findElePC
     procedure,public::findVol=>findEleVol
