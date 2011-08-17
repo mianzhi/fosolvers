@@ -20,18 +20,36 @@ subroutine updateBoundBox()
   end do
 end subroutine
 
-!**************************************
-! update the neighbour of all elements
-!**************************************
-!TODO make this subroutine updating all elment parameters
-!TODO PC, Vol, SurfPC, SurfArea, SurfNorm
-subroutine updateNeib()
+!***************************************
+! update the parameters of all elements
+!***************************************
+subroutine updateElePara()
   use moduleGrid
   !$omp parallel do
   do i=1,nEle
+    ! neighbour
     Ele(i)%Neib(:)=0
     do j=1,Ele(i)%SurfNum
       Ele(i)%Neib(j)=Ele(i)%getNeib(j)
+    end do
+    ! position of the center
+    Ele(i)%PC(:)=Ele(i)%findPC()
+    ! volume
+    Ele(i)%Vol=Ele(i)%findVol()
+    ! position of the center of all surfaces
+    Ele(i)%SurfPC(:,:)=0d0
+    do j=1,Ele(i)%SurfNum
+      Ele(i)%SurfPC(j,:)=Ele(i)%findSurfPC(j)
+    end do
+    ! surface area of all surfaces
+    Ele(i)%SurfArea(:)=0d0
+    do j=1,Ele(i)%SurfNum
+      Ele(i)%SurfArea(j)=Ele(i)%findSurfArea(j)
+    end do
+    ! normal vectors of all surfaces
+    Ele(i)%SurfNorm(:,:)=0d0
+    do j=1,Ele(i)%SurfNum
+      Ele(i)%SurfNorm(j,:)=Ele(i)%findSurfNorm(j)
     end do
   end do
   !$omp end parallel do

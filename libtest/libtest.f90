@@ -1,8 +1,8 @@
 program libtest
   use moduleGrid
   call readmsh()
-  call sortEle()
+  call updateElePara()
   do i=1,nEle
-    write(*,*),i,Ele(i)%findPC()
+    write(*,*),i,Ele(i)%SurfNorm(1,:)
   end do
 end program
