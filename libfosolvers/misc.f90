@@ -105,22 +105,21 @@ subroutine sortEle()
   end do
 end subroutine
 
-!**************************************************************
-! find the gradient of scaler v at the center of the element k
-!**************************************************************
-!TODO need to be revised
-subroutine findEleGradScal(k,v,rst)
+!*****************************************************************************
+! find the gradient of vector v of dimension m at the center of the element k
+!*****************************************************************************
+subroutine findEleGradAny(k,v,m,rst)
   use moduleGrid
-  integer,intent(in)::k
-  double precision,intent(in)::v(nEle)
-  double precision,intent(out)::rst(3)
+  integer,intent(in)::k,m
+  double precision,intent(in)::v(nEle,m)
+  double precision,intent(out)::rst(m,3)
   double precision,allocatable::dx(:,:),dv(:,:),s(:)
-  integer,parameter::lwork=865 ! according to returned work(1) with lwork=-1
+  integer,parameter::lwork=900 ! according to returned work(1) with lwork=-1
   double precision distsq,work(lwork)
   integer nEq,rank,iwork(50),er
   nEq=count(Ele(k)%Neib(:)>0)
   allocate(dx(nEq,3))
-  allocate(dv(max(nEq,3),1))
+  allocate(dv(max(nEq,3),m))
   allocate(s(min(nEq,3)))
   ! weighted least-squares gradient evaluation
   j=0
@@ -128,18 +127,40 @@ subroutine findEleGradScal(k,v,rst)
     if(Ele(k)%Neib(i)>0)then
       j=j+1
       dx(j,:)=Ele(Ele(k)%Neib(i))%PC(:)-Ele(k)%PC(:)
-      dv(j,1)=v(Ele(k)%Neib(i))-v(k)
+      dv(j,:)=v(Ele(k)%Neib(i),:)-v(k,:)
       distsq=dot_product(dx(j,:),dx(j,:))
       dx(j,:)=dx(j,:)/distsq
-      dv(j,1)=dv(j,1)/distsq
+      dv(j,:)=dv(j,:)/distsq
     end if
   end do
-  call DGELSD(nEq,3,1,dx,nEq,dv,max(nEq,3),s,-1d0,rank,work,lwork,iwork,er) ! calling lapack
+  call DGELSD(nEq,3,m,dx,nEq,dv,max(nEq,3),s,-1d0,rank,work,lwork,iwork,er) ! calling lapack
   if(er/=0)then
     write(*,'(a,i2)'),'Error: Lapack returning error flag: ',er
     stop
   end if
-  rst(:)=dv(1:3,1)
+  rst(:,:)=transpose(dv(1:3,1:m))
+end subroutine
+
+!**************************************************************
+! find the gradient of scaler v at the center of the element k
+!**************************************************************
+subroutine findEleGradScal(k,v,rst)
+  use moduleGrid
+  integer,intent(in)::k
+  double precision,intent(in)::v(nEle)
+  double precision,intent(out)::rst(3)
+  call findEleGradAny(k,v,1,rst)
+end subroutine
+
+!*****************************************************************************
+! find the gradient of vector v of dimension 3 at the center of the element k
+!*****************************************************************************
+subroutine findEleGradVect(k,v,rst)
+  use moduleGrid
+  integer,intent(in)::k
+  double precision,intent(in)::v(nEle,3)
+  double precision,intent(out)::rst(3,3)
+  call findEleGradAny(k,v,3,rst)
 end subroutine
 
 !******************************************************
