@@ -105,6 +105,43 @@ subroutine sortEle()
   end do
 end subroutine
 
+!**************************************************************
+! find the gradient of scaler v at the center of the element k
+!**************************************************************
+!TODO need to be revised
+subroutine findEleGradScal(k,v,rst)
+  use moduleGrid
+  integer,intent(in)::k
+  double precision,intent(in)::v(nEle)
+  double precision,intent(out)::rst(3)
+  double precision,allocatable::dx(:,:),dv(:,:),s(:)
+  integer,parameter::lwork=865 ! according to returned work(1) with lwork=-1
+  double precision distsq,work(lwork)
+  integer nEq,rank,iwork(50),er
+  nEq=count(Ele(k)%Neib(:)>0)
+  allocate(dx(nEq,3))
+  allocate(dv(max(nEq,3),1))
+  allocate(s(min(nEq,3)))
+  ! weighted least-squares gradient evaluation
+  j=0
+  do i=1,Ele(k)%SurfNum
+    if(Ele(k)%Neib(i)>0)then
+      j=j+1
+      dx(j,:)=Ele(Ele(k)%Neib(i))%PC(:)-Ele(k)%PC(:)
+      dv(j,1)=v(Ele(k)%Neib(i))-v(k)
+      distsq=dot_product(dx(j,:),dx(j,:))
+      dx(j,:)=dx(j,:)/distsq
+      dv(j,1)=dv(j,1)/distsq
+    end if
+  end do
+  call DGELSD(nEq,3,1,dx,nEq,dv,max(nEq,3),s,-1d0,rank,work,lwork,iwork,er) ! calling lapack
+  if(er/=0)then
+    write(*,'(a,i2)'),'Error: Lapack returning error flag: ',er
+    stop
+  end if
+  rst(:)=dv(1:3,1)
+end subroutine
+
 !******************************************************
 ! find the area of a triangle having P1~P3 as vertices
 !******************************************************

@@ -1,16 +1,16 @@
 objects=libtest.o
 libpath=../libfosolvers/
-libs=libfosolvers.a
+libs=-lfosolvers -llapack
 target=libtest
 
 FC=gfortran
-FFLAGS=-Wall -fopenmp -O2 -mtune=native -I$(libpath)
+FFLAGS=-Wall -fopenmp -O2 -mtune=native -I$(libpath) -L$(libpath)
 
 %.o:%.f90
 	$(FC) -c $(FFLAGS) -o $@ $^
 
-$(target):$(objects) $(libpath)$(libs)
-	$(FC) $(FFLAGS) -o $(target) $(objects) $(libpath)$(libs)
+$(target):$(objects)
+	$(FC) $(FFLAGS) -o $(target) $(objects) $(libs)
 
 clean:
 	rm *.o *.mod
