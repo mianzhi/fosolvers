@@ -27,6 +27,8 @@ subroutine updateFacetPara()
   use moduleGrid
   !$omp parallel do
   do i=1,nFacet
+    ! list of node indics
+    Facet(i)%NodeInd(:)=Facet(i)%getNodeInd()
     ! position of the center
     Facet(i)%PC(:)=Facet(i)%findPC()
     ! area
@@ -44,6 +46,8 @@ subroutine updateElePara()
   use moduleGrid
   !$omp parallel do
   do i=1,nEle
+    ! list of node indics
+    Ele(i)%NodeInd(:)=Ele(i)%getNodeInd()
     ! neighbour
     Ele(i)%Neib(:)=0
     do j=1,Ele(i)%SurfNum
@@ -161,6 +165,16 @@ subroutine findEleGradVect(k,v,rst)
   double precision,intent(in)::v(nEle,3)
   double precision,intent(out)::rst(3,3)
   call findEleGradAny(k,v,3,rst)
+end subroutine
+
+!**********************************************************
+! find the gradient of vectorv o dimension m at the node k
+!**********************************************************
+subroutine findNodeGradAny(k,v,m,rst)
+  use moduleGrid
+  integer,intent(in)::k,m
+  double precision,intent(in)::v(nNode,m)
+  double precision,intent(out)::rst(m,3)
 end subroutine
 
 !******************************************************

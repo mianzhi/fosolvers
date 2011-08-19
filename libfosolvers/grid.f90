@@ -127,10 +127,12 @@ module moduleGrid
     ! 3: 4-node quadrilateral
     integer ShapeInd
     integer NodeNum
+    integer NodeInd(15) ! 15 is the maximum possible number of nodes an facet can have
     double precision PC(3)
     double precision Area
     double precision Norm(3)
   contains
+    procedure,public::getNodeInd=>getFacetNodeInd
     procedure,public::findPC=>findFacetPC
     procedure,public::findArea=>findFacetArea
     procedure,public::findNorm=>findFacetNorm
@@ -150,6 +152,7 @@ module moduleGrid
     integer ShapeInd
     integer NodeNum
     integer SurfNum
+    integer NodeInd(27) ! 27 is the maximum possible number of nodes an element can have
     integer Neib(6) ! 6 is the maximum possible number of neighbours
     double precision PC(3)
     double precision Vol
@@ -157,6 +160,7 @@ module moduleGrid
     double precision SurfArea(6)
     double precision SurfNorm(6,3)
   contains
+    procedure,public::getNodeInd=>getEleNodeInd
     procedure,public::findPC=>findElePC
     procedure,public::findVol=>findEleVol
     procedure,public::getGeoEnti=>getEleGeoEnti
@@ -489,6 +493,24 @@ contains
     &                             Node(this%NodeInd(SurfTabHex(k,2)))%Pos(:),&
     &                             Node(this%NodeInd(SurfTabHex(k,3)))%Pos(:))
   end function
+    
+  !-------------------------------------------
+  ! get the list of node indics of this facet
+  !-------------------------------------------
+  function getFacetNodeInd(this)
+    class(typeFacet),intent(in)::this
+    integer getFacetNodeInd(15) ! 15 is the maximum possible number of nodes an facet can have
+    getFacetNodeInd(:)=0
+    select case(this%ShapeType)
+      case(2)
+        getFacetNodeInd(1:this%NodeNum)=Tri(this%ShapeInd)%NodeInd(:)
+      case(3)
+        getFacetNodeInd(1:this%NodeNum)=Quad(this%ShapeInd)%NodeInd(:)
+      case default
+        write(*,'(a,i2)'),'ERROR: unknown facet shapeType: ',this%shapeType
+        stop
+    end select
+  end function
   
   !-------------------------------
   ! find the center of this facet
@@ -556,6 +578,24 @@ contains
         getFacetGeoEnti=Quad(this%ShapeInd)%GeoEnti
       case default
         write(*,'(a,i2)'),'ERROR: unknown facet shapeType: ',this%shapeType
+        stop
+    end select
+  end function
+  
+  !---------------------------------------------
+  ! get the list of node indics of this element
+  !---------------------------------------------
+  function getEleNodeInd(this)
+    class(typeEle),intent(in)::this
+    integer getEleNodeInd(27) ! 27 is the maximum possible number of nodes an element can have
+    getEleNodeInd(:)=0
+    select case(this%ShapeType)
+      case(4)
+        getEleNodeInd(1:this%NodeNum)=Tet(this%ShapeInd)%NodeInd(:)
+      case(5)
+        getEleNodeInd(1:this%NodeNum)=Hex(this%ShapeInd)%NodeInd(:)
+      case default
+        write(*,'(a,i2)'),'ERROR: unknown element shapeType: ',this%shapeType
         stop
     end select
   end function
