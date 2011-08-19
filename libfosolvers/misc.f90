@@ -167,14 +167,87 @@ subroutine findEleGradVect(k,v,rst)
   call findEleGradAny(k,v,3,rst)
 end subroutine
 
-!**********************************************************
-! find the gradient of vectorv o dimension m at the node k
-!**********************************************************
+!************************************************************
+! find the gradient of vector v of dimension m at the node k
+!************************************************************
 subroutine findNodeGradAny(k,v,m,rst)
   use moduleGrid
   integer,intent(in)::k,m
   double precision,intent(in)::v(nNode,m)
   double precision,intent(out)::rst(m,3)
+  integer,allocatable::lNode(:),lNodeTemp(:)
+  double precision,allocatable::dx(:,:),dv(:,:),s(:)
+  integer,parameter::lwork=900 ! according to returned work(1) with lwork=-1
+  double precision distsq,work(lwork)
+  integer nEq,rank,iwork(50),er
+  nEq=0
+  do i=1,nEle
+    if(any(Ele(i)%NodeInd(:)==k))then
+      if(nEq==0)then
+        allocate(lNodeTemp(Ele(i)%NodeNum))
+        lNodeTemp(:)=Ele(i)%NodeInd(1:Ele(i)%NodeNum)
+        call move_alloc(lNodeTemp,lNode)
+        nEq=Ele(i)%NodeNum-1 ! exclude the node k itself
+      else
+        allocate(lNodeTemp(nEq+1+Ele(i)%NodeNum))
+        lNodeTemp(:)=0
+        lNodeTemp(1:nEq+1)=lNode(:)
+        do j=1,Ele(i)%NodeNum
+          if(all(lNodeTemp(:)/=Ele(i)%NodeInd(j)))then
+            lNodeTemp(nEq+2)=Ele(i)%NodeInd(j)
+            nEq=nEq+1
+          end if
+        end do
+        deallocate(lNode)
+        allocate(lNode(nEq+1))
+        lNode(:)=lNodeTemp(1:nEq+1)
+        deallocate(lNodeTemp)
+      end if
+    end if
+  end do
+  allocate(dx(nEq,3))
+  allocate(dv(max(nEq,3),m))
+  allocate(s(min(nEq,3)))
+  ! weighted least-squares gradient evaluation
+  j=0
+  do i=1,nEq+1
+    if(lNode(i)/=k)then
+      j=j+1
+      dx(j,:)=Node(lNode(i))%Pos(:)-Node(k)%Pos(:)
+      dv(j,:)=v(lNode(i),:)-v(k,:)
+      distsq=dot_product(dx(j,:),dx(j,:))
+      dx(j,:)=dx(j,:)/distsq
+      dv(j,:)=dv(j,:)/distsq
+    end if
+  end do
+  call DGELSD(nEq,3,m,dx,nEq,dv,max(nEq,3),s,-1d0,rank,work,lwork,iwork,er) ! calling lapack
+  if(er/=0)then
+    write(*,'(a,i2)'),'Error: Lapack returning error flag: ',er
+    stop
+  end if
+  rst(:,:)=transpose(dv(1:3,1:m))
+end subroutine
+
+!*********************************************
+! find the gradient of scaler v at the node k
+!*********************************************
+subroutine findNodeGradScal(k,v,rst)
+  use moduleGrid
+  integer,intent(in)::k
+  double precision,intent(in)::v(nNode)
+  double precision,intent(out)::rst(3)
+  call findNodeGradAny(k,v,1,rst)
+end subroutine
+
+!************************************************************
+! find the gradient of vector v of dimension 3 at the node k
+!************************************************************
+subroutine findNodeGradVect(k,v,rst)
+  use moduleGrid
+  integer,intent(in)::k
+  double precision,intent(in)::v(nNode,3)
+  double precision,intent(out)::rst(3,3)
+  call findNodeGradAny(k,v,3,rst)
 end subroutine
 
 !******************************************************
