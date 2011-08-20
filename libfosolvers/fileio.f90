@@ -3,7 +3,7 @@
 !****************
 ! read mesh file
 !****************
-subroutine readmsh(fname)
+subroutine readmsh(fname,gridfile)
   use moduleGrid
   
   integer gridfile,readerr,np,nt
@@ -17,8 +17,6 @@ subroutine readmsh(fname)
   type(typeHex),allocatable::tempHex(:)
   
   np=0
-  
-  gridfile=11
   
   open(gridfile,file=fname,status='old')
   readerr=0
@@ -223,4 +221,117 @@ subroutine readmsh(fname)
   write(*,'(a,i8,/)'),'  number of hex.:  ',nHex
   
   close(gridfile)
+end subroutine
+
+!*********************************
+! result output related variables
+!*********************************
+module moduleWrite
+  ! output control related variables
+  double precision,save::t,tFinal
+  integer,save::nWrite
+  ! data to be output
+  double precision,allocatable,save::rstNodeScal(:,:),rstNodeVect(:,:,:),rstNodeTens(:,:,:),&
+  &                                  rstEleScal(:,:),rstEleVect(:,:,:),rstEleTens(:,:,:)
+  integer,save::nrstNodeScal,nrstNodeVect,nrstNodeTens,nrstEleScal,nrstEleVect,nrstEleTens
+end module
+
+!************************************
+! initialize data output environment
+!************************************
+! a: number of scaler data sets at nodes
+! b: number of vector data sets at nodes
+! c: number of tensor data sets at nodes
+! d: number of scaler data sets at the center of elements
+! e: number of vector data sets at the center of elements
+! f: number of tensor data sets at the center of elements
+subroutine initWriteEnv(a,b,c,d,e,f)
+  use moduleGrid
+  use moduleWrite
+  integer,intent(in)::a,b,c,d,e,f
+  ! allocate output data space
+  nrstNodeScal=a
+  nrstNodeVect=b
+  nrstNodeTens=c
+  nrstEleScal=d
+  nrstEleVect=e
+  nrstEleTens=f
+  allocate(rstNodeScal(a,nNode))
+  allocate(rstNodeVect(a,nNode,3))
+  allocate(rstNodeTens(a,nNode,9))
+  allocate(rstEleScal(a,nEle))
+  allocate(rstEleVect(a,nEle,3))
+  allocate(rstEleTens(a,nEle,9))
+  ! set output control variables
+  nWrite=0
+end subroutine
+
+!**********************************
+! write results during a time span
+!**********************************
+subroutine writerstSpan(fname,ifile)
+  use moduleGrid
+  use moduleWrite
+  integer ifile
+  character*200 tempstring,fname
+  
+  if(nWrite==0)then ! if it is the 1st time writing results
+    open(ifile,file=fname,status='replace')
+    ! write header
+    write(ifile,'(a)'),'$MeshFormat'
+    write(ifile,'(a)'),'2.2 0 8'
+    write(ifile,'(a)'),'$EndMeshFormat'
+    ! write nodes
+    write(ifile,'(a)'),'$Nodes'
+    write(tempstring,*),nNode
+    tempstring=adjustl(tempstring)
+    write(ifile,'(a)'),trim(tempstring)
+    do i=1,nNode
+      write(tempstring,*),&
+      &    i,Node(i)%Pos(1),Node(i)%Pos(2),Node(i)%Pos(3)
+      tempstring=adjustl(tempstring)
+      write(ifile,'(a)'),trim(tempstring)
+    end do
+    write(ifile,'(a)'),'$EndNodes'
+    ! write elements
+    write(ifile,'(a)'),'$Elements'
+    write(tempstring,*),nEle+nPoint+nLine+nFacet
+    tempstring=adjustl(tempstring)
+    write(ifile,'(a)'),trim(tempstring)
+    ! Note: write solid elements first so that the element index would be consistant
+    do i=1,nEle
+      write(tempstring,*),&
+      &    i,Ele(i)%ShapeType,2,0,Ele(i)%GeoEnti,(Ele(i)%NodeInd(j),j=1,Ele(i)%NodeNum)
+      tempstring=adjustl(tempstring)
+      write(ifile,'(a)'),trim(tempstring)
+    end do
+    do i=1,nPoint
+      write(tempstring,*),&
+      &    nEle+i,15,2,0,Point(i)%GeoEnti,Point(i)%NodeInd
+      tempstring=adjustl(tempstring)
+      write(ifile,'(a)'),trim(tempstring)
+    end do
+    do i=1,nLine
+      write(tempstring,*),&
+      &    nEle+nPoint+i,1,2,0,Line(i)%GeoEnti,Line(i)%NodeInd(:)
+      tempstring=adjustl(tempstring)
+      write(ifile,'(a)'),trim(tempstring)
+    end do
+    do i=1,nFacet
+      write(tempstring,*),&
+      &    nEle+nPoint+nLine+i,Facet(i)%ShapeType,2,0,Facet(i)%GeoEnti,&
+      &    (Facet(i)%NodeInd(j),j=1,Facet(i)%NodeNum)
+      tempstring=adjustl(tempstring)
+      write(ifile,'(a)'),trim(tempstring)
+    end do
+    write(ifile,'(a)'),'$EndElements'
+  end if
+  
+  ! write data sets
+  
+  nWrite=nWrite+1
+  
+  if(t>tFinal)then ! if it is the last time writing results
+    close(ifile)
+  end if
 end subroutine

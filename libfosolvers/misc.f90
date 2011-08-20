@@ -29,6 +29,8 @@ subroutine updateFacetPara()
   do i=1,nFacet
     ! list of node indics
     Facet(i)%NodeInd(:)=Facet(i)%getNodeInd()
+    ! geometric entity
+    Facet(i)%GeoEnti=Facet(i)%getGeoEnti()
     ! position of the center
     Facet(i)%PC(:)=Facet(i)%findPC()
     ! area
@@ -48,6 +50,8 @@ subroutine updateElePara()
   do i=1,nEle
     ! list of node indics
     Ele(i)%NodeInd(:)=Ele(i)%getNodeInd()
+    ! geometric entity
+    Ele(i)%GeoEnti=Ele(i)%getGeoEnti()
     ! neighbour
     Ele(i)%Neib(:)=0
     do j=1,Ele(i)%SurfNum

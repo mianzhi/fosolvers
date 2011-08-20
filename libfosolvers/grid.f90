@@ -128,6 +128,7 @@ module moduleGrid
     integer ShapeInd
     integer NodeNum
     integer NodeInd(15) ! 15 is the maximum possible number of nodes an facet can have
+    integer GeoEnti
     double precision PC(3)
     double precision Area
     double precision Norm(3)
@@ -153,6 +154,7 @@ module moduleGrid
     integer NodeNum
     integer SurfNum
     integer NodeInd(27) ! 27 is the maximum possible number of nodes an element can have
+    integer GeoEnti
     integer Neib(6) ! 6 is the maximum possible number of neighbours
     double precision PC(3)
     double precision Vol
