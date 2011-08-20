@@ -9,31 +9,31 @@ program libtest
   call sortEle()
   call updateFacetPara()
   call updateElePara()
-  call initWriteEnv(1,1,1,0,0,0)
+  call initWriteEnv(0,0,0,1,1,1)
   
-  allocate(v(nNode))
-  allocate(vv(nNode,3))
-  allocate(vvv(nNode,3,3))
+  allocate(v(nEle))
+  allocate(vv(nEle,3))
+  allocate(vvv(nEle,3,3))
   
   tFinal=5d0
   do l=0,50
     t=dble(l)/10d0
-    do i=1,nNode
-      v(i)=(sin(t+10d0*Node(i)%Pos(1))+cos(t+5d0*Node(i)%Pos(2))-sin(t+5d0*Node(i)%Pos(3)))
+    do i=1,nEle
+      v(i)=sin(t+10d0*Ele(i)%PC(1))+cos(5d0*Ele(i)%PC(2))-sin(5d0*Ele(i)%PC(3))
     end do
-    do i=1,nNode
-      call findNodeGradScal(i,v,g)
+    do i=1,nEle
+      call findEleGradScal(i,v,g)
       vv(i,:)=g(:)
     end do
-    do i=1,nNode
-      call findNodeGradScal(i,vv,gg)
+    do i=1,nEle
+      call findEleGradVect(i,vv,gg)
       vvv(i,:,:)=gg(:,:)
     end do
-    rstNodeScal(1,:)=v(:)
-    rstNodeVect(1,:,:)=vv(:,:)
-    rstNodeTens(1,:,1:3)=vvv(:,1,:)
-    rstNodeTens(1,:,4:6)=vvv(:,2,:)
-    rstNodeTens(1,:,7:9)=vvv(:,3,:)
+    rstEleScal(1,:)=v(:)
+    rstEleVect(1,:,:)=vv(:,:)
+    rstEleTens(1,:,1:3)=vvv(:,1,:)
+    rstEleTens(1,:,4:6)=vvv(:,2,:)
+    rstEleTens(1,:,7:9)=vvv(:,3,:)
     call writerstSpan('rst.msh',11)
   end do
 end program

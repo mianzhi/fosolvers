@@ -257,11 +257,11 @@ subroutine initWriteEnv(a,b,c,d,e,f)
   nrstEleVect=e
   nrstEleTens=f
   allocate(rstNodeScal(a,nNode))
-  allocate(rstNodeVect(a,nNode,3))
-  allocate(rstNodeTens(a,nNode,9))
-  allocate(rstEleScal(a,nEle))
-  allocate(rstEleVect(a,nEle,3))
-  allocate(rstEleTens(a,nEle,9))
+  allocate(rstNodeVect(b,nNode,3))
+  allocate(rstNodeTens(c,nNode,9))
+  allocate(rstEleScal(d,nEle))
+  allocate(rstEleVect(e,nEle,3))
+  allocate(rstEleTens(f,nEle,9))
   ! set output control variables
   nWrite=0
 end subroutine
@@ -380,6 +380,60 @@ subroutine writerstSpan(fname,ifile)
       write(ifile,'(a)'),trim(tempstring)
     end do
     write(ifile,'(a)'),'$EndNodeData'
+  end do
+  ! write scalers at the center of elemnets
+  do i=1,nrstEleScal
+    write(ifile,'(a)'),'$ElementData'
+    write(ifile,'(i1)'),1 ! 1 string tag
+    write(ifile,'(a,i2,a)'),'"scalEle',i,'"' ! name of the data-set
+    write(ifile,'(i1)'),1 ! 1 real tag
+    write(ifile,*),t ! time
+    write(ifile,'(i1)'),3 ! 3 integer tags
+    write(ifile,*),nWrite ! time step index
+    write(ifile,'(i1)'),1 ! 1 component scaler
+    write(ifile,*),nEle
+    do j=1,nEle
+      write(tempstring,*),j,rstEleScal(i,j)
+      tempstring=adjustl(tempstring)
+      write(ifile,'(a)'),trim(tempstring)
+    end do
+    write(ifile,'(a)'),'$EndElementData'
+  end do
+  ! write vectors at the center of elements
+  do i=1,nrstEleVect
+    write(ifile,'(a)'),'$ElementData'
+    write(ifile,'(i1)'),1 ! 1 string tag
+    write(ifile,'(a,i2,a)'),'"vectEle',i,'"' ! name of the data-set
+    write(ifile,'(i1)'),1 ! 1 real tag
+    write(ifile,*),t ! time
+    write(ifile,'(i1)'),3 ! 3 integer tags
+    write(ifile,*),nWrite ! time step index
+    write(ifile,'(i1)'),3 ! 3 components vector
+    write(ifile,*),nEle
+    do j=1,nEle
+      write(tempstring,*),j,rstEleVect(i,j,:)
+      tempstring=adjustl(tempstring)
+      write(ifile,'(a)'),trim(tempstring)
+    end do
+    write(ifile,'(a)'),'$EndElementData'
+  end do
+  ! write tensors at the center of elements
+  do i=1,nrstEleTens
+    write(ifile,'(a)'),'$ElementData'
+    write(ifile,'(i1)'),1 ! 1 string tag
+    write(ifile,'(a,i2,a)'),'"tensEle',i,'"' ! name of the data-set
+    write(ifile,'(i1)'),1 ! 1 real tag
+    write(ifile,*),t ! time
+    write(ifile,'(i1)'),3 ! 3 integer tags
+    write(ifile,*),nWrite ! time step index
+    write(ifile,'(i1)'),9 ! 9 components tensor
+    write(ifile,*),nEle
+    do j=1,nEle
+      write(tempstring,*),j,rstEleTens(i,j,:)
+      tempstring=adjustl(tempstring)
+      write(ifile,'(a)'),trim(tempstring)
+    end do
+    write(ifile,'(a)'),'$EndElementData'
   end do
   
   
