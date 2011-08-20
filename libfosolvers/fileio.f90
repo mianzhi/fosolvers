@@ -273,7 +273,7 @@ subroutine writerstSpan(fname,ifile)
   use moduleGrid
   use moduleWrite
   integer ifile
-  character*200 tempstring,fname
+  character*400 tempstring,fname
   
   if(nWrite==0)then ! if it is the 1st time writing results
     open(ifile,file=fname,status='replace')
@@ -327,7 +327,61 @@ subroutine writerstSpan(fname,ifile)
     write(ifile,'(a)'),'$EndElements'
   end if
   
-  ! write data sets
+  ! write scalers at nodes
+  do i=1,nrstNodeScal
+    write(ifile,'(a)'),'$NodeData'
+    write(ifile,'(i1)'),1 ! 1 string tag
+    write(ifile,'(a,i2,a)'),'"scalNode',i,'"' ! name of the data-set
+    write(ifile,'(i1)'),1 ! 1 real tag
+    write(ifile,*),t ! time
+    write(ifile,'(i1)'),3 ! 3 integer tags
+    write(ifile,*),nWrite ! time step index
+    write(ifile,'(i1)'),1 ! 1 component scaler
+    write(ifile,*),nNode
+    do j=1,nNode
+      write(tempstring,*),j,rstNodeScal(i,j)
+      tempstring=adjustl(tempstring)
+      write(ifile,'(a)'),trim(tempstring)
+    end do
+    write(ifile,'(a)'),'$EndNodeData'
+  end do
+  ! write vectors at nodes
+  do i=1,nrstNodeVect
+    write(ifile,'(a)'),'$NodeData'
+    write(ifile,'(i1)'),1 ! 1 string tag
+    write(ifile,'(a,i2,a)'),'"vectNode',i,'"' ! name of the data-set
+    write(ifile,'(i1)'),1 ! 1 real tag
+    write(ifile,*),t ! time
+    write(ifile,'(i1)'),3 ! 3 integer tags
+    write(ifile,*),nWrite ! time step index
+    write(ifile,'(i1)'),3 ! 3 components vector
+    write(ifile,*),nNode
+    do j=1,nNode
+      write(tempstring,*),j,rstNodeVect(i,j,:)
+      tempstring=adjustl(tempstring)
+      write(ifile,'(a)'),trim(tempstring)
+    end do
+    write(ifile,'(a)'),'$EndNodeData'
+  end do
+  ! write tensors at nodes
+  do i=1,nrstNodeTens
+    write(ifile,'(a)'),'$NodeData'
+    write(ifile,'(i1)'),1 ! 1 string tag
+    write(ifile,'(a,i2,a)'),'"tensNode',i,'"' ! name of the data-set
+    write(ifile,'(i1)'),1 ! 1 real tag
+    write(ifile,*),t ! time
+    write(ifile,'(i1)'),3 ! 3 integer tags
+    write(ifile,*),nWrite ! time step index
+    write(ifile,'(i1)'),9 ! 9 components tensor
+    write(ifile,*),nNode
+    do j=1,nNode
+      write(tempstring,*),j,rstNodeTens(i,j,:)
+      tempstring=adjustl(tempstring)
+      write(ifile,'(a)'),trim(tempstring)
+    end do
+    write(ifile,'(a)'),'$EndNodeData'
+  end do
+  
   
   nWrite=nWrite+1
   
