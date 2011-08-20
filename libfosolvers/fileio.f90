@@ -3,11 +3,11 @@
 !****************
 ! read mesh file
 !****************
-subroutine readmsh()
+subroutine readmsh(fname)
   use moduleGrid
   
   integer gridfile,readerr,np,nt
-  character*100 temp_string
+  character*100 temp_string,fname
   integer temp_int_vect1(20)
   type(typePoint),allocatable::tempPoint(:)
   type(typeLine),allocatable::tempLine(:)
@@ -20,7 +20,7 @@ subroutine readmsh()
   
   gridfile=11
   
-  open(gridfile,file='grid.msh',status='old')
+  open(gridfile,file=fname,status='old')
   readerr=0
   
   do while(readerr==0)

@@ -2,7 +2,7 @@ program libtest
   use moduleGrid
   double precision,allocatable::value(:)
   double precision g(3)
-  call readmsh()
+  call readmsh('../heat3dFVM/grid.msh')
   call sortEle()
   call updateFacetPara()
   call updateElePara()
