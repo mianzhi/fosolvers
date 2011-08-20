@@ -266,16 +266,19 @@ subroutine initWriteEnv(a,b,c,d,e,f)
   nWrite=0
 end subroutine
 
-!**********************************
-! write results during a time span
-!**********************************
-subroutine writerstSpan(fname,ifile)
+!***************
+! write results
+!***************
+! hold=.true.: hold the file when exiting subroutine; good for writing a time span
+! hold=.false.: close the file when exiting subroutine; good for writing a snapshot
+subroutine writerst(fname,ifile,hold)
   use moduleGrid
   use moduleWrite
   integer ifile
   character*400 tempstring,fname
+  logical hold
   
-  if(nWrite==0)then ! if it is the 1st time writing results
+  if(nWrite==0.or..not.hold)then ! if it is the 1st time writing results
     open(ifile,file=fname,status='replace')
     ! write header
     write(ifile,'(a)'),'$MeshFormat'
@@ -335,7 +338,7 @@ subroutine writerstSpan(fname,ifile)
     write(ifile,'(i1)'),1 ! 1 real tag
     write(ifile,*),t ! time
     write(ifile,'(i1)'),3 ! 3 integer tags
-    write(ifile,*),nWrite ! time step index
+    write(ifile,*),merge(nWrite,1,hold) ! time step index
     write(ifile,'(i1)'),1 ! 1 component scaler
     write(ifile,*),nNode
     do j=1,nNode
@@ -353,7 +356,7 @@ subroutine writerstSpan(fname,ifile)
     write(ifile,'(i1)'),1 ! 1 real tag
     write(ifile,*),t ! time
     write(ifile,'(i1)'),3 ! 3 integer tags
-    write(ifile,*),nWrite ! time step index
+    write(ifile,*),merge(nWrite,1,hold) ! time step index
     write(ifile,'(i1)'),3 ! 3 components vector
     write(ifile,*),nNode
     do j=1,nNode
@@ -371,7 +374,7 @@ subroutine writerstSpan(fname,ifile)
     write(ifile,'(i1)'),1 ! 1 real tag
     write(ifile,*),t ! time
     write(ifile,'(i1)'),3 ! 3 integer tags
-    write(ifile,*),nWrite ! time step index
+    write(ifile,*),merge(nWrite,1,hold) ! time step index
     write(ifile,'(i1)'),9 ! 9 components tensor
     write(ifile,*),nNode
     do j=1,nNode
@@ -389,7 +392,7 @@ subroutine writerstSpan(fname,ifile)
     write(ifile,'(i1)'),1 ! 1 real tag
     write(ifile,*),t ! time
     write(ifile,'(i1)'),3 ! 3 integer tags
-    write(ifile,*),nWrite ! time step index
+    write(ifile,*),merge(nWrite,1,hold) ! time step index
     write(ifile,'(i1)'),1 ! 1 component scaler
     write(ifile,*),nEle
     do j=1,nEle
@@ -407,7 +410,7 @@ subroutine writerstSpan(fname,ifile)
     write(ifile,'(i1)'),1 ! 1 real tag
     write(ifile,*),t ! time
     write(ifile,'(i1)'),3 ! 3 integer tags
-    write(ifile,*),nWrite ! time step index
+    write(ifile,*),merge(nWrite,1,hold) ! time step index
     write(ifile,'(i1)'),3 ! 3 components vector
     write(ifile,*),nEle
     do j=1,nEle
@@ -425,7 +428,7 @@ subroutine writerstSpan(fname,ifile)
     write(ifile,'(i1)'),1 ! 1 real tag
     write(ifile,*),t ! time
     write(ifile,'(i1)'),3 ! 3 integer tags
-    write(ifile,*),nWrite ! time step index
+    write(ifile,*),merge(nWrite,1,hold) ! time step index
     write(ifile,'(i1)'),9 ! 9 components tensor
     write(ifile,*),nEle
     do j=1,nEle
@@ -436,10 +439,11 @@ subroutine writerstSpan(fname,ifile)
     write(ifile,'(a)'),'$EndElementData'
   end do
   
+  if(hold)then
+    nWrite=nWrite+1
+  end if
   
-  nWrite=nWrite+1
-  
-  if(t>tFinal)then ! if it is the last time writing results
+  if(t>tFinal.or..not.hold)then ! if it is the last time writing results
     close(ifile)
   end if
 end subroutine

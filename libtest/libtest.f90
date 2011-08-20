@@ -34,6 +34,7 @@ program libtest
     rstEleTens(1,:,1:3)=vvv(:,1,:)
     rstEleTens(1,:,4:6)=vvv(:,2,:)
     rstEleTens(1,:,7:9)=vvv(:,3,:)
-    call writerstSpan('rst.msh',11)
+    call writerst('rst.msh',11,.true.)
   end do
+  call writerst('snap.msh',12,.false.)
 end program
