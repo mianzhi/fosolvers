@@ -289,15 +289,16 @@ contains
     &                    Node(this%NodeInd(3))%Pos(:),Node(this%NodeInd(4))%Pos(:))
   end function
   
-  !----------------------------------------------------------
-  ! get the k_th neighbour element index of this tetrahedron
-  !----------------------------------------------------------
-  ! Note: we are getting neighbour element index, not neighbour tetrahedron index, though the
-  !       neighbour element is likely to be a tetrahedron
+  !-------------------------------------------------------------
+  ! get the k_th neighbour element or facet of this tetrahedron
+  !-------------------------------------------------------------
+  ! Note: if facet are found, the function will return the negative value of the facet index.
+  ! Note: we are getting neighbour element or facet, not neighbour hexahedron or quadrilateral
+  !       index, though the neighbour element (facet) is likely to be a tetrahedron (triangle).
   function getTetNeib(this,k)
     class(typeTet),intent(in)::this
     integer,intent(in)::k
-    integer getTetNeib,lPTet(4)
+    integer getTetNeib,lPTet(4),lPTri(3)
     logical maskTet(4)
     getTetNeib=0
     if(k<1.or.k>4)then
@@ -310,8 +311,7 @@ contains
           maskTet(:)=.false.
           lPTet(:)=Tet(Ele(i)%ShapeInd)%NodeInd(:)
           do j=1,4
-            if(this%NodeInd(j)==lPTet(1).or.this%NodeInd(j)==lPTet(2).or.&
-            &  this%NodeInd(j)==lPTet(3).or.this%NodeInd(j)==lPTet(4))then
+            if(any(lPTet(:)==this%NodeInd(j)))then
               maskTet(j)=.true.
             end if
           end do
@@ -322,6 +322,25 @@ contains
         case default
       end select
     end do
+    if(getTetNeib==0)then ! need to find from facets
+      do i=1,nFacet
+        select case(Facet(i)%ShapeType)
+          case(2) ! the neigbour facet can be a triangle
+            maskTet(:)=.false.
+            lPTri(:)=Tri(Facet(i)%ShapeInd)%NodeInd(:)
+            do j=1,4
+              if(any(lPTri(:)==this%NodeInd(j)))then
+                maskTet(j)=.true.
+              end if
+            end do
+            if(all(maskTet(SurfTabTet(k,:))))then
+              getTetNeib=-i
+              exit
+            end if
+          case default
+        end select
+      end do
+    end if
   end function
   
   !----------------------------------------------------
@@ -406,15 +425,16 @@ contains
     &                    Node(this%NodeInd(7))%Pos(:),Node(this%NodeInd(8))%Pos(:))
   end function
   
-  !---------------------------------------------------------
-  ! get the k_th neighbour element index of this hexahedron
-  !---------------------------------------------------------
-  ! Note: we are getting neighbour element index, not neighbour hexahedron index, though the
-  !       neighbour element is likely to be a hexahedron
+  !------------------------------------------------------------
+  ! get the k_th neighbour element or facet of this hexahedron
+  !------------------------------------------------------------
+  ! Note: if facet are found, the function will return the negative value of the facet index.
+  ! Note: we are getting neighbour element or facet, not neighbour hexahedron or quadrilateral
+  !       index, though the neighbour element (facet) is likely to be a hexahedron (quadrilateral).
   function getHexNeib(this,k)
     class(typeHex),intent(in)::this
     integer,intent(in)::k
-    integer getHexNeib,lPHex(8)
+    integer getHexNeib,lPHex(8),lPQuad(4)
     logical maskHex(8)
     getHexNeib=0
     if(k<1.or.k>6)then
@@ -427,10 +447,7 @@ contains
           maskHex(:)=.false.
           lPHex(:)=Hex(Ele(i)%ShapeInd)%NodeInd(:)
           do j=1,8
-            if(this%NodeInd(j)==lPHex(1).or.this%NodeInd(j)==lPHex(2).or.&
-            &  this%NodeInd(j)==lPHex(3).or.this%NodeInd(j)==lPHex(4).or.&
-            &  this%NodeInd(j)==lPHex(5).or.this%NodeInd(j)==lPHex(6).or.&
-            &  this%NodeInd(j)==lPHex(7).or.this%NodeInd(j)==lPHex(8))then
+            if(any(lPHex(:)==this%NodeInd(j)))then
               maskHex(j)=.true.
             end if
           end do
@@ -441,6 +458,25 @@ contains
         case default
       end select
     end do
+    if(getHexNeib==0)then ! need to find from facets
+      do i=1,nFacet
+        select case(Facet(i)%ShapeType)
+          case(3) ! the neigbour facet can be a quadrilateral
+            maskHex(:)=.false.
+            lPQuad(:)=Quad(Facet(i)%ShapeInd)%NodeInd(:)
+            do j=1,8
+              if(any(lPQuad(:)==this%NodeInd(j)))then
+                maskHex(j)=.true.
+              end if
+            end do
+            if(all(maskHex(SurfTabHex(k,:))))then
+              getHexNeib=-i
+              exit
+            end if
+          case default
+        end select
+      end do
+    end if
   end function
   
   !---------------------------------------------------
