@@ -7,7 +7,7 @@ subroutine readmsh(fname,gridfile)
   use moduleGrid
   
   integer gridfile,readerr,np,nt
-  character*100 temp_string,fname
+  character(100) temp_string,fname
   integer temp_int_vect1(20)
   type(typePoint),allocatable::tempPoint(:)
   type(typeLine),allocatable::tempLine(:)
@@ -275,7 +275,7 @@ subroutine writerst(fname,ifile,hold)
   use moduleGrid
   use moduleWrite
   integer ifile
-  character*400 tempstring,fname
+  character(400) tempstring,fname
   logical hold
   
   if(nWrite==0.or..not.hold)then ! if it is the 1st time writing results
