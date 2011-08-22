@@ -1,0 +1,72 @@
+libfosolvers
+************
+
+Mianzhi Wang <wangmianzhi1@linuxmail.org>
+
+libfosolvers rovides data structures and procedures for
+scientific computation programs using gmsh as grid generator
+and(/or) post processor.
+  
+MODULES
+*******
+
+moduleGrid
+==========
+
+SurfTabTet(4,3),SurfTabHex(6,4):integer 
+---------------------------------------
+    
+Table of surface nodes for all kinds of elements
+   
+The 1st index is the index of the surface. The 2nd index is
+the index of nodes of the corresponding surface.
+
+The table is initialized as below in subroutine "readmsh()".
+
+SurfTabTet: [1,3,2]   SurfTabHex: [2,3,7,6]
+            [1,2,4]               [1,5,8,4]
+            [1,4,3]               [3,4,8,7]
+            [2,3,4]               [1,2,6,5]
+                                  [5,6,7,8]
+                                  [1,4,3,2]
+example:
+`Tet(100)%NodeInd(SurfTabTet(3,:))' returns the global index
+of nodes of the 3rd surface of the 100th tetrahedron.
+
+BoundBox(2,3):double
+--------------------
+
+The bounding box of the grid
+
+The table is calculated by subroutine "updateBoundBox()".
+
+BoundBox: [xmin,ymin,zmin]
+          [xmax,ymax,zmax]
+
+typeNode:type,Node(nNode):typeNode
+----------------------------------
+
+   *Pos(3):double
+
+The position of the Node
+
+~~~~
+
+   *(no type-bounded procedures)
+
+typePoint:type,Point(nPoint):typePoint
+--------------------------------------
+
+   *NodeInd:integer
+
+The index of the node on which the point is put
+
+   *GeoEnti:integer
+
+The index of geometric entity which the point belongs to 
+
+moduleWrite
+===========
+
+INDIVIDUAL PROCEDURES
+*********************
