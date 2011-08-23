@@ -22,7 +22,7 @@ subroutine readcod(fname,codfile)
   allocate(lFluxSurf(nFacet))
   allocate(lRadSurf(nFacet))
   allocate(lConvSurf(nFacet))
-  allocate(lSource(nFacet))
+  allocate(lSource(nEle))
   allocate(vTempSurf(nFacet))
   allocate(vFluxSurf(nFacet))
   allocate(vRadSurf(nFacet,2))
@@ -203,8 +203,6 @@ end subroutine
 ! read material properties
 !**************************
 subroutine readmtl(fname,mtlfile)
-  use moduleGrid
-  use moduleWrite
   use globalvar
   
   character(100),intent(in)::fname
