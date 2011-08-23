@@ -709,9 +709,9 @@ contains
     end select
   end function
   
-  !---------------------------------------------------
-  ! find the center of this hexahedron's k_th surface
-  !---------------------------------------------------
+  !------------------------------------------------
+  ! find the center of this element's k_th surface
+  !------------------------------------------------
   ! Note: actually we are finding the average position of the vertices
   function findEleSurfPC(this,k)
     class(typeEle),intent(in)::this
@@ -728,9 +728,9 @@ contains
     end select
   end function
   
-  !---------------------------------------------------
-  ! find the area of this hexahedron's k_th surface
-  !---------------------------------------------------
+  !----------------------------------------------
+  ! find the area of this element's k_th surface
+  !----------------------------------------------
   function findEleSurfArea(this,k)
     class(typeEle),intent(in)::this
     integer,intent(in)::k
@@ -746,9 +746,9 @@ contains
     end select
   end function
   
-  !----------------------------------------------------------
-  ! find the normal vector of this hexahedron's k_th surface
-  !----------------------------------------------------------
+  !-------------------------------------------------------
+  ! find the normal vector of this element's k_th surface
+  !-------------------------------------------------------
   function findEleSurfNorm(this,k)
     class(typeEle),intent(in)::this
     integer,intent(in)::k

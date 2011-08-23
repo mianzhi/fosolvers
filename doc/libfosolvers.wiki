@@ -1,0 +1,525 @@
+=libfosolvers=
+
+  Mianzhi Wang <wangmianzhi1@linuxmail.org>
+
+  libfosolvers provides data structures and procedures for scientific computation programs using gmsh as grid generator and(/or) post processor.
+
+=modules=
+
+==moduleGrid==
+
+===SurfTabTet(4,3), SurfTabHex(6,4):integer=== 
+    
+Table of surface nodes for all kinds of elements
+
+The table is initialised as below in subroutine "readmsh()".
+
+SurfTabTet:
+
+||1||3||2||
+||1||2||4||
+||1||4||3||
+||2||3||4||
+
+SurfTabHex:
+
+||2||3||7||6||              
+||1||5||8||4||          
+||3||4||8||7||
+||1||2||6||5||
+||5||6||7||8||
+||1||4||3||2||
+
+example:
+
+`Tet(100)%NodeInd(SurfTabTet(3,:)` returns the nodes of the 3rd surface of the 100th tetrahedron.
+
+----
+
+===BoundBox(2,3):double===
+
+The bounding box of the grid
+
+The table is calculated by subroutine "updateBoundBox()", which is called in "sortEle()".
+
+BoundBox:
+
+||xmin||ymin||zmin||
+||xmax||ymax||zmax||
+
+----
+
+===typeNode:type, Node(nNode):typeNode===
+
+*Pos(3):double*
+The position of the Node
+
+---
+
+*(no type-bounded procedures)*
+
+----
+
+===typePoint:type, Point(nPoint):typePoint===
+
+*NodeInd:integer*
+The index of the node on which the point is put
+
+*GeoEnti:integer*
+The index of the geometric entity which the point belongs to
+
+---
+
+*findPos():double*
+Find the position of the point
+
+----
+
+===typeLine:type, Line(nLine):typeLine===
+
+*NodeInd(2):integer*
+The list of nodes index defining the line
+
+*GeoEnti:integer*
+The index of the geometric entity which the line belongs to
+
+---
+
+*findPC():double*
+Find the centre position of the line
+
+*findLength():double*
+Find the length of the line
+
+----
+
+===typeTri:type, Tri(nTri):typeTri===
+
+*NodeInd(3):integer*
+The list of nodes being the vertices of the triangle
+
+*GeoEnti:integer*
+The index of the geometric entity which the triangle belongs to
+
+---
+
+*findPC():double*
+Find the center position of the triangle
+
+*findArea():double*
+Find the area of the triangle
+
+*findNorm():double*
+Find the normal vector of the triangle
+
+----
+
+===typeQuad:type, Quad(nQuad):typeQuad===
+
+*NodeInd(4):integer*
+The list of nodes being the vertices of the quadrilateral
+
+*GeoEnti:integer*
+The index of the geometric entity which the quadrilateral belongs to
+
+---
+
+*findPC():double*
+Find the position of the centre of the quadrilateral
+
+*findArea():double*
+Find the area of the quadrilateral
+
+*findNorm():double*
+Find the normal vector of the quadrilateral
+
+----
+
+===typeTet:type, Tet(nTet):typeTet===
+
+*NodeInd(4):integer*
+The list of nodes being the vertices of the tetrahedron
+
+*GeoEnti:integer*
+The index of the geometric entity which the tetrahedron belongs to
+
+---
+
+*findPC():double*
+Find the centre position of the tetrahedron
+
+*findVol():double*
+Find the volume of the tetrahedron
+
+*getNeib(k):integer*
+Find the neighbour element of the tetrahedron through the k_th surface
+
+*findSurfPC(k):double*
+Find the centre position of the k_th surface of the tetrahedron
+
+*findSurfArea(k):double*
+Find the area of the k_th surface of the tetrahedron
+
+*findSurfNorm(k):double*
+Find the normal vector of the k_th surface of the tetrahedron
+
+----
+
+===typeHex:type, Hex(nHex):typeHex===
+
+*NodeInd(8):integer*
+The list of nodes being the vertices of the hexahedron
+
+*GeoEnti:integer*
+The index of the geometric entity which the hexahedron belongs to
+
+---
+
+*findPC():double*
+Find the centre position of the hexahedron
+
+*findVol():double*
+Find the volume of the hexahedron
+
+*getNeib(k):integer*
+Find the neighbour element of the hexahedron through the k_th surface
+
+*findSurfPC(k):double*
+Find the centre position of the k_th surface of the hexahedron
+
+*findSurfArea(k):double*
+Find the area of the k_th surface of the hexahedron
+
+*findSurfNorm(k):double*
+Find the normal vector of the k_th surface of the hexahedron
+
+----
+
+===typeFacet:type, Facet(nFacet):typeFacet===
+
+_Facet is more recommended than Tri and Quad, if you want to write generalised program._
+
+_All properties of Facet will be available after calling "updateFacetPara()"._
+
+_Using parameters is more efficient than using type-bounded procedures._
+
+*ShapeType:integer*
+Shape type of the facet (consistent with gmsh)
+
+*ShapeInd:integer*
+The index of the corresponding shape (e.g.: ShapeInd=20 and ShapeType=2 means this facet refers to Tri(20))
+
+*NodeNum:integer*
+The number of nodes defining the Facet (e.g.: if ShapeType=3, then NodeNum must be 4)
+
+*NodeInd(15):integer*
+The full list of nodes defining the facet
+
+_Note: 15 is the maximum possible number of nodes a facet can have. Leave unused cells being 0_
+
+*GeoEnti:integer*
+The index of the geometric entity which the facet belongs to
+
+*PC(3):double*
+The centre position of the facet
+
+*Area:double*
+The area of the facet
+
+*Norm(3):double*
+The normal vector of the facet
+
+---
+
+*getNodeInd():integer*
+get the full list of nodes of dimension 15
+
+*findPC():double*
+Find the centre position of the facet
+
+*findArea():double*
+Find the area of the facet
+
+*findNorm():double*
+Find the normal vector of the facet
+
+*getGeoEnti():integer*
+Get the geometric entity of the facet
+
+----
+
+===typeEle:type, Ele(nEle):typeEle===
+
+_Ele is more recommended than Tet and Hex, if you want to write generalised program._
+
+_All properties of Ele will be available after calling "updateElePara()"._
+
+_Using parameters is more efficient than using type-bounded procedures._
+
+*ShapeType:integer*
+Shape type of the element (consistent with gmsh)
+
+*ShapeInd:integer*
+The index of the corresponding shape (e.g.: ShapeInd=20 and ShapeType=5 means this element refers to Hex(20))
+
+*NodeNum:integer*
+The number of nodes defining the element (e.g.: if ShapeType=5, then NodeNum must be 8)
+
+*SurfNum:integer*
+The number of surfaces of the element (e.g.: if ShapeType=5, then SurfNum must be 6)
+
+*NodeInd(27):integer*
+The full list of nodes defining the element
+
+_Note: 27 is the maximum possible number of nodes an element can have. Leave unused cells being 0_
+
+*GeoEnti:integer*
+The index of the geometric entity which the element belongs to
+
+*Neib(6):integer*
+The neighbours of the element
+
+_Note: 6 is the maximum possible number of neighbours of an element. leave unused cells being 0_
+
+*PC(3):double*
+The centre position of the element
+
+*Vol:double*
+The volume of the element
+
+*SurfPC(6,3):double*
+The centre position of the surfaces of the element
+
+_Note: some cells may be unused because the element may have less than 6 surfaces_
+
+*SurfArea(6):double*
+The area of the surfaces of the element
+
+_Note: some cells may be unused because the element may have less than 6 surfaces_
+
+*SurfNorm(6,3):double*
+The normal vector of the surfaces of the element
+
+_Note: some cells may be unused because the element may have less than 6 surfaces_
+
+---
+
+*getNodeInd():integer*
+Find the full list of nodes of dimension 27
+
+*findPC():double*
+Find the centre position of the element
+
+*findVol():double*
+Find the volume of the element
+
+*getGeoEnti():integer*
+Get the geometric entity of the element
+
+*getNeib(k):integer*
+Get the k_th neighbour element of the element
+
+*findSurfPC(k):double*
+Find the centre position of the k_th surface of the element
+
+*findSurfArea(k):double*
+Find the area of the k_the surface of the element
+
+*findSurfNorm(k):double*
+Find the normal vector of the k_th surface of the element
+
+----
+
+==moduleWrite==
+
+===t:double===
+Simulation time
+
+----
+
+===tFinal:double===
+The time that simulation stops
+
+----
+
+===nWrite:double===
+Times of result output executed
+
+----
+
+*_Note: The following 6 arrays is allocated by calling "initWriteEnv()" and need to be filled with data before calling "writerst()"_*
+
+===rstNodeScal(nrstNodeScal,nNode):double===
+Nodal scaler data to be written
+
+----
+
+===rstNodeVect(nrstNodeVect,nNode,3):double===
+Nodal vector data to be written
+
+----
+
+===rstNodeVect(nrstNodeTens,nNode,9):double===
+Nodal tensor data to be written
+
+----
+
+===rstEleScal(nrstEleScal,nEle):double===
+Element scaler data to be written
+
+----
+
+===rstEleVect(nrstEleVect,nEle,3):double===
+Element vector data to be written
+
+----
+
+===rstEleVect(nrstEleTens,nEle,9):double===
+Element tensor data to be written
+
+----
+
+=individual procedures=
+
+==file input-output related==
+
+===readmsh(fname,fid)===
+Read the mesh file
+
+*fname:string*
+Name of the mesh file
+
+*fid:integer*
+Unit number of the file
+
+----
+
+===initWriteEnv(a,b,c,d,e,f)===
+Initialize data output environment
+
+*a:integer*
+number of scaler data sets at nodes
+
+*b:integer*
+number of vector data sets at nodes
+
+*c:integer*
+number of tensor data sets at nodes
+
+*d:integer*
+number of scaler data sets at the center of elements
+
+*e:integer*
+number of vector data sets at the center of elements
+
+*f:integer*
+number of tensor data sets at the center of elements
+
+----
+
+===writerst(fname,fid,hold)===
+Write the result file
+
+*fname:string*
+Name of the mesh file
+
+*fid:integer*
+Unit number of the file
+
+*hold:logical*
+Whether the file would be left opened when exiting the subroutine
+
+_hold=.true.: hold the file when exiting subroutine; good for writing a time span_
+
+_hold=.false.: close the file when exiting subroutine; good for writing a snapshot_
+
+----
+
+==miscellaneous==
+
+===updateBoundBox()===
+Update the bounding box of the grid
+
+----
+
+===updateFacetPara()===
+Update the parameters of Facet
+
+----
+
+===updateElePara()===
+Update the parameters of Ele
+
+----
+
+===sortEle()===
+Sort the elements according to their spacial position
+
+----
+
+===findEleGradScal(k,v,rst), findEleGradVect(k,v,rst)===
+Find the gradient of v at the centre of k_th element and return in rst
+
+_Note: will use findEleGradAny(k,v,m,rst), which finds the gradient of a vector of m dimension_
+
+*k:integer*
+The element at whose centre the gradient will be found
+
+*v(nEle)/v(nEle,3):double*
+The scaler or vector that need to find gradient of
+
+*rst(3)/rst(3,3):double*
+The result
+
+----
+
+===findNodeGradScal(k,v,rst), findNodeGradVect(k,v,rst)===
+Find the gradient of v at the k_th node and return in rst
+
+_Note: will use findNodeGradAny(k,v,m,rst), which finds the gradient of a vector of m dimension_
+
+*k:integer*
+The node at which the gradient will be found
+
+*v(nNode)/v(nNode,3):double*
+The scaler or vector that need to find gradient of
+
+*rst(3)/rst(3,3):double*
+The result
+
+----
+
+===find3PArea(P1,P2,P3)===
+Find the area of a triangle having P1~P3 as vertices
+
+*P1(3), P2(3), P3(3):double*
+The position of the 3 points
+
+----
+
+===find3PNorm(P1,P2,P3)===
+Find the normal vector of a triangle having P1~P3 as vertices
+
+*P1(3), P2(3), P3(3):double*
+The position of the 3 points
+
+----
+
+===find4PVol(P1,P2,P3,P4)===
+Find the volume of a tetrahedron having P1~P4 as vertices
+
+*P1(3), P2(3), P3(3), P4(3):double*
+The position of the 4 points
+
+----
+
+===showProg(v,vtot)===
+Show progress (v/vtot)
+
+*v:double*
+The work have done
+
+*vtot:double*
+The total work
+
+----
