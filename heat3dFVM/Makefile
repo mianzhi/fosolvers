@@ -1,12 +1,16 @@
-FC=gfortran
-FFLAGS=-Wall -fopenmp -O2 -mtune=native
 objects=heat3dFVM.o fileio.o tadv.o misc.o
+libpath=../libfosolvers/
+libs=-lfosolvers -llapack
+target=heat3dFVM
+
+FC=gfortran
+FFLAGS=-Wall -fopenmp -O2 -mtune=native -I$(libpath) -L$(libpath)
 
 %.o:%.f90
-	$(FC) -c $(FFLAGS) -o $@ $<
+	$(FC) -c $(FFLAGS) -o $@ $^
 
-heat3dFVM:$(objects)
-	$(FC) $(FFLAGS) -o heat3dFVM $(objects)
+$(target):$(objects)
+	$(FC) $(FFLAGS) -o $(target) $(objects) $(libs)
 
 clean:
 	rm *.o *.mod

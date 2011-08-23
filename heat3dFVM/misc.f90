@@ -4,22 +4,20 @@
 ! apply BCs
 !***********
 subroutine appBCs(flag)
+  use moduleGrid
   use globalvar
   use CNaddvar
-  character*3 flag
-  double precision P1(3),P2(3),P3(3),P4(3),Pc(3),Ps(3),Ts,Dist,Flux,sigma,time
+  use moduleWrite,only:t
+  character(3) flag
+  double precision Pc(3),Ps(3),Ts,Dist,Flux,sigma,time
   double precision lookupTab
   
-  do i=1,nTri
-    do j=1,nTet
-      do k=1,4
-        if(neighbour(j,k)==-i)then ! the neighbour of ghost cell -i
-          P1(:)=Pos(lTet(j,1),:)
-          P2(:)=Pos(lTet(j,2),:)
-          P3(:)=Pos(lTet(j,3),:)
-          P4(:)=Pos(lTet(j,4),:)
-          Pc=(P1+P2+P3+P4)/4d0
-          Ps(:)=(Pos(lTri(i,1),:)+Pos(lTri(i,2),:)+Pos(lTri(i,3),:))/3d0
+  do i=1,nFacet
+    do j=1,nEle
+      do k=1,Ele(j)%SurfNum
+        if(Ele(j)%Neib(k)==-i)then ! the neighbour of ghost element -i
+          Pc(:)=Ele(j)%PC(:)
+          Ps(:)=Facet(i)%PC(:)
           Dist=sqrt(dot_product(Pc-Ps,Pc-Ps)) ! distance between cell center and boundary surface
           
           ! Neumann type BC
@@ -65,9 +63,9 @@ subroutine appBCs(flag)
           ! also update the property of the ghost cell
           do l=1,size(iVol)
             if(flag=='old')then
-              cond(-i)=lookupTab(Temp(-i),kTab(l,:,:),nkTab)
+              cond(-i)=lookupTab(Temp(-i),kTab(l,:,:),nkTab(l))
             else
-              newcond(-i)=lookupTab(newTemp(-i),kTab(l,:,:),nkTab)
+              newcond(-i)=lookupTab(newTemp(-i),kTab(l,:,:),nkTab(l))
             end if
           end do
           
@@ -77,55 +75,13 @@ subroutine appBCs(flag)
   end do
 end subroutine
 
-!**************************
-! initialize the variables
-!**************************
-subroutine init()
-  use globalvar,only:Tinit,Temp,gradT,e,rho,c,cond,&
-  &                  iVol,nTri,nTet,lTet,neighbour,&
-  &                  rhoTab,nrhoTab,cTab,ncTab,kTab,nkTab,eTab,neTab
-  double precision lookupTab
-  
-  allocate(Temp(-nTri:nTet))
-  allocate(rho(1:nTet))
-  allocate(c(1:nTet))
-  allocate(cond(-nTri:nTet))
-  allocate(e(1:nTet)) ! NOTE: we don't care about conservation within ghost cells
-  allocate(gradT(nTet,3))
-  
-  Temp(:)=Tinit
-  ! initial value of variable & parameters
-  do i=1,nTet
-    do j=1,size(iVol)
-      if(lTet(i,5)==iVol(j))then
-        rho(i)=lookupTab(Tinit,rhoTab(j,:,:),nrhoTab)
-        c(i)=lookupTab(Tinit,cTab(j,:,:),ncTab)
-        cond(i)=lookupTab(Tinit,kTab(j,:,:),nkTab)
-        e(i)=lookupTab(Tinit,eTab(j,:,:),neTab)
-      end if
-    end do
-  end do
-  ! initial parameters of ghost cells
-  do i=1,nTet
-    do j=1,size(iVol)
-      if(lTet(i,5)==iVol(j))then
-        do k=1,4
-          if(neighbour(i,k)<0)then ! if has a ghost neighbour
-            cond(neighbour(i,k))=lookupTab(Tinit,kTab(j,:,:),nkTab)
-          end if
-        end do
-      end if
-    end do
-  end do
-end subroutine
-
 !***********************************************
 ! build the table of specific energy e(T)[J/kg]
 !***********************************************
-subroutine eTabGen()
+subroutine geneTab()
   use globalvar,only:cTab,ncTab,eTab,neTab,iVol
   double precision Ta,Tb,ca,cb
-  double precision lookupTab
+  double precision lookupTab !function
   
   n=size(iVol) ! number of materials involved
   allocate(neTab(n))
@@ -136,7 +92,7 @@ subroutine eTabGen()
   do i=1,n ! for each material
     ! integrate with assuming the slope of conductivity is piecewise linear
     Ta=0d0
-    ca=lookupTab(Ta,cTab(i,:,:),ncTab)
+    ca=lookupTab(Ta,cTab(i,:,:),ncTab(i))
     do j=1,ncTab(i)
       Tb=cTab(i,1,j)
       cb=cTab(i,2,j)
@@ -155,133 +111,6 @@ subroutine eTabGen()
       neTab(i)=neTab(i)+4
       Ta=Tb
       ca=cb
-    end do
-  end do
-end subroutine
-
-!**********************************
-! find the auxiliary points offset
-!**********************************
-! Note: we are finding position offset instead of position
-subroutine auxGen()
-  use globalvar,only:lTet,nTet,Pos,Paux,faceTet
-  double precision P1(3),P2(3),P3(3),Pc(3),normVect(3)
-  
-  allocate(Paux(1:nTet,4,3))
-  
-  do i=1,nTet
-    Pc(:)=sum(Pos(lTet(i,1:4),:),1)/4d0
-    do j=1,4
-      P1(:)=Pos(lTet(i,faceTet(j,1)),:)
-      P2(:)=Pos(lTet(i,faceTet(j,2)),:)
-      P3(:)=Pos(lTet(i,faceTet(j,3)),:)
-      call normal(normVect,P1,P2,P3)
-      Paux(i,j,:)=(P1+P2+P3)/3d0-normVect*dot_product(normVect,(P1+P2+P3)/3d0-Pc)-Pc
-    end do
-  end do
-end subroutine
-
-!*******************************************
-! find neighbour cells & assign ghost cells
-!*******************************************
-subroutine findNeighbour()
-  use globalvar,only:lTet,nTet,lTri,nTri,neighbour,faceTet
-  logical mask(4)
-  
-  allocate(neighbour(nTet,4))
-  neighbour(:,:)=0
-  
-  do i=1,nTet
-    if(neighbour(i,1)==0.and.neighbour(i,2)==0.and.neighbour(i,3)==0.and.neighbour(i,4)==0)then
-      do j=1,nTet ! find neighbour cells
-        if(i/=j)then
-          mask(:)=.false.
-          do k=1,4
-            if(lTet(i,k)==lTet(j,1).or.lTet(i,k)==lTet(j,2).or.&
-            &  lTet(i,k)==lTet(j,3).or.lTet(i,k)==lTet(j,4))then
-              mask(k)=.true.
-            end if
-          end do
-          do k=1,4
-            if(mask(faceTet(k,1)).and.mask(faceTet(k,2)).and.mask(faceTet(k,3)))then
-              neighbour(i,k)=j
-            end if
-          end do
-          if(neighbour(i,1)/=0.and.neighbour(i,2)/=0.and.&
-          &  neighbour(i,3)/=0.and.neighbour(i,4)/=0)then
-            exit
-          end if
-        end if
-      end do
-      if(j==nTet+1)then ! find neighbour ghost cells
-        do j=1,nTri
-          mask(:)=.false.
-          do k=1,4
-            if(lTet(i,k)==lTri(j,1).or.lTet(i,k)==lTri(j,2).or.lTet(i,k)==lTri(j,3))then
-              mask(k)=.true.
-            end if
-          end do
-          do k=1,4
-            if(neighbour(i,k)==0.and.&
-            &  mask(faceTet(k,1)).and.mask(faceTet(k,2)).and.mask(faceTet(k,3)))then
-              neighbour(i,k)=-j
-            end if
-          end do
-          if(neighbour(i,1)/=0.and.neighbour(i,2)/=0.and.&
-          &  neighbour(i,3)/=0.and.neighbour(i,4)/=0)then
-            exit
-          end if
-        end do
-      end if
-      ! NOTE: neighbour via contact surface with another sub-rigion would not be a ghost cell
-    end if
-  end do
-end subroutine
-
-!************************
-! find the gradient of T
-!************************
-subroutine findGradT()
-  use globalvar,only:gradT,Temp,lTet,nTet,Pos,neighbour,Vol,faceTet
-  double precision Afact,Vfact,Te,nVect(3),P1(3),P2(3),P3(3)
-  integer isBoundary
-  double precision areaTri
-  
-  gradT(:,:)=0d0
-  do i=1,nTet
-    Afact=1d0
-    Vfact=1d0
-    isBoundary=2-sum(sign(1,neighbour(i,:)))/2 ! number of boundary surfaces out of 4 surfaces
-    select case(isBoundary)
-      case(0)
-        Afact=1d0
-        Vfact=1d0
-      case(1)
-        Afact=9d0/16d0 ! shrink the cell so that only available information would be used
-        Vfact=27d0/64d0
-      case(2)
-        Afact=1d0/4d0
-        Vfact=1d0/8d0
-      case(3)
-        Afact=1d0/16d0
-        Vfact=1d0/64d0
-      case(4)
-        Afact=1d0
-        Vfact=1d0
-    end select
-    do j=1,4 ! "Gauss Theorem"
-      if(neighbour(i,j)>0)then
-        Te=(Temp(i)*Vol(neighbour(i,j))+Temp(neighbour(i,j))*Vol(i))/(Vol(i)+Vol(neighbour(i,j)))
-        ! find T on the surface if possible
-      else
-        Te=Temp(i) ! if not, shrink the cell, so that T at center would be Te
-      end if
-      P1(:)=Pos(lTet(i,faceTet(j,1)),:)
-      P2(:)=Pos(lTet(i,faceTet(j,2)),:)
-      P3(:)=Pos(lTet(i,faceTet(j,3)),:)
-      call normal(nVect,P1,P2,P3)
-      gradT(i,:)=gradT(i,:)+Afact*Te*areaTri(P1,P2,P3)*nVect/Vfact/Vol(i)
-      ! long live The Gauss Theorem
     end do
   end do
 end subroutine
@@ -305,65 +134,82 @@ function lookupTab(pos,tab,n)
   end if
 end function
 
-!*************************
-! volume of a tetrahedron
-!*************************
-function volTet(P1,P2,P3,P4)
-  double precision P1(3),P2(3),P3(3),P4(3),volTet
-  double precision y1z2,y1z3,y1z4,y2z1,y2z3,y2z4,y3z1,y3z2,y3z4,y4z1,y4z2,y4z3
-  y1z2=P1(2)*P2(3)
-  y1z3=P1(2)*P3(3)
-  y1z4=P1(2)*P4(3)
-  y2z1=P2(2)*P1(3)
-  y2z3=P2(2)*P3(3)
-  y2z4=P2(2)*P4(3)
-  y3z1=P3(2)*P1(3)
-  y3z2=P3(2)*P2(3)
-  y3z4=P3(2)*P4(3)
-  y4z1=P4(2)*P1(3)
-  y4z2=P4(2)*P2(3)
-  y4z3=P4(2)*P3(3)
-  volTet=((P2(1)*(y3z4-y4z3)-P3(1)*(y2z4-y4z2)+P4(1)*(y2z3-y3z2))&
-  &      -(P1(1)*(y3z4-y4z3)-P3(1)*(y1z4-y4z1)+P4(1)*(y1z3-y3z1))&
-  &      +(P1(1)*(y2z4-y4z2)-P2(1)*(y1z4-y4z1)+P4(1)*(y1z2-y2z1))&
-  &      -(P1(1)*(y2z3-y3z2)-P2(1)*(y1z3-y3z1)+P3(1)*(y1z2-y2z1)))/6d0
-  volTet=abs(volTet)
-end function
-
-!****************************
-! normal vector of a polygon
-!****************************
-subroutine normal(rst,P1,P2,P3)
-  double precision rst(3),P1(3),P2(3),P3(3)
-  double precision a(3),b(3)
-  a(:)=P2(:)-P1(:)
-  b(:)=P3(:)-P2(:)
-  rst(1)=a(2)*b(3)-a(3)*b(2)
-  rst(2)=a(3)*b(1)-a(1)*b(3)
-  rst(3)=a(1)*b(2)-a(2)*b(1)
-  rst(:)=rst(:)/sqrt(dot_product(rst(:),rst(:)))
+!**********************************
+! find the auxiliary points offset
+!**********************************
+! Note: we are finding position offset instead of position
+subroutine genPaux()
+  use moduleGrid
+  use globalvar,only:Paux
+  double precision Ps(3),Pc(3),normVect(3)
+  
+  !Note: 6 is the maximum possible number of surfaces of an element, 3 is the number of components
+  !      of the vector
+  allocate(Paux(nEle,6,3))
+  Paux(:,:,:)=0d0
+  
+  do i=1,nEle
+    Pc(:)=Ele(i)%PC(:)
+    do j=1,Ele(i)%SurfNum
+      Ps(:)=Ele(i)%SurfPC(j,:)
+      normVect(:)=Ele(i)%SurfNorm(j,:)
+      Paux(i,j,:)=Ps(:)-normVect(:)*dot_product(normVect,Ps-Pc)-Pc(:)
+    end do
+  end do
 end subroutine
 
-!****************************
-! surface area of a triangle
-!****************************
-function areaTri(P1,P2,P3)
-  double precision areaTri,P1(3),P2(3),P3(3)
-  double precision a(3),b(3)
-  a=P2-P1
-  b=P3-P1
-  areaTri=((a(2)*b(3)-a(3)*b(2))**2d0&
-  &       +(a(3)*b(1)-a(1)*b(3))**2d0&
-  &       +(a(1)*b(2)-a(2)*b(1))**2d0)**0.5d0/2d0
-end function
+!**************************
+! initialize the variables
+!**************************
+! Note: although facets between geometic regions are saved in Facet, they would not be refered as
+!       neigbour ghost elements, thus they would not be applied BC etc..
+subroutine initVar()
+  use moduleGrid
+  use globalvar,only:Tinit,Temp,gradT,e,rho,c,cond,iVol,&
+  &                  rhoTab,nrhoTab,cTab,ncTab,kTab,nkTab,eTab,neTab
+  double precision lookupTab ! function
+  
+  allocate(Temp(-nFacet:nEle))
+  allocate(rho(1:nEle))
+  allocate(c(1:nEle))
+  allocate(cond(-nFacet:nEle))
+  allocate(e(1:nEle)) ! NOTE: we don't care about conservation within ghost cells
+  allocate(gradT(nEle,3))
+  
+  Temp(:)=Tinit
+  ! initial value of variable & parameters
+  do i=1,nEle
+    do j=1,size(iVol)
+      if(Ele(i)%GeoEnti==iVol(j))then
+        rho(i)=lookupTab(Tinit,rhoTab(j,:,:),nrhoTab(j))
+        c(i)=lookupTab(Tinit,cTab(j,:,:),ncTab(j))
+        cond(i)=lookupTab(Tinit,kTab(j,:,:),nkTab(j))
+        e(i)=lookupTab(Tinit,eTab(j,:,:),neTab(j))
+      end if
+    end do
+  end do
+  ! initial parameters of ghost elements
+  do i=1,nEle
+    do j=1,size(iVol)
+      if(Ele(i)%GeoEnti==iVol(j))then
+        do k=1,Ele(i)%SurfNum
+          if(Ele(i)%Neib(k)<0)then ! if has a ghost neighbour
+            cond(Ele(i)%Neib(k))=lookupTab(Tinit,kTab(j,:,:),nkTab(j))
+          end if
+        end do
+      end if
+    end do
+  end do
+end subroutine
 
-!**************
-! progress bar
-!**************
-subroutine progBar(v,vtot,l,dt)
-  integer l
-  double precision v,vtot,dt
-  real prog
+!**********************************
+! show progress of Crank-Nicholson
+!**********************************
+! Note: this is different from the showProg() in libfosolvers.
+subroutine showProgCN(v,vtot,l,dt)
+  integer,intent(in)::l
+  double precision,intent(in)::v,vtot,dt
+  double precision prog
   prog=v/vtot*100d0
   write(*,'(58a,a,f5.1,a,i3,a,g10.3,a,$)'),&
   &    (char(8),i=1,58),'progress:',prog,'%;      it. steps:',l,';      dt:',dt,'sec'

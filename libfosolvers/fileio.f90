@@ -275,7 +275,8 @@ subroutine writerst(fname,ifile,hold)
   use moduleGrid
   use moduleWrite
   integer ifile
-  character(400) tempstring,fname
+  character(100) fname
+  character(400) tempstring
   logical hold
   
   if(nWrite==0.or..not.hold)then ! if it is the 1st time writing results
