@@ -1,8 +1,8 @@
 =libfosolvers=
 
-  Mianzhi Wang <wangmianzhi1@linuxmail.org>
+Mianzhi Wang <wangmianzhi1@linuxmail.org>
 
-  libfosolvers provides data structures and procedures for scientific computation programs using gmsh as grid generator and(/or) post processor.
+libfosolvers provides data structures and procedures for scientific computation programs using gmsh as grid generator and(/or) post processor.
 
 =modules=
 
@@ -152,7 +152,11 @@ Find the centre position of the tetrahedron
 Find the volume of the tetrahedron
 
 *getNeib(k):integer*
-Find the neighbour element of the tetrahedron through the k_th surface
+Find the neighbour element or facet of the tetrahedron through the k_th surface
+
+_Note: Neighbour facet would not be found if there exists a neighbour element._
+
+_Note: Index of neighbour facet is returned as a negative interger._
 
 *findSurfPC(k):double*
 Find the centre position of the k_th surface of the tetrahedron
@@ -182,7 +186,11 @@ Find the centre position of the hexahedron
 Find the volume of the hexahedron
 
 *getNeib(k):integer*
-Find the neighbour element of the hexahedron through the k_th surface
+Find the neighbour element or facet of the hexahedron through the k_th surface
+
+_Note: Neighbour facet would not be found if there exists a neighbour element._
+
+_Note: Index of neighbour facet is returned as a negative interger._
 
 *findSurfPC(k):double*
 Find the centre position of the k_th surface of the hexahedron
@@ -271,15 +279,17 @@ The number of surfaces of the element (e.g.: if ShapeType=5, then SurfNum must b
 *NodeInd(27):integer*
 The full list of nodes defining the element
 
-_Note: 27 is the maximum possible number of nodes an element can have. Leave unused cells being 0_
+_Note: 27 is the maximum possible number of nodes an element can have. Leave unused cells being 0._
 
 *GeoEnti:integer*
 The index of the geometric entity which the element belongs to
 
 *Neib(6):integer*
-The neighbours of the element
+The neighbour elements or facets of the element
 
-_Note: 6 is the maximum possible number of neighbours of an element. leave unused cells being 0_
+_Note: 6 is the maximum possible number of neighbours of an element. leave unused cells being 0._
+
+_Note: Neighbour facets are stored as negative integers._
 
 *PC(3):double*
 The centre position of the element
@@ -317,7 +327,11 @@ Find the volume of the element
 Get the geometric entity of the element
 
 *getNeib(k):integer*
-Get the k_th neighbour element of the element
+Get the k_th neighbour element or facet of the element
+
+_Note: Neighbour facet would not be found if there exists a neighbour element._
+
+_Note: Index of neighbour facet is returned as a negative interger._
 
 *findSurfPC(k):double*
 Find the centre position of the k_th surface of the element
