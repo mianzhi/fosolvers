@@ -99,7 +99,7 @@ subroutine CrankNicolson(l)
           &        +0.5d0*newconds*area/Dist*(newTemp(i)-newTemp(Ele(i)%Neib(j))+auxTcorr(i,j))
                                                                                         ! implicit
         else ! for inner surface
-          Dist=(1d0+Ele(Ele(i)%Neib(j))%Vol)/Ele(i)%Vol*Dist
+          Dist=(1d0+Ele(Ele(i)%Neib(j))%Vol/Ele(i)%Vol)*Dist
           conds=(Ele(i)%Vol+Ele(Ele(i)%Neib(j))%Vol)&
           &     /(Ele(i)%Vol/cond(i)+Ele(Ele(i)%Neib(j))%Vol/cond(Ele(i)%Neib(j)))
           newconds=(Ele(i)%Vol+Ele(Ele(i)%Neib(j))%Vol)&
