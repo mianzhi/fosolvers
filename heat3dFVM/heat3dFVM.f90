@@ -30,7 +30,7 @@ program heat3dFVM
   use moduleWrite
   use globalvar
   
-  double precision::dtGen ! functions will be called
+  double precision::finddt ! functions will be called
   
   character(100) gridfname,codfname,mtlfname,rstfname ! for safer passing into subroutines
   write(gridfname,'(a)'),'grid.msh'
@@ -78,7 +78,7 @@ program heat3dFVM
   tolerance=1d-3 ! in [K]
   l=-1 ! l is the number of times of under-relaxation iteration; l<0 indicates the 1st run
   do while(t<tFinal)
-    dt=dtGen(l) ! dt is adjusted according to l of the last time step
+    dt=finddt(l) ! dt is adjusted according to l of the last time step
     call CrankNicolson(l) ! note: l is updated by CrankNicolson()
     ! write results
     if(t/tWrite>=nWrite)then

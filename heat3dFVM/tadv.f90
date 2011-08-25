@@ -3,28 +3,28 @@
 !*********
 ! find dt
 !*********
-function dtGen(l)
+function finddt(l)
   use moduleGrid,only:BoundBox,nEle
   use globalvar,only:rho,c,cond,numIt,dt,tWrite
   integer,intent(in)::l
-  double precision dtGen
-  dtGen=dt ! not changed in default
+  double precision finddt
+  finddt=dt ! not changed in default
   if(l<0)then
-    dtGen=minval(rho(1:nEle)*c(1:nEle)/cond(1:nEle))
-    dtGen=dtGen*dot_product(BoundBox(2,:)-BoundBox(1,:),BoundBox(2,:)-BoundBox(1,:))/nEle
+    finddt=minval(rho(1:nEle)*c(1:nEle)/cond(1:nEle))
+    finddt=finddt*dot_product(BoundBox(2,:)-BoundBox(1,:),BoundBox(2,:)-BoundBox(1,:))/nEle
     ! note: this is just an initial approximation of time step size, would be adjusted later
   else
     if(l<numIt(1))then
-      dtGen=dt*1.005d0
+      finddt=dt*1.005d0
     end if
     if(l>numIt(2))then
-      dtGen=dt*0.99d0
+      finddt=dt*0.99d0
     end if
     if(l>=numIt(3))then
-      dtGen=dt*0.95d0
+      finddt=dt*0.95d0
     end if
   end if
-  dtGen=min(dtGen,tWrite/2d0)
+  finddt=min(finddt,tWrite/2d0)
 end function
 
 !*************************************************
@@ -55,20 +55,17 @@ subroutine CrankNicolson(l)
   !----------------------------------------------------------
   ! prepare information for t^n-1 & initialize the iteration
   !----------------------------------------------------------
-  ! find grad(T) at centers, save to gradT
+  ! find grad(T) at centers, save to gradT, and find auxiliary points' temperature corrector
   !$omp parallel do
   do i=1,nEle
     call findEleGradScal(i,Temp(1:nEle),gradT(i,:))
+    forall(j=1:Ele(i)%SurfNum)
+      auxTcorr(i,j)=dot_product(gradT(i,:),Paux(i,j,:))
+    end forall
   end do
   !$omp end parallel do
   ! BC for t^n-1
   call appBCs('old')
-  ! find auxiliary points' temperature corrector
-  do i=1,nEle
-    do j=1,Ele(i)%SurfNum
-      auxTcorr(i,j)=dot_product(gradT(i,:),Paux(i,j,:))
-    end do
-  end do
   ! copy variables & parameters to t^n
   newTemp(:)=Temp(:)
   newcond(:)=cond(:)
@@ -143,13 +140,14 @@ subroutine CrankNicolson(l)
     end do
     
     ! check whether to stop
-    if(error<=tolerance.or.any(isnan(newe(:))).or.any(newe(:)<0d0))then
+    ! Note: ".not.(abs(newe(:))<huge(0d0))" is an alternative to "isnan(new(e))".
+    if(error<=tolerance.or.any(.not.(abs(newe(:))<huge(0d0))).or.any(newe(:)<0d0))then
       exit
     end if
   end do
   
   ! advance only if the iteration converges to a reasonable result
-  if(l>1.and.l<=numIt(3).and.(.not.any(isnan(newe(:)))).and.(.not.any(newe(:)<0d0)))then
+  if(l>1.and.l<=numIt(3).and.(all(abs(newe(:))<huge(0d0))).and.(.not.any(newe(:)<0d0)))then
     e(:)=newe(:)
     Temp(:)=newTemp(:)
     cond(:)=newcond(:)
