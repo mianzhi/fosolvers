@@ -31,6 +31,8 @@ subroutine updateFacetPara()
     Facet(i)%NodeInd(:)=Facet(i)%getNodeInd()
     ! geometric entity
     Facet(i)%GeoEnti=Facet(i)%getGeoEnti()
+    ! neighbour element
+    Facet(i)%NeibEle(:)=Facet(i)%getNeibEle()
     ! position of the center
     Facet(i)%PC(:)=Facet(i)%findPC()
     ! area

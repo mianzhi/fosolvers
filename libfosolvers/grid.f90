@@ -65,6 +65,7 @@ module moduleGrid
     procedure,public::findPC=>findTriPC
     procedure,public::findArea=>findTriArea
     procedure,public::findNorm=>findTriNorm
+    procedure,public::getNeibEle=>getTriNeibEle
   end type
   type(typeTri),public,allocatable,save::Tri(:)
   integer,public,save::nTri
@@ -79,6 +80,7 @@ module moduleGrid
     procedure,public::findPC=>findQuadPC
     procedure,public::findArea=>findQuadArea
     procedure,public::findNorm=>findQuadNorm
+    procedure,public::getNeibEle=>getQuadNeibEle
   end type
   type(typeQuad),public,allocatable,save::Quad(:)
   integer,public,save::nQuad
@@ -127,8 +129,9 @@ module moduleGrid
     ! 3: 4-node quadrilateral
     integer ShapeInd
     integer NodeNum
-    integer NodeInd(15) ! 15 is the maximum possible number of nodes an facet can have
+    integer NodeInd(15) ! 15 is the maximum possible number of nodes a facet can have
     integer GeoEnti
+    integer NeibEle(2) ! a facet may have 2 neighbour elements
     double precision PC(3)
     double precision Area
     double precision Norm(3)
@@ -138,6 +141,7 @@ module moduleGrid
     procedure,public::findArea=>findFacetArea
     procedure,public::findNorm=>findFacetNorm
     procedure,public::getGeoEnti=>getFacetGeoEnti
+    procedure,public::getNeibEle=>getFacetNeibEle
   end type
   type(typeFacet),public,allocatable,save::Facet(:)
   integer,public,save::nFacet
@@ -235,6 +239,38 @@ contains
     &                         Node(this%NodeInd(3))%Pos(:))
   end function
   
+  !--------------------------------------------
+  ! get the neighbour element of this triangle
+  !--------------------------------------------
+  ! Note: one triangle may have 2 neighbour elements
+  function getTriNeibEle(this)
+    class(typeTri),intent(in)::this
+    integer getTriNeibEle(2),lPTet(4)
+    logical maskTri(3)
+    getTriNeibEle(:)=0
+    k=0
+    do i=1,nEle
+      select case(Ele(i)%ShapeType)
+        case(4) ! the neigbour element can be a tetrahedron
+          maskTri(:)=.false.
+          lPTet(:)=Tet(Ele(i)%ShapeInd)%NodeInd(:)
+          do j=1,3
+            if(any(lPTet(:)==this%NodeInd(j)))then
+              maskTri(j)=.true.
+            end if
+          end do
+          if(all(maskTri(:)))then
+            k=k+1
+            getTriNeibEle(k)=i
+            if(k==2)then
+              exit
+            end if
+          end if
+        case default
+      end select
+    end do
+  end function
+  
   !---------------------------------------
   ! find the center of this quadrilateral
   !---------------------------------------
@@ -266,6 +302,38 @@ contains
     double precision findQuadNorm(3)
     findQuadNorm(:)=find3PNorm(Node(this%NodeInd(1))%Pos(:),Node(this%NodeInd(2))%Pos(:),&
     &                          Node(this%NodeInd(3))%Pos(:))
+  end function
+  
+  !-------------------------------------------------
+  ! get the neighbour element of this quadrilateral
+  !-------------------------------------------------
+  ! Note: one quadirlateral may have 2 neighbour elements
+  function getQuadNeibEle(this)
+    class(typeQuad),intent(in)::this
+    integer getQuadNeibEle(2),lPHex(8)
+    logical maskQuad(4)
+    getQuadNeibEle(:)=0
+    k=0
+    do i=1,nEle
+      select case(Ele(i)%ShapeType)
+        case(5) ! the neigbour element can be a hexahedron
+          maskQuad(:)=.false.
+          lPHex(:)=Hex(Ele(i)%ShapeInd)%NodeInd(:)
+          do j=1,4
+            if(any(lPHex(:)==this%NodeInd(j)))then
+              maskQuad(j)=.true.
+            end if
+          end do
+          if(all(maskQuad(:)))then
+            k=k+1
+            getQuadNeibEle(k)=i
+            if(k==2)then
+              exit
+            end if
+          end if
+        case default
+      end select
+    end do
   end function
   
   !-------------------------------------
@@ -614,6 +682,24 @@ contains
         getFacetGeoEnti=Tri(this%ShapeInd)%GeoEnti
       case(3)
         getFacetGeoEnti=Quad(this%ShapeInd)%GeoEnti
+      case default
+        write(*,'(a,i2)'),'ERROR: unknown facet shapeType: ',this%shapeType
+        stop
+    end select
+  end function
+  
+  !----------------------------------------
+  ! get the neighbour element of this facet
+  !-----------------------------------------
+  ! Note: a facet may have 2 neighbour elements
+  function getFacetNeibEle(this)
+    class(typeFacet),intent(in)::this
+    integer getFacetNeibEle(2)
+    select case(this%ShapeType)
+      case(2)
+        getFacetNeibEle(:)=Tri(this%ShapeInd)%getNeibEle()
+      case(3)
+        getFacetNeibEle(:)=Quad(this%ShapeInd)%getNeibEle()
       case default
         write(*,'(a,i2)'),'ERROR: unknown facet shapeType: ',this%shapeType
         stop
