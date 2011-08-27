@@ -44,7 +44,7 @@ subroutine CrankNicolson(l)
   use globalvar
   use CNaddvar
   use moduleWrite,only:t
-  double precision flux,source,error,buff,Pc(3),Ps(3),Dist,conds,newconds,area
+  double precision flux,source,error,buff,Dist,conds,newconds,area
   double precision lookupTab ! functions
   allocate(newTemp(-nFacet:nEle))
   allocate(newe(1:nEle))
@@ -60,7 +60,7 @@ subroutine CrankNicolson(l)
   do i=1,nEle
     call findEleGradScal(i,Temp(1:nEle),gradT(i,:))
     forall(j=1:Ele(i)%SurfNum)
-      auxTcorr(i,j)=dot_product(gradT(i,:),Paux(i,j,:))
+      auxTcorr(i,j)=0d0!dot_product(gradT(i,:),Paux(i,j,:))
     end forall
   end do
   !$omp end parallel do
@@ -79,14 +79,15 @@ subroutine CrankNicolson(l)
     ! BC for t^n
     call appBCs('new')
     ! solve
+    ! $omp parallel do &
+    ! $omp default(shared) &
+    ! $omp private(flux,source,Dist,area,conds,newconds,buff,i,j,k) &
+    ! $omp reduction(max:error)
     do i=1,nEle
       flux=0d0
       source=0d0
-      Pc(:)=Ele(i)%PC(:) ! position of the element center
-      
       do j=1,Ele(i)%SurfNum ! find flux
-        Ps(:)=Ele(i)%SurfPC(j,:) ! position of the surface center
-        Dist=sqrt(dot_product(Pc-Ps,Pc-Ps))
+        Dist=sqrt(dot_product(Ele(i)%PC(:)-Ele(i)%SurfPC(j,:),Ele(i)%PC(:)-Ele(i)%SurfPC(j,:)))
         area=Ele(i)%SurfArea(j)
         if(Ele(i)%Neib(j)<0)then ! for boundary surface
           Dist=2d0*Dist
@@ -138,6 +139,7 @@ subroutine CrankNicolson(l)
         end if
       end do
     end do
+    ! $omp end parallel do
     
     ! check whether to stop
     ! Note: ".not.(abs(newe(:))<huge(0d0))" is an alternative to "isnan(new(e))".
