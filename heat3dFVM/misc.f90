@@ -13,65 +13,64 @@ subroutine appBCs(flag)
   double precision lookupTab
   
   do i=1,nFacet
-    do j=1,nEle
-      do k=1,Ele(j)%SurfNum
-        if(Ele(j)%Neib(k)==-i)then ! the neighbour of ghost element -i
-          Pc(:)=Ele(j)%PC(:)
-          Ps(:)=Facet(i)%PC(:)
-          Dist=sqrt(dot_product(Pc-Ps,Pc-Ps)) ! distance between cell center and boundary surface
-          
-          ! Neumann type BC
-          sigma=5.67051d-8
+    j=Facet(i)%NeibEle(1) ! j is the neighbour of ghost element -i
+    if(j>0.and.Facet(i)%NeibEle(2)==0)then
+      Pc(:)=Ele(j)%PC(:)
+      Ps(:)=Facet(i)%PC(:)
+      Dist=sqrt(dot_product(Pc-Ps,Pc-Ps)) ! distance between cell center and boundary surface
+      
+      ! Neumann type BC
+      sigma=5.67051d-8
+      if(flag=='old')then
+        Ts=Temp(j)+dot_product(gradT(j,:),Ps-Pc)
+        time=t
+        Temp(-i)=Temp(j) ! NOTE: the default BC is adiabatic
+      else ! NOTE: the convection & radiation BCs can also be implicit.
+        Ts=newTemp(j)+dot_product(gradT(j,:),Ps-Pc)
+        time=t+dt
+        newTemp(-i)=newTemp(j)
+      end if
+      Flux=0d0
+      ! superposition radiation flux
+      if(lRadSurf(i).eqv..true.)then
+        Flux=Flux+sigma*vRadSurf(i,2)*(Ts**4-vRadSurf(i,1)**4)
+      end if
+      ! superposition convection flux
+      if(lConvSurf(i).eqv..true.)then
+        Flux=Flux+vConvSurf(i,2)*(Ts-vConvSurf(i,1))
+      end if
+      ! superposition predefined flux
+      if(lFluxSurf(i).eqv..true.)then
+        Flux=Flux+lookupTab(time,codData([0,vFluxSurf(i)],:),ncodData)
+      end if
+      ! apply Neumann type BC
+      if(flag=='old')then
+        Temp(-i)=Temp(j)-4*Dist*Flux/(cond(-i)+cond(j))
+      else
+        newTemp(-i)=newTemp(j)-4*Dist*Flux/(newcond(-i)+newcond(j))
+      end if
+      
+      ! apply surface temperature
+      if(lTempSurf(i).eqv..true.)then
+        if(flag=='old')then
+          Temp(-i)=2d0*lookupTab(time,codData([0,vTempSurf(i)],:),ncodData)-Temp(j)
+        else
+          newTemp(-i)=2d0*lookupTab(time,codData([0,vTempSurf(i)],:),ncodData)-newTemp(j)
+        end if
+      end if
+      
+      ! also update the property of the ghost cell
+      do l=1,size(iVol)
+        if(Ele(j)%GeoEnti==iVol(l))then
           if(flag=='old')then
-            Ts=Temp(j)+dot_product(gradT(j,:),Ps-Pc)
-            time=t
-            Temp(-i)=Temp(j) ! NOTE: the default BC is adiabatic
-          else ! NOTE: the convection & radiation BCs can also be implicit.
-            Ts=newTemp(j)+dot_product(gradT(j,:),Ps-Pc)
-            time=t+dt
-            newTemp(-i)=newTemp(j)
-          end if
-          Flux=0d0
-          ! superposition radiation flux
-          if(lRadSurf(i).eqv..true.)then
-            Flux=Flux+sigma*vRadSurf(i,2)*(Ts**4-vRadSurf(i,1)**4)
-          end if
-          ! superposition convection flux
-          if(lConvSurf(i).eqv..true.)then
-            Flux=Flux+vConvSurf(i,2)*(Ts-vConvSurf(i,1))
-          end if
-          ! superposition predefined flux
-          if(lFluxSurf(i).eqv..true.)then
-            Flux=Flux+lookupTab(time,codData([0,vFluxSurf(i)],:),ncodData)
-          end if
-          ! apply Neumann type BC
-          if(flag=='old')then
-            Temp(-i)=Temp(j)-4*Dist*Flux/(cond(-i)+cond(j))
+            cond(-i)=lookupTab(Temp(-i),kTab(l,:,:),nkTab(l))
           else
-            newTemp(-i)=newTemp(j)-4*Dist*Flux/(newcond(-i)+newcond(j))
+            newcond(-i)=lookupTab(newTemp(-i),kTab(l,:,:),nkTab(l))
           end if
-          
-          ! apply surface temperature
-          if(lTempSurf(i).eqv..true.)then
-            if(flag=='old')then
-              Temp(-i)=2d0*lookupTab(time,codData([0,vTempSurf(i)],:),ncodData)-Temp(j)
-            else
-              newTemp(-i)=2d0*lookupTab(time,codData([0,vTempSurf(i)],:),ncodData)-newTemp(j)
-            end if
-          end if
-          
-          ! also update the property of the ghost cell
-          do l=1,size(iVol)
-            if(flag=='old')then
-              cond(-i)=lookupTab(Temp(-i),kTab(l,:,:),nkTab(l))
-            else
-              newcond(-i)=lookupTab(newTemp(-i),kTab(l,:,:),nkTab(l))
-            end if
-          end do
-          
         end if
       end do
-    end do
+      
+    end if
   end do
 end subroutine
 
