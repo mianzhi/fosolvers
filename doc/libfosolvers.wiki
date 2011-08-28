@@ -32,7 +32,7 @@ SurfTabHex:
 
 example:
 
-`Tet(100)%NodeInd(SurfTabTet(3,:)` returns the nodes of the 3rd surface of the 100th tetrahedron.
+`Tet(100)%NodeInd(SurfTabTet(3,:))` returns the nodes of the 3rd surface of the 100th tetrahedron.
 
 ----
 
@@ -112,6 +112,11 @@ Find the area of the triangle
 *findNorm():double*
 Find the normal vector of the triangle
 
+*getNeibEle():integer*
+Get the 2 neighbour elements of the triangle
+
+_Note: if only have 1 neighbour element, return the element in the 1st cell of the length-2 array._
+
 ----
 
 ===typeQuad:type, Quad(nQuad):typeQuad===
@@ -132,6 +137,11 @@ Find the area of the quadrilateral
 
 *findNorm():double*
 Find the normal vector of the quadrilateral
+
+*getNeibEle():integer*
+Get the 2 neighbour elements of the quadrilateral
+
+_Note: if only have 1 neighbour element, return the element in the 1st cell of the length-2 array._
 
 ----
 
@@ -228,6 +238,11 @@ _Note: 15 is the maximum possible number of nodes a facet can have. Leave unused
 *GeoEnti:integer*
 The index of the geometric entity which the facet belongs to
 
+*NeibEle(2):integer*
+The 2 neighbour elements of the facet
+
+_Note: if only have 1 neighbour element, store the element in the 1st cell of the length-2 array._
+
 *PC(3):double*
 The centre position of the facet
 
@@ -253,6 +268,11 @@ Find the normal vector of the facet
 
 *getGeoEnti():integer*
 Get the geometric entity of the facet
+
+*getNeibEle():integer*
+Get the 2 neighbour elements of the facet
+
+_Note: if only have 1 neighbour element, return the element in the 1st cell of the length-2 array._
 
 ----
 
