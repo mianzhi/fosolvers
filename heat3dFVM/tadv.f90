@@ -60,7 +60,7 @@ subroutine CrankNicolson(l)
   do i=1,nEle
     call findEleGradScal(i,Temp(1:nEle),gradT(i,:))
     forall(j=1:Ele(i)%SurfNum)
-      auxTcorr(i,j)=0d0!dot_product(gradT(i,:),Paux(i,j,:))
+      auxTcorr(i,j)=dot_product(gradT(i,:),Paux(i,j,:))
     end forall
   end do
   !$omp end parallel do
@@ -79,10 +79,10 @@ subroutine CrankNicolson(l)
     ! BC for t^n
     call appBCs('new')
     ! solve
-    ! $omp parallel do &
-    ! $omp default(shared) &
-    ! $omp private(flux,source,Dist,area,conds,newconds,buff,i,j,k) &
-    ! $omp reduction(max:error)
+    !$omp parallel do &
+    !$omp default(shared) &
+    !$omp private(flux,source,Dist,area,conds,newconds,buff,i,j,k) &
+    !$omp reduction(max:error)
     do i=1,nEle
       flux=0d0
       source=0d0
@@ -139,7 +139,7 @@ subroutine CrankNicolson(l)
         end if
       end do
     end do
-    ! $omp end parallel do
+    !$omp end parallel do
     
     ! check whether to stop
     ! Note: ".not.(abs(newe(:))<huge(0d0))" is an alternative to "isnan(new(e))".
