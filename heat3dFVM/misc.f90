@@ -12,6 +12,9 @@ subroutine appBCs(flag)
   double precision Pc(3),Ps(3),Ts,Dist,Flux,sigma,time
   double precision lookupTab
   
+  !$omp parallel do &
+  !$omp default(shared) &
+  !$omp private(Pc,Ps,Dist,Ts,time,Flux,i,j)
   do i=1,nFacet
     j=Facet(i)%NeibEle(1) ! j is the neighbour of ghost element -i
     if(j>0.and.Facet(i)%NeibEle(2)==0)then
@@ -72,6 +75,7 @@ subroutine appBCs(flag)
       
     end if
   end do
+  !$omp end parallel do
 end subroutine
 
 !***********************************************
