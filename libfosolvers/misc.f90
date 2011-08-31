@@ -125,7 +125,7 @@ subroutine findEleGradAny(k,v,m,rst)
   double precision,intent(out)::rst(m,3)
   double precision,allocatable::dx(:,:),dv(:,:),s(:)
   integer,parameter::lwork=900 ! according to returned work(1) with lwork=-1
-  double precision distsq,work(lwork)
+  double precision distsq,work(lwork),listAlpha(6),vs
   integer nEq,rank,iwork(50),er
   nEq=count(Ele(k)%Neib(:)>0)
   allocate(dx(nEq,3))
@@ -149,6 +149,23 @@ subroutine findEleGradAny(k,v,m,rst)
     stop
   end if
   rst(:,:)=transpose(dv(1:3,1:m))
+  ! regulate the gradient
+  do i=1,m
+    listAlpha(:)=1d0
+    do j=1,Ele(k)%SurfNum
+      vs=v(k,m)+dot_product(Ele(k)%SurfPC(j,:)-Ele(k)%PC(:),rst(m,:))
+      if(abs(vs-v(k,m))<=tiny(0d0))then
+        listAlpha(j)=1d0
+      else
+        if(vs>v(k,m))then
+          listAlpha(j)=min(1d0,(max(v(k,m),v(Ele(k)%Neib(j),m))-v(k,m))/(vs-v(k,m)))
+        else
+          listAlpha(j)=min(1d0,(min(v(k,m),v(Ele(k)%Neib(j),m))-v(k,m))/(vs-v(k,m)))
+        end if
+      end if
+    end do
+   rst(i,:)=minval(listAlpha)*rst(i,:)
+  end do
 end subroutine
 
 !**************************************************************
