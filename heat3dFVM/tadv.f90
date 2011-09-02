@@ -87,7 +87,8 @@ subroutine CrankNicolson(l)
       flux=0d0
       source=0d0
       do j=1,Ele(i)%SurfNum ! find flux
-        Dist=sqrt(dot_product(Ele(i)%PC(:)-Ele(i)%SurfPC(j,:),Ele(i)%PC(:)-Ele(i)%SurfPC(j,:)))
+        Dist=sqrt(dot_product(Ele(i)%PC(:)+Paux(i,j,:)-Ele(i)%SurfPC(j,:),&
+        &                     Ele(i)%PC(:)+Paux(i,j,:)-Ele(i)%SurfPC(j,:)))
         area=Ele(i)%SurfArea(j)
         if(Ele(i)%Neib(j)<0)then ! for boundary surface
           Dist=2d0*Dist

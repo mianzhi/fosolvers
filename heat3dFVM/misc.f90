@@ -18,7 +18,12 @@ subroutine appBCs(flag)
   do i=1,nFacet
     j=Facet(i)%NeibEle(1) ! j is the neighbour of ghost element -i
     if(j>0.and.Facet(i)%NeibEle(2)==0)then
-      Pc(:)=Ele(j)%PC(:)
+      do k=1,Ele(j)%SurfNum
+        if(Ele(j)%Neib(k)==-i)then
+          Pc(:)=Ele(j)%PC(:)+Paux(j,k,:)
+          exit
+        end if
+      end do
       Ps(:)=Facet(i)%PC(:)
       Dist=sqrt(dot_product(Pc-Ps,Pc-Ps)) ! distance between cell center and boundary surface
       
