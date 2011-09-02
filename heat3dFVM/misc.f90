@@ -20,10 +20,17 @@ subroutine appBCs(flag)
     if(j>0.and.Facet(i)%NeibEle(2)==0)then
       do k=1,Ele(j)%SurfNum
         if(Ele(j)%Neib(k)==-i)then
+<<<<<<< HEAD
           exit
         end if
       end do
       Pc(:)=Ele(j)%PC(:)
+=======
+          Pc(:)=Ele(j)%PC(:)+Paux(j,k,:)
+          exit
+        end if
+      end do
+>>>>>>> origin/HEAD
       Ps(:)=Facet(i)%PC(:)
       Dist=sqrt(dot_product(Pc+Paux(j,k,:)-Ps,&
       &                     Pc+Paux(j,k,:)-Ps)) ! distance between cell center and boundary surface
