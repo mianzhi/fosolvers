@@ -74,7 +74,7 @@ program heat3dFVM
   !-------
   write(*,'(/,a,g10.4,a)'),'simulaiton time:',tFinal,'[sec]'
   numIt=[15,20,50] ! lower & upper limit of target iteration number, maximum iteration number
-  beta=0.37d0 ! initial under-relaxation factor
+  beta=0.25d0 ! initial under-relaxation factor
   tolerance=1d-3 ! in [K]
   l=-1 ! l is the number of times of under-relaxation iteration; l<0 indicates the 1st run
   do while(t<tFinal)
