@@ -150,7 +150,7 @@ subroutine CrankNicolson(l)
   end do
   
   ! advance only if the iteration converges to a reasonable result
-  if(l>1.and.l<=numIt(3).and.(all(abs(newe(:))<huge(0d0))).and.(.not.any(newe(:)<0d0)))then
+  if(l<=numIt(3).and.all(abs(newe(:))<huge(0d0)).and.all(newe(:)>=0d0))then
     e(:)=newe(:)
     Temp(:)=newTemp(:)
     cond(:)=newcond(:)
