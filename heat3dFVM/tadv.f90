@@ -46,6 +46,7 @@ subroutine CrankNicolson(l)
   use moduleWrite,only:t
   double precision flux,source,error,buff,Dist,conds,newconds,area
   double precision lookupTab ! functions
+  double precision dPF,sf(3),tf(3),rf(3),gradTf(3),Afs
   allocate(newTemp(-nFacet:nEle))
   allocate(newe(1:nEle))
   allocate(newcond(-nFacet:nEle))
@@ -81,7 +82,7 @@ subroutine CrankNicolson(l)
     ! solve
     !$omp parallel do &
     !$omp default(shared) &
-    !$omp private(flux,source,Dist,area,conds,newconds,buff,i,j,k) &
+    !$omp private(flux,source,Dist,area,conds,newconds,buff,i,j,k,dPF,sf,tf,rf,gradTf,Afs) &
     !$omp reduction(max:error)
     do i=1,nEle
       flux=0d0
@@ -108,10 +109,24 @@ subroutine CrankNicolson(l)
               exit
             end if
           end do
-          flux=flux+0.5d0*conds*area/Dist*(Temp(i)-Temp(Ele(i)%Neib(j))& ! explicit
-          &                               +auxTcorr(i,j)-auxTcorr(Ele(i)%Neib(j),k))&
-          &        +0.5d0*newconds*area/Dist*(newTemp(i)-newTemp(Ele(i)%Neib(j))& ! implicit
-          &                                  +auxTcorr(i,j)-auxTcorr(Ele(i)%Neib(j),k))
+          !flux=flux+0.5d0*conds*area/Dist*(Temp(i)-Temp(Ele(i)%Neib(j))& ! explicit
+          !&                               +auxTcorr(i,j)-auxTcorr(Ele(i)%Neib(j),k))&
+          !&        +0.5d0*newconds*area/Dist*(newTemp(i)-newTemp(Ele(i)%Neib(j))& ! implicit
+          !&                                  +auxTcorr(i,j)-auxTcorr(Ele(i)%Neib(j),k))
+          dPF=norm2(Ele(Ele(i)%Neib(j))%PC(:)-Ele(i)%PC(:))
+          sf(:)=(Ele(Ele(i)%Neib(j))%PC(:)-Ele(i)%PC(:))/dPF
+          tf(:)=Node(Ele(i)%NodeInd(SurfTabTet(j,1)))%Pos(:)-Node(Ele(i)%NodeInd(SurfTabTet(j,2)))%Pos(:)
+          tf(:)=tf(:)/norm2(tf)
+          rf(1)=Ele(i)%SurfNorm(j,2)*tf(3)-Ele(i)%SurfNorm(j,3)*tf(2)
+          rf(2)=-Ele(i)%SurfNorm(j,1)*tf(3)+Ele(i)%SurfNorm(j,3)*tf(1)
+          rf(3)=Ele(i)%SurfNorm(j,1)*tf(2)-Ele(i)%SurfNorm(j,2)*tf(1)
+          gradTf(:)=(gradT(i,:)*Ele(Ele(i)%Neib(j))%Vol+gradT(Ele(i)%Neib(j),:)*Ele(i)%Vol)/&
+          &         (Ele(Ele(i)%Neib(j))%Vol+Ele(i)%Vol)
+          Afs=area/dot_product(sf,Ele(i)%SurfNorm(j,:))
+          flux=flux+0.5d0*conds*Afs*((Temp(i)-Temp(Ele(i)%Neib(j)))/dPF+&
+          &                           dot_product(gradTf,dot_product(sf,tf)*tf+dot_product(sf,rf)*rf))&
+          &        +0.5d0*newconds*Afs*((newTemp(i)-newTemp(Ele(i)%Neib(j)))/dPF+&
+          &                           dot_product(gradTf,dot_product(sf,tf)*tf+dot_product(sf,rf)*rf))
         end if
       end do
       
