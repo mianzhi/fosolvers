@@ -297,7 +297,7 @@ function find3PNorm(P1,P2,P3)
   c(1)=a(2)*b(3)-a(3)*b(2)
   c(2)=a(3)*b(1)-a(1)*b(3)
   c(3)=a(1)*b(2)-a(2)*b(1)
-  find3PNorm(:)=c(:)/sqrt(dot_product(c(:),c(:)))
+  find3PNorm(:)=c(:)/norm2(c(:))
 end function
 
 !***********************************************************

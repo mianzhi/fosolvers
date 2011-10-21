@@ -205,7 +205,7 @@ contains
     class(typeLine),intent(in)::this
     double precision findLineLength,vect(3)
     vect(:)=Node(this%NodeInd(2))%Pos(:)-Node(this%NodeInd(1))%Pos(:)
-    findLineLength=sqrt(dot_product(vect,vect))
+    findLineLength=norm2(vect)
   end function
   
   !----------------------------------
