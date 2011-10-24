@@ -54,6 +54,7 @@ subroutine updateElePara()
     Ele(i)%NodeInd(:)=Ele(i)%getNodeInd()
     ! geometric entity
     Ele(i)%GeoEnti=Ele(i)%getGeoEnti()
+    Ele(i)%Prt=Ele(i)%getPrt()
     ! neighbour
     Ele(i)%Neib(:)=0
     do j=1,Ele(i)%SurfNum

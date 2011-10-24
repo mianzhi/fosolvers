@@ -91,6 +91,7 @@ module moduleGrid
   type,public::typeTet
     integer NodeInd(4)
     integer GeoEnti
+    integer Prt
   contains
     procedure,public::findPC=>findTetPC
     procedure,public::findVol=>findTetVol
@@ -108,6 +109,7 @@ module moduleGrid
   type,public::typeHex
     integer NodeInd(8)
     integer GeoEnti
+    integer Prt
   contains
     procedure,public::findPC=>findHexPC
     procedure,public::findVol=>findHexVol
@@ -159,6 +161,7 @@ module moduleGrid
     integer SurfNum
     integer NodeInd(27) ! 27 is the maximum possible number of nodes an element can have
     integer GeoEnti
+    integer Prt
     integer Neib(6) ! 6 is the maximum possible number of neighbours
     double precision PC(3)
     double precision Vol
@@ -170,6 +173,7 @@ module moduleGrid
     procedure,public::findPC=>findElePC
     procedure,public::findVol=>findEleVol
     procedure,public::getGeoEnti=>getEleGeoEnti
+    procedure,public::getPrt=>getElePrt
     procedure,public::getNeib=>getEleNeib
     procedure,public::findSurfPC=>findEleSurfPC
     procedure,public::findSurfArea=>findEleSurfArea
@@ -770,6 +774,23 @@ contains
         getEleGeoEnti=Tet(this%ShapeInd)%GeoEnti
       case(5)
         getEleGeoEnti=Hex(this%ShapeInd)%GeoEnti
+      case default
+        write(*,'(a,i2)'),'ERROR: unknown element shapeType: ',this%shapeType
+        stop
+    end select
+  end function
+  
+  !-----------------------------------------
+  ! get the partition index of this element
+  !-----------------------------------------
+  function getElePrt(this)
+    class(typeEle),intent(in)::this
+    integer getElePrt
+    select case(this%ShapeType)
+      case(4)
+        getElePrt=Tet(this%ShapeInd)%Prt
+      case(5)
+        getElePrt=Hex(this%ShapeInd)%Prt
       case default
         write(*,'(a,i2)'),'ERROR: unknown element shapeType: ',this%shapeType
         stop

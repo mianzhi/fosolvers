@@ -1,7 +1,7 @@
-objects=libtest.o
-libpath=../libfosolvers/
+objects=demo.o
+libpath=../
 libs=-lfosolvers -llapack
-target=libtest
+target=demo
 
 FC=gfortran
 FFLAGS=-Wall -fopenmp -O2 -mtune=native -I$(libpath) -L$(libpath)
@@ -14,6 +14,3 @@ $(target):$(objects)
 
 clean:
 	rm *.o *.mod
-
-install:
-	./installer.sh

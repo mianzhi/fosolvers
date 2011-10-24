@@ -5,7 +5,7 @@ program libtest
   double precision,allocatable::v(:),vv(:,:),vvv(:,:,:)
   double precision g(3),gg(3,3)
   
-  call readmsh('../heat3dFVM/grid.msh',10)
+  call readmsh('./grid.msh',10)
   call sortEle()
   call updateFacetPara()
   call updateElePara()

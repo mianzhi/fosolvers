@@ -8,7 +8,7 @@ subroutine readmsh(fname,gridfile)
   
   integer gridfile,readerr,np,nt
   character(100) temp_string,fname
-  integer temp_int_vect1(20)
+  integer temp_int_vect1(50)
   type(typePoint),allocatable::tempPoint(:)
   type(typeLine),allocatable::tempLine(:)
   type(typeTri),allocatable::tempTri(:)
@@ -108,10 +108,16 @@ subroutine readmsh(fname,gridfile)
             nTet=nTet+1
             Tet(nTet)%NodeInd(:)=temp_int_vect1(3+nt+1:3+nt+np)
             Tet(nTet)%GeoEnti=temp_int_vect1(3+nt)
+            if(nt>=4)then
+              Tet(nTet)%Prt=maxval(temp_int_vect1(7:6+temp_int_vect1(6)))
+            end if
           case(5) ! hex
             nHex=nHex+1
             Hex(nHex)%NodeInd(:)=temp_int_vect1(3+nt+1:3+nt+np)
             Hex(nHex)%GeoEnti=temp_int_vect1(3+nt)
+            if(nt>=4)then
+              Hex(nHex)%Prt=maxval(temp_int_vect1(7:6+temp_int_vect1(6)))
+            end if
         end select
       end do
       ! trim Point
