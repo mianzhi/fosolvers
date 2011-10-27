@@ -394,25 +394,26 @@ contains
         case default
       end select
     end do
-    if(getTetNeib==0)then ! need to find from facets
-      do i=1,nFacet
-        select case(Facet(i)%ShapeType)
-          case(2) ! the neigbour facet can be a triangle
-            maskTet(:)=.false.
-            lPTri(:)=Tri(Facet(i)%ShapeInd)%NodeInd(:)
-            do j=1,4
-              if(any(lPTri(:)==this%NodeInd(j)))then
-                maskTet(j)=.true.
-              end if
-            end do
-            if(all(maskTet(SurfTabTet(k,:))))then
-              getTetNeib=-i
-              exit
+    do i=1,nFacet
+      select case(Facet(i)%ShapeType)
+        case(2) ! the neigbour facet can be a triangle
+          maskTet(:)=.false.
+          lPTri(:)=Tri(Facet(i)%ShapeInd)%NodeInd(:)
+          do j=1,4
+            if(any(lPTri(:)==this%NodeInd(j)))then
+              maskTet(j)=.true.
             end if
-          case default
-        end select
-      end do
-    end if
+          end do
+          if(all(maskTet(SurfTabTet(k,:))))then
+            if(getTetNeib==0.or.Tri(Facet(i)%ShapeInd)%GeoEnti<0)then
+              getTetNeib=-i
+            end if
+            ! Note: different partitions are splited, while different geometric entities are not
+            exit
+          end if
+        case default
+      end select
+    end do
   end function
   
   !----------------------------------------------------
@@ -530,25 +531,26 @@ contains
         case default
       end select
     end do
-    if(getHexNeib==0)then ! need to find from facets
-      do i=1,nFacet
-        select case(Facet(i)%ShapeType)
-          case(3) ! the neigbour facet can be a quadrilateral
-            maskHex(:)=.false.
-            lPQuad(:)=Quad(Facet(i)%ShapeInd)%NodeInd(:)
-            do j=1,8
-              if(any(lPQuad(:)==this%NodeInd(j)))then
-                maskHex(j)=.true.
-              end if
-            end do
-            if(all(maskHex(SurfTabHex(k,:))))then
-              getHexNeib=-i
-              exit
+    do i=1,nFacet
+      select case(Facet(i)%ShapeType)
+        case(3) ! the neigbour facet can be a quadrilateral
+          maskHex(:)=.false.
+          lPQuad(:)=Quad(Facet(i)%ShapeInd)%NodeInd(:)
+          do j=1,8
+            if(any(lPQuad(:)==this%NodeInd(j)))then
+              maskHex(j)=.true.
             end if
-          case default
-        end select
-      end do
-    end if
+          end do
+          if(all(maskHex(SurfTabHex(k,:))))then
+            if(getHexNeib==0.or.Quad(Facet(i)%ShapeInd)%GeoEnti<0)then
+              getHexNeib=-i
+            end if
+            ! Note: different partitions are splited, while different geometric entities are not
+            exit
+          end if
+        case default
+      end select
+    end do
   end function
   
   !---------------------------------------------------
