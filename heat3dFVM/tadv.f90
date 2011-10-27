@@ -109,10 +109,6 @@ subroutine CrankNicolson(l)
               exit
             end if
           end do
-          !flux=flux+0.5d0*conds*area/Dist*(Temp(i)-Temp(Ele(i)%Neib(j))& ! explicit
-          !&                               +auxTcorr(i,j)-auxTcorr(Ele(i)%Neib(j),k))&
-          !&        +0.5d0*newconds*area/Dist*(newTemp(i)-newTemp(Ele(i)%Neib(j))& ! implicit
-          !&                                  +auxTcorr(i,j)-auxTcorr(Ele(i)%Neib(j),k))
           dPF=norm2(Ele(Ele(i)%Neib(j))%PC(:)-Ele(i)%PC(:))
           sf(:)=(Ele(Ele(i)%Neib(j))%PC(:)-Ele(i)%PC(:))/dPF
           tf(:)=Node(Ele(i)%NodeInd(SurfTabTet(j,1)))%Pos(:)-Node(Ele(i)%NodeInd(SurfTabTet(j,2)))%Pos(:)
