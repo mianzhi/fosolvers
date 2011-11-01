@@ -91,32 +91,60 @@ subroutine readmsh(fname,gridfile)
           case(15) ! point
             nPoint=nPoint+1
             Point(nPoint)%NodeInd=temp_int_vect1(3+nt+1)
-            Point(nPoint)%GeoEnti=temp_int_vect1(3+nt)
+            if(nt>=2)then
+              Point(nPoint)%GeoEnti=temp_int_vect1(5)
+            else
+              Point(nPoint)%GeoEnti=0
+            end if
           case(1) ! line
             nLine=nLine+1
             Line(nLine)%NodeInd(:)=temp_int_vect1(3+nt+1:3+nt+np)
-            Line(nLine)%GeoEnti=temp_int_vect1(3+nt)
+            if(nt>=2)then
+              Line(nLine)%GeoEnti=temp_int_vect1(5)
+            else
+              Line(nLine)%GeoEnti=0
+            end if
           case(2) ! tri
             nTri=nTri+1
             Tri(nTri)%NodeInd(:)=temp_int_vect1(3+nt+1:3+nt+np)
-            Tri(nTri)%GeoEnti=temp_int_vect1(3+nt)
+            if(nt>=2)then
+              Tri(nTri)%GeoEnti=temp_int_vect1(5)
+            else
+              Tri(nTri)%GeoEnti=0
+            end if
           case(3) ! quad
             nQuad=nQuad+1
             Quad(nQuad)%NodeInd(:)=temp_int_vect1(3+nt+1:3+nt+np)
-            Quad(nQuad)%GeoEnti=temp_int_vect1(3+nt)
+            if(nt>=2)then
+              Quad(nQuad)%GeoEnti=temp_int_vect1(5)
+            else
+              Quad(nQuad)%GeoEnti=0
+            end if
           case(4) ! tet
             nTet=nTet+1
             Tet(nTet)%NodeInd(:)=temp_int_vect1(3+nt+1:3+nt+np)
-            Tet(nTet)%GeoEnti=temp_int_vect1(3+nt)
-            if(nt>=4)then
-              Tet(nTet)%Prt=maxval(temp_int_vect1(7:6+temp_int_vect1(6)))
+            if(nt>=2)then
+              Tet(nTet)%GeoEnti=temp_int_vect1(5)
+              if(nt>=4)then
+                Tet(nTet)%Prt=maxval(temp_int_vect1(7:6+temp_int_vect1(6)))
+              else
+                Tet(nTet)%Prt=0
+              end if
+            else
+              Tet(nTet)%GeoEnti=0
             end if
           case(5) ! hex
             nHex=nHex+1
             Hex(nHex)%NodeInd(:)=temp_int_vect1(3+nt+1:3+nt+np)
-            Hex(nHex)%GeoEnti=temp_int_vect1(3+nt)
-            if(nt>=4)then
-              Hex(nHex)%Prt=maxval(temp_int_vect1(7:6+temp_int_vect1(6)))
+            if(nt>=2)then
+              Hex(nHex)%GeoEnti=temp_int_vect1(5)
+              if(nt>=4)then
+                Hex(nHex)%Prt=maxval(temp_int_vect1(7:6+temp_int_vect1(6)))
+              else
+                Hex(nHex)%Prt=0
+              end if
+            else
+              Hex(nHex)%GeoEnti=0
             end if
         end select
       end do
