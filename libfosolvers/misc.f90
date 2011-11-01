@@ -54,6 +54,7 @@ subroutine updateElePara()
     Ele(i)%NodeInd(:)=Ele(i)%getNodeInd()
     ! geometric entity
     Ele(i)%GeoEnti=Ele(i)%getGeoEnti()
+    ! partition
     Ele(i)%Prt=Ele(i)%getPrt()
     ! neighbour
     Ele(i)%Neib(:)=0
