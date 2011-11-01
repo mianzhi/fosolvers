@@ -11,6 +11,8 @@ module moduleMPIvar
   integer(MPI_address_kind),save::baseMPI
   integer,save::typeNodeMPI,typePointMPI,typeLineMPI,typeTriMPI,typeQuadMPI,typeTetMPI,typeHexMPI,&
   &             typeFacetMPI,typeEleMPI
+  integer,allocatable,save::mapNode(:),mapPoint(:),mapLine(:),mapTri(:),mapQuad(:),mapTet(:),&
+  &                         mapHex(:),mapFacet(:),mapEle(:)
 end module
 
 !****************************
@@ -35,7 +37,7 @@ subroutine initMPI()
   call MPI_comm_rank(MPI_comm_world,pidMPI,errMPI)
   call MPI_comm_size(MPI_comm_world,sizeMPI,errMPI)
   
-  ! Note: all the types are splited into scalers to ensure correctness
+  ! Note: all the types are split into scalers to ensure correctness
   ! node struct
   nblkMPI=3
   allocate(llenMPI(nblkMPI))
@@ -236,4 +238,341 @@ subroutine finalMPI()
   call MPI_type_free(typeFacetMPI,errMPI)
   call MPI_type_free(typeEleMPI,errMPI)
   call MPI_finalize(errMPI)
+end subroutine
+
+!*************************************
+! distribute partition k to process p
+!*************************************
+subroutine distriPrt(k,p)
+  use moduleGrid
+  use moduleMPIvar
+  
+  integer,intent(in)::k,p
+  integer nkNode,nkPoint,nkLine,nkTri,nkQuad,nkTet,nkHex,nkFacet,nkEle
+  type(typeNode),allocatable::buffNode(:)
+  type(typePoint),allocatable::buffPoint(:)
+  type(typeLine),allocatable::buffLine(:)
+  type(typeTri),allocatable::buffTri(:)
+  type(typeQuad),allocatable::buffQuad(:)
+  type(typeTet),allocatable::buffTet(:)
+  type(typeHex),allocatable::buffHex(:)
+  type(typeFacet),allocatable::buffFacet(:)
+  type(typeEle),allocatable::buffEle(:)
+  integer,allocatable::smapNode(:),smapPoint(:),smapLine(:),smapTri(:),smapQuad(:),smapTet(:),&
+  &                    smapHex(:),smapFacet(:),smapEle(:)
+  integer gmapNode(nNode),gmapPoint(nPoint),gmapLine(nLine),gmapTri(nTri),gmapQuad(nQuad),&
+  &       gmapTet(nTet),gmapHex(nHex),gmapFacet(nFacet),gmapEle(nEle)
+  
+  ! copy elememnts
+  nkEle=count(Ele(:)%Prt==k)
+  allocate(buffEle(nkEle))
+  allocate(smapEle(nkEle))
+  j=1
+  do i=1,nEle
+    if(Ele(i)%Prt==k)then
+      smapEle(j)=i
+      gmapEle(i)=j
+      j=j+1
+    end if
+  end do
+  buffEle(:)=Ele(smapEle(:))
+  ! copy facets
+  nkFacet=sum([(count(buffEle(i)%Neib(:)<0),i=1,nkEle)])
+  allocate(buffFacet(nkFacet))
+  allocate(smapFacet(nkFacet))
+  l=1
+  do i=1,nkEle
+    do j=1,size(buffEle(i)%Neib)
+      if(buffEle(i)%Neib(j)<0)then
+        smapFacet(l)=-buffEle(i)%Neib(j)
+        gmapFacet(-buffEle(i)%Neib(j))=l
+        l=l+1
+      end if
+    end do
+  end do
+  buffFacet(:)=Facet(smapFacet)
+  ! copy tetrahedrons
+  nkTet=count(buffEle(:)%ShapeType==4)
+  allocate(buffTet(nkTet))
+  allocate(smapTet(nkTet))
+  j=1
+  do i=1,nkEle
+    if(buffEle(i)%ShapeType==4)then
+      smapTet(j)=buffEle(i)%ShapeInd
+      gmapTet(buffEle(i)%ShapeInd)=j
+      j=j+1
+    end if
+  end do
+  buffTet(:)=Tet(smapTet)
+  ! copy hexahedrons
+  nkHex=count(buffEle(:)%ShapeType==5)
+  allocate(buffHex(nkHex))
+  allocate(smapHex(nkHex))
+  j=1
+  do i=1,nkEle
+    if(buffEle(i)%ShapeType==5)then
+      smapHex(j)=buffEle(i)%ShapeInd
+      gmapHex(buffEle(i)%ShapeInd)=j
+      j=j+1
+    end if
+  end do
+  buffHex(:)=Hex(smapHex)
+  ! copy triangles
+  nkTri=count(buffFacet(:)%ShapeType==2)
+  allocate(buffTri(nkTri))
+  allocate(smapTri(nkTri))
+  j=1
+  do i=1,nkFacet
+    if(buffFacet(i)%ShapeType==2)then
+      smapTri(j)=buffFacet(i)%ShapeInd
+      gmapTri(buffFacet(i)%ShapeInd)=j
+      j=j+1
+    end if
+  end do
+  buffTri(:)=Tri(smapTri)
+  ! copy quadrilaterals
+  nkQuad=count(buffFacet(:)%ShapeType==3)
+  allocate(buffQuad(nkQuad))
+  allocate(smapQuad(nkQuad))
+  j=1
+  do i=1,nkFacet
+    if(buffFacet(i)%ShapeType==3)then
+      smapQuad(j)=buffFacet(i)%ShapeInd
+      gmapQuad(buffFacet(i)%ShapeInd)=j
+      j=j+1
+    end if
+  end do
+  buffQuad(:)=Quad(smapQuad)
+  ! copy nodes
+  gmapNode(:)=0
+  l=0
+  do i=1,nkEle
+    do j=1,buffEle(i)%NodeNum
+      if(gmapNode(buffEle(i)%NodeInd(j))==0)then
+        l=l+1
+        gmapNode(buffEle(i)%NodeInd(j))=l
+      end if
+    end do
+  end do
+  nkNode=count(gmapNode(:)>0)
+  allocate(buffNode(nkNode))
+  allocate(smapNode(nkNode))
+  do i=1,nNode
+    if(gmapNode(i)>0)then
+      smapNode(gmapNode(i))=i
+    end if
+  end do
+  buffNode(:)=Node(smapNode)
+  ! copy points
+  gmapPoint(:)=0
+  j=0
+  do i=1,nPoint
+    if(gmapNode(Point(i)%NodeInd)>0)then
+      j=j+1
+      gmapPoint(i)=j
+    end if
+  end do
+  nkPoint=count(gmapPoint(:)>0)
+  allocate(buffPoint(nkPoint))
+  allocate(smapPoint(nkPoint))
+  do i=1,nPoint
+    if(gmapPoint(i)>0)then
+      smapPoint(gmapPoint(i))=i
+    end if
+  end do
+  buffPoint(:)=Point(smapPoint)
+  ! copy lines
+  gmapLine(:)=0
+  j=0
+  do i=1,nLine
+    if(all(gmapNode(Line(i)%NodeInd(:))>0))then
+      j=j+1
+      gmapLine(i)=j
+    end if
+  end do
+  nkLine=count(gmapLine(:)>0)
+  allocate(buffLine(nkLine))
+  allocate(smapLine(nkLine))
+  do i=1,nLine
+    if(gmapLine(i)>0)then
+      smapLine(gmapLine(i))=i
+    end if
+  end do
+  buffLine(:)=Line(smapLine)
+  
+  ! correct points
+  forall(i=1:nkPoint)
+    buffPoint(i)%NodeInd=gmapNode(buffPoint(i)%NodeInd)
+  end forall
+  ! correct lines
+  forall(i=1:nkLine)
+    buffLine(i)%NodeInd(:)=gmapNode(buffLine(i)%NodeInd(:))
+  end forall
+  ! correct triangles
+  forall(i=1:nkTri)
+    buffTri(i)%NodeInd(:)=gmapNode(buffTri(i)%NodeInd(:))
+  end forall
+  ! correct quadrilaterals
+  forall(i=1:nkQuad)
+    buffQuad(i)%NodeInd(:)=gmapNode(buffQuad(i)%NodeInd(:))
+  end forall
+  ! correct tetrahedrons
+  forall(i=1:nkTet)
+    buffTet(i)%NodeInd(:)=gmapNode(buffTet(i)%NodeInd(:))
+  end forall
+  ! correct hexahedrons
+  forall(i=1:nkHex)
+    buffHex(i)%NodeInd(:)=gmapNode(buffHex(i)%NodeInd(:))
+  end forall
+  ! correct facets
+  do i=1,nkFacet
+    select case(buffFacet(i)%ShapeType)
+      case(2)
+        buffFacet(i)%ShapeInd=gmapTri(buffFacet(i)%ShapeInd)
+      case(3)
+        buffFacet(i)%ShapeInd=gmapQuad(buffFacet(i)%ShapeInd)
+      case default
+        write(*,'(a,i2)'),'ERROR: unknown facet ShapeType: ',buffFacet(i)%ShapeType
+    end select
+  end do
+  forall(i=1:nkFacet)
+    buffFacet(i)%NodeInd(1:buffFacet(i)%NodeNum)=&
+    &           gmapNode(buffFacet(i)%NodeInd(1:buffFacet(i)%NodeNum))
+    buffFacet(i)%NeibEle(:)=gmapEle(buffFacet(i)%NeibEle(:))
+  end forall
+  ! correct elements
+  do i=1,nkEle
+    select case(buffEle(i)%ShapeType)
+      case(4)
+        buffEle(i)%ShapeInd=gmapTet(buffEle(i)%ShapeInd)
+      case(5)
+        buffEle(i)%ShapeInd=gmapHex(buffEle(i)%ShapeInd)
+      case default
+        write(*,'(a,i2)'),'ERROR: unknown element ShapeType: ',buffEle(i)%ShapeType
+    end select
+  end do
+  forall(i=1:nkEle)
+    buffEle(i)%NodeInd(1:buffEle(i)%NodeNum)=gmapNode(buffEle(i)%NodeInd(1:buffEle(i)%NodeNum))
+    buffEle(i)%Neib(1:buffEle(i)%SurfNum)=gmapEle(buffEle(i)%Neib(1:buffEle(i)%SurfNum))
+  end forall
+  
+  ! send nodes
+  call MPI_send(nkNode,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+  call MPI_send(smapNode,nkNode,MPI_integer,p,p,MPI_comm_world,errMPI)
+  call MPI_send(buffNode,nkNode,typeNodeMPI,p,p,MPI_comm_world,errMPI)
+  
+  ! send points
+  call MPI_send(nkPoint,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+  call MPI_send(smapPoint,nkPoint,MPI_integer,p,p,MPI_comm_world,errMPI)
+  call MPI_send(buffPoint,nkPoint,typePointMPI,p,p,MPI_comm_world,errMPI)
+  
+  ! send lines
+  call MPI_send(nkLine,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+  call MPI_send(smapLine,nkLine,MPI_integer,p,p,MPI_comm_world,errMPI)
+  call MPI_send(buffLine,nkLine,typeLineMPI,p,p,MPI_comm_world,errMPI)
+  
+  ! send triangles
+  call MPI_send(nkTri,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+  call MPI_send(smapTri,nkTri,MPI_integer,p,p,MPI_comm_world,errMPI)
+  call MPI_send(buffTri,nkTri,typeTriMPI,p,p,MPI_comm_world,errMPI)
+  
+  ! send quadrilaterals
+  call MPI_send(nkQuad,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+  call MPI_send(smapQuad,nkQuad,MPI_integer,p,p,MPI_comm_world,errMPI)
+  call MPI_send(buffQuad,nkQuad,typeQuadMPI,p,p,MPI_comm_world,errMPI)
+  
+  ! send tetrahedrons
+  call MPI_send(nkTet,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+  call MPI_send(smapTet,nkTet,MPI_integer,p,p,MPI_comm_world,errMPI)
+  call MPI_send(buffTet,nkTet,typeTetMPI,p,p,MPI_comm_world,errMPI)
+  
+  ! send hexahedrons
+  call MPI_send(nkHex,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+  call MPI_send(smapHex,nkHex,MPI_integer,p,p,MPI_comm_world,errMPI)
+  call MPI_send(buffHex,nkHex,typeHexMPI,p,p,MPI_comm_world,errMPI)
+  
+  ! send facets
+  call MPI_send(nkFacet,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+  call MPI_send(smapFacet,nkFacet,MPI_integer,p,p,MPI_comm_world,errMPI)
+  call MPI_send(buffFacet,nkFacet,typeFacetMPI,p,p,MPI_comm_world,errMPI)
+  
+  ! send elements
+  call MPI_send(nkEle,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+  call MPI_send(smapEle,nkEle,MPI_integer,p,p,MPI_comm_world,errMPI)
+  call MPI_send(buffEle,nkEle,typeEleMPI,p,p,MPI_comm_world,errMPI)
+  
+  ! clean up
+  deallocate(buffNode,buffPoint,buffLine,buffTri,buffQuad,buffTet,buffHex,buffFacet,buffEle)
+  deallocate(smapNode,smapPoint,smapLine,smapTri,smapQuad,smapTet,smapHex,smapFacet,smapEle)
+end subroutine
+
+!*******************
+! receive partition
+!*******************
+subroutine recvPrt()
+  use moduleGrid
+  use moduleMPIvar
+  
+  ! receive nodes
+  call MPI_recv(nNode,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  allocate(Node(nNode))
+  allocate(mapNode(nNode))
+  call MPI_recv(mapNode,nNode,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(Node,nNode,typeNodeMPI,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  
+  ! receive points
+  call MPI_recv(nPoint,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  allocate(Point(nPoint))
+  allocate(mapPoint(nPoint))
+  call MPI_recv(mapPoint,nPoint,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(Point,nPoint,typePointMPI,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  
+  ! receive lines
+  call MPI_recv(nLine,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  allocate(Line(nLine))
+  allocate(mapLine(nLine))
+  call MPI_recv(mapLine,nLine,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(Line,nLine,typeLineMPI,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  
+  ! receive triangles
+  call MPI_recv(nTri,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  allocate(Tri(nTri))
+  allocate(mapTri(nTri))
+  call MPI_recv(mapTri,nTri,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(Tri,nTri,typeTriMPI,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  
+  ! receive quadrilaterals
+  call MPI_recv(nQuad,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  allocate(Quad(nQuad))
+  allocate(mapQuad(nQuad))
+  call MPI_recv(mapQuad,nQuad,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(Quad,nQuad,typeQuadMPI,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  
+  ! receive tetrahedrons
+  call MPI_recv(nTet,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  allocate(Tet(nTet))
+  allocate(mapTet(nTet))
+  call MPI_recv(mapTet,nTet,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(Tet,nTet,typeTetMPI,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  
+  ! receive hexahedrons
+  call MPI_recv(nHex,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  allocate(Hex(nHex))
+  allocate(mapHex(nHex))
+  call MPI_recv(mapHex,nHex,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(Hex,nHex,typeHexMPI,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  
+  ! receive facets
+  call MPI_recv(nFacet,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  allocate(Facet(nFacet))
+  allocate(mapFacet(nFacet))
+  call MPI_recv(mapFacet,nFacet,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(Facet,nFacet,typeFacetMPI,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  
+  ! receive elements
+  call MPI_recv(nEle,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  allocate(Ele(nEle))
+  allocate(mapEle(nEle))
+  call MPI_recv(mapEle,nEle,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(Ele,nEle,typeEleMPI,0,pidMPI,MPI_comm_world,statMPI,errMPI)
 end subroutine
