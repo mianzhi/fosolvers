@@ -5,6 +5,7 @@
 !****************************
 module moduleMPIvar
   use mpi
+  use moduleMiscDataStruct
   integer,save::errMPI,pidMPI,sizeMPI,nblkMPI
   integer,allocatable,save::statMPI(:),llenMPI(:),ltypeMPI(:)
   integer(MPI_address_kind),allocatable,save::ldispMPI(:)
@@ -13,6 +14,11 @@ module moduleMPIvar
   &             typeFacetMPI,typeEleMPI
   integer,allocatable,save::mapNode(:),mapPoint(:),mapLine(:),mapTri(:),mapQuad(:),mapTet(:),&
   &                         mapHex(:),mapFacet(:),mapEle(:)
+  type(typePtrScalArray),allocatable,save::transNodeScal(:),transEleScal(:)
+  type(typePtrVectArray),allocatable,save::transNodeVect(:),transEleVect(:)
+  type(typePtrTensArray),allocatable,save::transNodeTens(:),transEleTens(:)
+  integer,save::ntransNodeScal,ntransNodeVect,ntransNodeTens,ntransEleScal,ntransEleVect,&
+  &             ntransEleTens
 end module
 
 !****************************
@@ -240,9 +246,36 @@ subroutine finalMPI()
   call MPI_finalize(errMPI)
 end subroutine
 
+!****************************************************
+! generate table of data to be wraped with partition
+!****************************************************
+subroutine genPrtDataTab(a,b,c,d,e,f)
+  use moduleMPIvar
+  integer,intent(in)::a,b,c,d,e,f
+  ! allocate output data space
+  ntransNodeScal=a
+  ntransNodeVect=b
+  ntransNodeTens=c
+  ntransEleScal=d
+  ntransEleVect=e
+  ntransEleTens=f
+  allocate(transNodeScal(a))
+  allocate(transNodeVect(b))
+  allocate(transNodeTens(c))
+  allocate(transEleScal(d))
+  allocate(transEleVect(e))
+  allocate(transEleTens(f))
+end subroutine
+
 !*************************************
 ! distribute partition k to process p
 !*************************************
+! e.g.: to distribute element scaler data v(nEle) together with partition
+!   call genPrtDataTab(0,0,0,1,0,0)
+!   ...
+!   transEleScal(1)%ptr=>v
+!   ...
+!   call distriPrt(k,p)
 subroutine distriPrt(k,p)
   use moduleGrid
   use moduleMPIvar
@@ -262,8 +295,9 @@ subroutine distriPrt(k,p)
   &                    smapHex(:),smapFacet(:),smapEle(:)
   integer gmapNode(nNode),gmapPoint(nPoint),gmapLine(nLine),gmapTri(nTri),gmapQuad(nQuad),&
   &       gmapTet(nTet),gmapHex(nHex),gmapFacet(nFacet),gmapEle(nEle)
+  double precision,allocatable::buffDataScal(:),buffDataVect(:,:),buffDataTens(:,:,:)
   
-  ! copy elememnts
+  ! copy elements
   nkEle=count(Ele(:)%Prt==k)
   allocate(buffEle(nkEle))
   allocate(smapEle(nkEle))
@@ -460,46 +494,93 @@ subroutine distriPrt(k,p)
   call MPI_send(nkNode,1,MPI_integer,p,p,MPI_comm_world,errMPI)
   call MPI_send(smapNode,nkNode,MPI_integer,p,p,MPI_comm_world,errMPI)
   call MPI_send(buffNode,nkNode,typeNodeMPI,p,p,MPI_comm_world,errMPI)
-  
   ! send points
   call MPI_send(nkPoint,1,MPI_integer,p,p,MPI_comm_world,errMPI)
   call MPI_send(smapPoint,nkPoint,MPI_integer,p,p,MPI_comm_world,errMPI)
   call MPI_send(buffPoint,nkPoint,typePointMPI,p,p,MPI_comm_world,errMPI)
-  
   ! send lines
   call MPI_send(nkLine,1,MPI_integer,p,p,MPI_comm_world,errMPI)
   call MPI_send(smapLine,nkLine,MPI_integer,p,p,MPI_comm_world,errMPI)
   call MPI_send(buffLine,nkLine,typeLineMPI,p,p,MPI_comm_world,errMPI)
-  
   ! send triangles
   call MPI_send(nkTri,1,MPI_integer,p,p,MPI_comm_world,errMPI)
   call MPI_send(smapTri,nkTri,MPI_integer,p,p,MPI_comm_world,errMPI)
   call MPI_send(buffTri,nkTri,typeTriMPI,p,p,MPI_comm_world,errMPI)
-  
   ! send quadrilaterals
   call MPI_send(nkQuad,1,MPI_integer,p,p,MPI_comm_world,errMPI)
   call MPI_send(smapQuad,nkQuad,MPI_integer,p,p,MPI_comm_world,errMPI)
   call MPI_send(buffQuad,nkQuad,typeQuadMPI,p,p,MPI_comm_world,errMPI)
-  
   ! send tetrahedrons
   call MPI_send(nkTet,1,MPI_integer,p,p,MPI_comm_world,errMPI)
   call MPI_send(smapTet,nkTet,MPI_integer,p,p,MPI_comm_world,errMPI)
   call MPI_send(buffTet,nkTet,typeTetMPI,p,p,MPI_comm_world,errMPI)
-  
   ! send hexahedrons
   call MPI_send(nkHex,1,MPI_integer,p,p,MPI_comm_world,errMPI)
   call MPI_send(smapHex,nkHex,MPI_integer,p,p,MPI_comm_world,errMPI)
   call MPI_send(buffHex,nkHex,typeHexMPI,p,p,MPI_comm_world,errMPI)
-  
   ! send facets
   call MPI_send(nkFacet,1,MPI_integer,p,p,MPI_comm_world,errMPI)
   call MPI_send(smapFacet,nkFacet,MPI_integer,p,p,MPI_comm_world,errMPI)
   call MPI_send(buffFacet,nkFacet,typeFacetMPI,p,p,MPI_comm_world,errMPI)
-  
   ! send elements
   call MPI_send(nkEle,1,MPI_integer,p,p,MPI_comm_world,errMPI)
   call MPI_send(smapEle,nkEle,MPI_integer,p,p,MPI_comm_world,errMPI)
   call MPI_send(buffEle,nkEle,typeEleMPI,p,p,MPI_comm_world,errMPI)
+  
+  ! send scaler data on nodes
+  allocate(buffDataScal(nkNode))
+  do i=1,ntransNodeScal
+    buffDataScal(:)=transNodeScal(i)%ptr(smapNode)
+    call MPI_send(buffDataScal,nkNode,MPI_double_precision,p,p,MPI_comm_world,errMPI)
+  end do
+  deallocate(buffDataScal)
+  ! send vector data on nodes
+  allocate(buffDataVect(nkNode,3))
+  do i=1,ntransNodeVect
+    buffDataVect(:,:)=transNodeVect(i)%ptr(smapNode,:)
+    do j=1,3
+      call MPI_send(buffDataVect(:,j),nkNode,MPI_double_precision,p,p,MPI_comm_world,errMPI)
+    end do
+  end do
+  deallocate(buffDataVect)
+  ! send tensor data on nodes
+  allocate(buffDataTens(nkNode,3,3))
+  do i=1,ntransNodeTens
+    buffDataTens(:,:,:)=transNodeTens(i)%ptr(smapNode,:,:)
+    do j=1,3
+      do l=1,3
+        call MPI_send(buffDataTens(:,j,l),nkNode,MPI_double_precision,p,p,MPI_comm_world,errMPI)
+      end do
+    end do
+  end do
+  deallocate(buffDataTens)
+  ! send scaler data in elements
+  allocate(buffDataScal(nkEle))
+  do i=1,ntransEleScal
+    buffDataScal(:)=transEleScal(i)%ptr(smapEle)
+    call MPI_send(buffDataScal,nkEle,MPI_double_precision,p,p,MPI_comm_world,errMPI)
+  end do
+  deallocate(buffDataScal)
+  ! send vector data in elements
+  allocate(buffDataVect(nkEle,3))
+  do i=1,ntransEleVect
+    buffDataVect(:,:)=transEleVect(i)%ptr(smapEle,:)
+    do j=1,3
+      call MPI_send(buffDataVect(:,j),nkEle,MPI_double_precision,p,p,MPI_comm_world,errMPI)
+    end do
+  end do
+  deallocate(buffDataVect)
+  ! send tensor data in elements
+  allocate(buffDataTens(nkEle,3,3))
+  do i=1,ntransEleTens
+    buffDataTens(:,:,:)=transEleTens(i)%ptr(smapEle,:,:)
+    do j=1,3
+      do l=1,3
+        call MPI_send(buffDataTens(:,j,l),nkEle,MPI_double_precision,p,p,MPI_comm_world,errMPI)
+      end do
+    end do
+  end do
+  deallocate(buffDataTens)
   
   ! clean up
   deallocate(buffNode,buffPoint,buffLine,buffTri,buffQuad,buffTet,buffHex,buffFacet,buffEle)
@@ -509,6 +590,11 @@ end subroutine
 !*******************
 ! receive partition
 !*******************
+! e.g.: to receive also the element data comes with the partition and save it to v
+!   call recvPrt()
+!   allocate(v(nEle))
+!   v=transEleScal(1)%ptr
+!   deallocate(transEleScal(1)%ptr)
 subroutine recvPrt()
   use moduleGrid
   use moduleMPIvar
@@ -575,4 +661,87 @@ subroutine recvPrt()
   allocate(mapEle(nEle))
   call MPI_recv(mapEle,nEle,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
   call MPI_recv(Ele,nEle,typeEleMPI,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  
+  ! receive scaler data at nodes
+  do i=1,ntransNodeScal
+    allocate(transNodeScal(i)%ptr(nNode))
+    call MPI_recv(transNodeScal(i)%ptr,nNode,MPI_double_precision,&
+    &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  end do
+  
+  ! receive vector data at nodes
+  do i=1,ntransNodeVect
+    allocate(transNodeVect(i)%ptr(nNode,3))
+    do j=1,3
+      call MPI_recv(transNodeVect(i)%ptr(:,j),nNode,MPI_double_precision,&
+      &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+    end do
+  end do
+  
+  ! receive tensor data at nodes
+  do i=1,ntransNodeTens
+    allocate(transNodeTens(i)%ptr(nNode,3,3))
+    do j=1,3
+      do k=1,3
+        call MPI_recv(transNodeTens(i)%ptr(:,j,k),nNode,MPI_double_precision,&
+        &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+      end do
+    end do
+  end do
+  
+  ! receive scaler data in elements
+  do i=1,ntransEleScal
+    allocate(transEleScal(i)%ptr(nEle))
+    call MPI_recv(transEleScal(i)%ptr,nEle,MPI_double_precision,&
+    &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  end do
+  
+  ! receive vector data in elements
+  do i=1,ntransEleVect
+    allocate(transEleVect(i)%ptr(nEle,3))
+    do j=1,3
+      call MPI_recv(transEleVect(i)%ptr(:,j),nEle,MPI_double_precision,&
+      &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+    end do
+  end do
+  
+  ! receive tensor data in elements
+  do i=1,ntransEleTens
+    allocate(transEleTens(i)%ptr(nEle,3,3))
+    do j=1,3
+      do k=1,3
+        call MPI_recv(transEleTens(i)%ptr(:,j,k),nEle,MPI_double_precision,&
+        &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+      end do
+    end do
+  end do
+end subroutine
+
+!*************
+! return data
+!*************
+subroutine retnData()
+  use moduleMPIvar
+  use moduleGrid
+  
+  ! send auxiliary data
+  call MPI_send(nNode,1,MPI_integer,0,pidMPI,MPI_comm_world,errMPI)
+  call MPI_send(nNode,1,MPI_integer,0,pidMPI,MPI_comm_world,errMPI)
+end subroutine
+
+!******************************************************
+! try to gather data from any process, received from p
+!******************************************************
+subroutine gathData(p)
+  use moduleMPIvar
+  use moduleGrid
+  
+  integer,intent(out)::p
+  integer nkNode,nkEle
+  
+  ! receive auxiliary data
+  call MPI_recv(nkNode,1,MPI_integer,MPI_any_source,MPI_any_tag,MPI_comm_world,statMPI,errMPI)
+  p=statMPI(MPI_source)
+  call MPI_recv(nkEle,1,MPI_integer,p,p,MPI_comm_world,statMPI,errMPI)
+  write(*,*)p,nkNode,nkEle
 end subroutine
