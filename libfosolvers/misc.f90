@@ -1,5 +1,23 @@
 !----------------------------------------------------------------------------- best with 100 columns
 
+!******************************
+! miscellaneous data structure
+!******************************
+module moduleMiscDataStruct
+  ! pointer arrays
+  type::typePtrScalArray
+    double precision,pointer::ptr(:)
+  end type
+  
+  type::typePtrVectArray
+    double precision,pointer::ptr(:,:)
+  end type
+  
+  type::typePtrTensArray
+    double precision,pointer::ptr(:,:,:)
+  end type
+end module
+
 !*****************************************
 ! update the bounding box of the geometry
 !*****************************************

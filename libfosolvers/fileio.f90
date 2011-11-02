@@ -261,12 +261,15 @@ end subroutine
 ! result output related variables
 !*********************************
 module moduleWrite
+  use moduleMiscDataStruct
+
   ! output control related variables
   double precision,save::t,tFinal
   integer,save::nWrite
   ! data to be output
-  double precision,allocatable,save::rstNodeScal(:,:),rstNodeVect(:,:,:),rstNodeTens(:,:,:),&
-  &                                  rstEleScal(:,:),rstEleVect(:,:,:),rstEleTens(:,:,:)
+  type(typePtrScalArray),allocatable,save::rstNodeScal(:),rstEleScal(:)
+  type(typePtrVectArray),allocatable,save::rstNodeVect(:),rstEleVect(:)
+  type(typePtrTensArray),allocatable,save::rstNodeTens(:),rstEleTens(:)
   integer,save::nrstNodeScal,nrstNodeVect,nrstNodeTens,nrstEleScal,nrstEleVect,nrstEleTens
 end module
 
@@ -290,12 +293,12 @@ subroutine initWriteEnv(a,b,c,d,e,f)
   nrstEleScal=d
   nrstEleVect=e
   nrstEleTens=f
-  allocate(rstNodeScal(a,nNode))
-  allocate(rstNodeVect(b,nNode,3))
-  allocate(rstNodeTens(c,nNode,9))
-  allocate(rstEleScal(d,nEle))
-  allocate(rstEleVect(e,nEle,3))
-  allocate(rstEleTens(f,nEle,9))
+  allocate(rstNodeScal(a))
+  allocate(rstNodeVect(b))
+  allocate(rstNodeTens(c))
+  allocate(rstEleScal(d))
+  allocate(rstEleVect(e))
+  allocate(rstEleTens(f))
   ! set output control variables
   nWrite=0
 end subroutine
@@ -377,7 +380,7 @@ subroutine writerst(fname,ifile,hold)
     write(ifile,'(i1)'),1 ! 1 component scaler
     write(ifile,*),nNode
     do j=1,nNode
-      write(tempstring,*),j,rstNodeScal(i,j)
+      write(tempstring,*),j,rstNodeScal(i)%ptr(j)
       tempstring=adjustl(tempstring)
       write(ifile,'(a)'),trim(tempstring)
     end do
@@ -395,7 +398,7 @@ subroutine writerst(fname,ifile,hold)
     write(ifile,'(i1)'),3 ! 3 components vector
     write(ifile,*),nNode
     do j=1,nNode
-      write(tempstring,*),j,rstNodeVect(i,j,:)
+      write(tempstring,*),j,rstNodeVect(i)%ptr(j,:)
       tempstring=adjustl(tempstring)
       write(ifile,'(a)'),trim(tempstring)
     end do
@@ -413,7 +416,8 @@ subroutine writerst(fname,ifile,hold)
     write(ifile,'(i1)'),9 ! 9 components tensor
     write(ifile,*),nNode
     do j=1,nNode
-      write(tempstring,*),j,rstNodeTens(i,j,:)
+      write(tempstring,*),j,rstNodeTens(i)%ptr(j,1,:),rstNodeTens(i)%ptr(j,2,:),&
+      &                     rstNodeTens(i)%ptr(j,3,:)
       tempstring=adjustl(tempstring)
       write(ifile,'(a)'),trim(tempstring)
     end do
@@ -431,7 +435,7 @@ subroutine writerst(fname,ifile,hold)
     write(ifile,'(i1)'),1 ! 1 component scaler
     write(ifile,*),nEle
     do j=1,nEle
-      write(tempstring,*),j,rstEleScal(i,j)
+      write(tempstring,*),j,rstEleScal(i)%ptr(j)
       tempstring=adjustl(tempstring)
       write(ifile,'(a)'),trim(tempstring)
     end do
@@ -449,7 +453,7 @@ subroutine writerst(fname,ifile,hold)
     write(ifile,'(i1)'),3 ! 3 components vector
     write(ifile,*),nEle
     do j=1,nEle
-      write(tempstring,*),j,rstEleVect(i,j,:)
+      write(tempstring,*),j,rstEleVect(i)%ptr(j,:)
       tempstring=adjustl(tempstring)
       write(ifile,'(a)'),trim(tempstring)
     end do
@@ -467,7 +471,8 @@ subroutine writerst(fname,ifile,hold)
     write(ifile,'(i1)'),9 ! 9 components tensor
     write(ifile,*),nEle
     do j=1,nEle
-      write(tempstring,*),j,rstEleTens(i,j,:)
+      write(tempstring,*),j,rstEleTens(i)%ptr(j,1,:),rstEleTens(i)%ptr(j,2,:),&
+      &                     rstEleTens(i)%ptr(j,3,:)
       tempstring=adjustl(tempstring)
       write(ifile,'(a)'),trim(tempstring)
     end do
