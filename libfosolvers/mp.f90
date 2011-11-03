@@ -469,12 +469,10 @@ subroutine distriPrt(k,p)
       case default
         write(*,'(a,i2)'),'ERROR: unknown facet ShapeType: ',buffFacet(i)%ShapeType
     end select
-  end do
-  forall(i=1:nkFacet)
     buffFacet(i)%NodeInd(1:buffFacet(i)%NodeNum)=&
     &           gmapNode(buffFacet(i)%NodeInd(1:buffFacet(i)%NodeNum))
     buffFacet(i)%NeibEle(:)=gmapEle(buffFacet(i)%NeibEle(:))
-  end forall
+  end do
   ! correct elements
   do i=1,nkEle
     select case(buffEle(i)%ShapeType)
@@ -485,11 +483,9 @@ subroutine distriPrt(k,p)
       case default
         write(*,'(a,i2)'),'ERROR: unknown element ShapeType: ',buffEle(i)%ShapeType
     end select
-  end do
-  forall(i=1:nkEle)
     buffEle(i)%NodeInd(1:buffEle(i)%NodeNum)=gmapNode(buffEle(i)%NodeInd(1:buffEle(i)%NodeNum))
     buffEle(i)%Neib(1:buffEle(i)%SurfNum)=gmapEle(buffEle(i)%Neib(1:buffEle(i)%SurfNum))
-  end forall
+  end do
   
   ! send nodes
   call MPI_send(nkNode,1,MPI_integer,p,p,MPI_comm_world,errMPI)
