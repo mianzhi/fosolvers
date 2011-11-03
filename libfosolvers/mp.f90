@@ -6,10 +6,8 @@
 module moduleMPIvar
   use mpi
   use moduleMiscDataStruct
-  integer,save::errMPI,pidMPI,sizeMPI,nblkMPI
-  integer,allocatable,save::statMPI(:),llenMPI(:),ltypeMPI(:)
-  integer(MPI_address_kind),allocatable,save::ldispMPI(:)
-  integer(MPI_address_kind),save::baseMPI
+  integer,save::errMPI,pidMPI,sizeMPI
+  integer,allocatable,save::statMPI(:)
   integer,save::typeNodeMPI,typePointMPI,typeLineMPI,typeTriMPI,typeQuadMPI,typeTetMPI,typeHexMPI,&
   &             typeFacetMPI,typeEleMPI
   integer,allocatable,save::mapNode(:),mapPoint(:),mapLine(:),mapTri(:),mapQuad(:),mapTet(:),&
@@ -27,6 +25,11 @@ end module
 subroutine initMPI()
   use moduleGrid
   use moduleMPIvar
+  
+  integer nblkMPI
+  integer,allocatable::llenMPI(:),ltypeMPI(:)
+  integer(MPI_address_kind),allocatable::ldispMPI(:)
+  integer(MPI_address_kind)::baseMPI
   
   type(typeNode)::sampNode
   type(typePoint)::sampPoint
