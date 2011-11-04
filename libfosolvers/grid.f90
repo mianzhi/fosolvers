@@ -6,6 +6,39 @@
 module moduleGrid
   private
   
+  ! some constants
+  integer,parameter,public::DIMS=3
+  
+  integer,parameter,public::POINT_TYPE=15
+  integer,parameter,public::LINE_TYPE=1
+  integer,parameter,public::TRI_TYPE=2
+  integer,parameter,public::QUAD_TYPE=3
+  integer,parameter,public::TET_TYPE=4
+  integer,parameter,public::HEX_TYPE=5
+  
+  integer,parameter,public::POINT_NODE_NUM=1
+  integer,parameter,public::LINE_NODE_NUM=2
+  integer,parameter,public::TRI_NODE_NUM=3
+  integer,parameter,public::QUAD_NODE_NUM=4
+  integer,parameter,public::TET_NODE_NUM=4
+  integer,parameter,public::HEX_NODE_NUM=8
+  
+  integer,parameter,public::TET_SURF_NUM=4
+  integer,parameter,public::HEX_SURF_NUM=6
+  
+  integer,parameter,public::FACET_MAX_NODE_NUM=15
+  integer,parameter,public::ELE_MAX_NODE_NUM=27
+  
+  integer,parameter,public::FACET_NEIB_ELE_NUM=2
+  
+  integer,parameter,public::ELE_MAX_SURF_NUM=6
+  
+  ! table of surface nodes for all kinds of elements
+  integer,public,save::SurfTabTet(TET_SURF_NUM,TRI_NODE_NUM),SurfTabHex(HEX_SURF_NUM,QUAD_NODE_NUM)
+  
+  ! bounding box of the geometry
+  double precision,public,save::BoundBox(2,DIMS)
+  
   ! make some functions properly accessible (both privately & publicly)
   interface
     function find3PNorm(P1,P2,P3)
@@ -15,17 +48,11 @@ module moduleGrid
   end interface
   public::find3PNorm
   
-  ! table of surface nodes for all kinds of elements
-  integer,public,save::SurfTabTet(4,3),SurfTabHex(6,4)
-  
-  ! bounding box of the geometry
-  double precision,public,save::BoundBox(2,3)
-  
   !----------
   ! typeNode
   !----------
   type,public::typeNode
-    double precision Pos(3)
+    double precision Pos(DIMS)
   end type
   type(typeNode),public,allocatable,save::Node(:)
   integer,public,save::nNode
@@ -46,7 +73,7 @@ module moduleGrid
   ! typeLine
   !----------
   type,public::typeLine
-    integer NodeInd(2)
+    integer NodeInd(LINE_NODE_NUM)
     integer GeoEnti
   contains
     procedure,public::findPC=>findLinePC
@@ -59,7 +86,7 @@ module moduleGrid
   ! typeTri
   !---------
   type,public::typeTri
-    integer NodeInd(3)
+    integer NodeInd(TRI_NODE_NUM)
     integer GeoEnti
   contains
     procedure,public::findPC=>findTriPC
@@ -74,7 +101,7 @@ module moduleGrid
   ! typeQuad
   !----------
   type,public::typeQuad
-    integer NodeInd(4)
+    integer NodeInd(QUAD_NODE_NUM)
     integer GeoEnti
   contains
     procedure,public::findPC=>findQuadPC
@@ -89,7 +116,7 @@ module moduleGrid
   ! typeTet
   !---------
   type,public::typeTet
-    integer NodeInd(4)
+    integer NodeInd(TET_NODE_NUM)
     integer GeoEnti
     integer Prt
   contains
@@ -107,7 +134,7 @@ module moduleGrid
   ! typeHex
   !---------
   type,public::typeHex
-    integer NodeInd(8)
+    integer NodeInd(HEX_NODE_NUM)
     integer GeoEnti
     integer Prt
   contains
@@ -131,12 +158,12 @@ module moduleGrid
     ! 3: 4-node quadrilateral
     integer ShapeInd
     integer NodeNum
-    integer NodeInd(15) ! 15 is the maximum possible number of nodes a facet can have
+    integer NodeInd(FACET_MAX_NODE_NUM)
     integer GeoEnti
-    integer NeibEle(2) ! a facet may have 2 neighbour elements
-    double precision PC(3)
+    integer NeibEle(FACET_NEIB_ELE_NUM) ! a facet may have 2 neighbour elements
+    double precision PC(DIMS)
     double precision Area
-    double precision Norm(3)
+    double precision Norm(DIMS)
   contains
     procedure,public::getNodeInd=>getFacetNodeInd
     procedure,public::findPC=>findFacetPC
@@ -159,15 +186,15 @@ module moduleGrid
     integer ShapeInd
     integer NodeNum
     integer SurfNum
-    integer NodeInd(27) ! 27 is the maximum possible number of nodes an element can have
+    integer NodeInd(ELE_MAX_NODE_NUM)
     integer GeoEnti
     integer Prt
-    integer Neib(6) ! 6 is the maximum possible number of neighbours
-    double precision PC(3)
+    integer Neib(ELE_MAX_SURF_NUM)
+    double precision PC(DIMS)
     double precision Vol
-    double precision SurfPC(6,3)
-    double precision SurfArea(6)
-    double precision SurfNorm(6,3)
+    double precision SurfPC(ELE_MAX_SURF_NUM,DIMS)
+    double precision SurfArea(ELE_MAX_SURF_NUM)
+    double precision SurfNorm(ELE_MAX_SURF_NUM,DIMS)
   contains
     procedure,public::getNodeInd=>getEleNodeInd
     procedure,public::findPC=>findElePC
@@ -189,7 +216,7 @@ contains
   !---------------------------------
   function findPointPos(this)
     class(typePoint),intent(in)::this
-    double precision findPointPos(3)
+    double precision findPointPos(DIMS)
     findPointPos(:)=Node(this%NodeInd)%Pos(:)
   end function
   
@@ -198,7 +225,7 @@ contains
   !------------------------------
   function findLinePC(this)
     class(typeLine),intent(in)::this
-    double precision findLinePC(3)
+    double precision findLinePC(DIMS)
     findLinePC(:)=(Node(this%NodeInd(1))%Pos(:)+Node(this%NodeInd(2))%Pos(:))/2d0
   end function
   
@@ -207,7 +234,7 @@ contains
   !------------------------------
   function findLineLength(this)
     class(typeLine),intent(in)::this
-    double precision findLineLength,vect(3)
+    double precision findLineLength,vect(DIMS)
     vect(:)=Node(this%NodeInd(2))%Pos(:)-Node(this%NodeInd(1))%Pos(:)
     findLineLength=norm2(vect)
   end function
@@ -218,7 +245,7 @@ contains
   ! Note: actually we are finding the average position of the vertices
   function findTriPC(this)
     class(typeTri),intent(in)::this
-    double precision findTriPC(3)
+    double precision findTriPC(DIMS)
     findTriPC(:)=(Node(this%NodeInd(1))%Pos(:)+Node(this%NodeInd(2))%Pos(:)&
     &            +Node(this%NodeInd(3))%Pos(:))/3d0
   end function
@@ -238,7 +265,7 @@ contains
   !-----------------------------------------
   function findTriNorm(this)
     class(typeTri),intent(in)::this
-    double precision findTriNorm(3)
+    double precision findTriNorm(DIMS)
     findTriNorm(:)=find3PNorm(Node(this%NodeInd(1))%Pos(:),Node(this%NodeInd(2))%Pos(:),&
     &                         Node(this%NodeInd(3))%Pos(:))
   end function
@@ -249,16 +276,16 @@ contains
   ! Note: one triangle may have 2 neighbour elements
   function getTriNeibEle(this)
     class(typeTri),intent(in)::this
-    integer getTriNeibEle(2),lPTet(4)
-    logical maskTri(3)
+    integer getTriNeibEle(FACET_NEIB_ELE_NUM),lPTet(TET_NODE_NUM)
+    logical maskTri(TRI_NODE_NUM)
     getTriNeibEle(:)=0
     k=0
     do i=1,nEle
       select case(Ele(i)%ShapeType)
-        case(4) ! the neigbour element can be a tetrahedron
+        case(TET_TYPE) ! the neigbour element can be a tetrahedron
           maskTri(:)=.false.
           lPTet(:)=Tet(Ele(i)%ShapeInd)%NodeInd(:)
-          do j=1,3
+          do j=1,TRI_NODE_NUM
             if(any(lPTet(:)==this%NodeInd(j)))then
               maskTri(j)=.true.
             end if
@@ -266,7 +293,7 @@ contains
           if(all(maskTri(:)))then
             k=k+1
             getTriNeibEle(k)=i
-            if(k==2)then
+            if(k==FACET_NEIB_ELE_NUM)then
               exit
             end if
           end if
@@ -281,7 +308,7 @@ contains
   ! Note: actually we are finding the average position of the vertices
   function findQuadPC(this)
     class(typeQuad),intent(in)::this
-    double precision findQuadPC(3)
+    double precision findQuadPC(DIMS)
     findQuadPC(:)=(Node(this%NodeInd(1))%Pos(:)+Node(this%NodeInd(2))%Pos(:)&
     &             +Node(this%NodeInd(3))%Pos(:)+Node(this%NodeInd(4))%Pos(:))/4d0
   end function
@@ -303,7 +330,7 @@ contains
   !----------------------------------------------
   function findQuadNorm(this)
     class(typeQuad),intent(in)::this
-    double precision findQuadNorm(3)
+    double precision findQuadNorm(DIMS)
     findQuadNorm(:)=find3PNorm(Node(this%NodeInd(1))%Pos(:),Node(this%NodeInd(2))%Pos(:),&
     &                          Node(this%NodeInd(3))%Pos(:))
   end function
@@ -314,16 +341,16 @@ contains
   ! Note: one quadirlateral may have 2 neighbour elements
   function getQuadNeibEle(this)
     class(typeQuad),intent(in)::this
-    integer getQuadNeibEle(2),lPHex(8)
-    logical maskQuad(4)
+    integer getQuadNeibEle(FACET_NEIB_ELE_NUM),lPHex(HEX_NODE_NUM)
+    logical maskQuad(QUAD_NODE_NUM)
     getQuadNeibEle(:)=0
     k=0
     do i=1,nEle
       select case(Ele(i)%ShapeType)
-        case(5) ! the neigbour element can be a hexahedron
+        case(HEX_TYPE) ! the neigbour element can be a hexahedron
           maskQuad(:)=.false.
           lPHex(:)=Hex(Ele(i)%ShapeInd)%NodeInd(:)
-          do j=1,4
+          do j=1,QUAD_NODE_NUM
             if(any(lPHex(:)==this%NodeInd(j)))then
               maskQuad(j)=.true.
             end if
@@ -331,7 +358,7 @@ contains
           if(all(maskQuad(:)))then
             k=k+1
             getQuadNeibEle(k)=i
-            if(k==2)then
+            if(k==FACET_NEIB_ELE_NUM)then
               exit
             end if
           end if
@@ -346,7 +373,7 @@ contains
   ! Note: actually we are finding the average position of the vertices
   function findTetPC(this)
     class(typeTet),intent(in)::this
-    double precision findTetPC(3)
+    double precision findTetPC(DIMS)
     findTetPC(:)=(Node(this%NodeInd(1))%Pos(:)+Node(this%NodeInd(2))%Pos(:)&
     &            +Node(this%NodeInd(3))%Pos(:)+Node(this%NodeInd(4))%Pos(:))/4d0
   end function
@@ -370,19 +397,19 @@ contains
   function getTetNeib(this,k)
     class(typeTet),intent(in)::this
     integer,intent(in)::k
-    integer getTetNeib,lPTet(4),lPTri(3)
-    logical maskTet(4)
+    integer getTetNeib,lPTet(TET_NODE_NUM),lPTri(TRI_NODE_NUM)
+    logical maskTet(TET_NODE_NUM)
     getTetNeib=0
-    if(k<1.or.k>4)then
+    if(k<1.or.k>TET_SURF_NUM)then
       write(*,'(a,i2,a)'),'ERROR: a tetrahedron can not have ',k,'th surface'
       stop
     end if
     do i=1,nEle
       select case(Ele(i)%ShapeType)
-        case(4) ! the neigbour element can be a tetrahedron
+        case(TET_TYPE) ! the neigbour element can be a tetrahedron
           maskTet(:)=.false.
           lPTet(:)=Tet(Ele(i)%ShapeInd)%NodeInd(:)
-          do j=1,4
+          do j=1,TET_NODE_NUM
             if(any(lPTet(:)==this%NodeInd(j)))then
               maskTet(j)=.true.
             end if
@@ -396,10 +423,10 @@ contains
     end do
     do i=1,nFacet
       select case(Facet(i)%ShapeType)
-        case(2) ! the neigbour facet can be a triangle
+        case(TRI_TYPE) ! the neigbour facet can be a triangle
           maskTet(:)=.false.
           lPTri(:)=Tri(Facet(i)%ShapeInd)%NodeInd(:)
-          do j=1,4
+          do j=1,TET_NODE_NUM
             if(any(lPTri(:)==this%NodeInd(j)))then
               maskTet(j)=.true.
             end if
@@ -423,8 +450,8 @@ contains
   function findTetSurfPC(this,k)
     class(typeTet),intent(in)::this
     integer,intent(in)::k
-    double precision findTetSurfPC(3)
-    if(k<1.or.k>4)then
+    double precision findTetSurfPC(DIMS)
+    if(k<1.or.k>TET_SURF_NUM)then
       write(*,'(a,i2,a)'),'ERROR: a tetrahedron can not have ',k,'th surface'
       stop
     end if
@@ -440,7 +467,7 @@ contains
     class(typeTet),intent(in)::this
     integer,intent(in)::k
     double precision findTetSurfArea
-    if(k<1.or.k>4)then
+    if(k<1.or.k>TET_SURF_NUM)then
       write(*,'(a,i2,a)'),'ERROR: a tetrahedron can not have ',k,'th surface'
       stop
     end if
@@ -455,8 +482,8 @@ contains
   function findTetSurfNorm(this,k)
     class(typeTet),intent(in)::this
     integer,intent(in)::k
-    double precision findTetSurfNorm(3)
-    if(k<1.or.k>4)then
+    double precision findTetSurfNorm(DIMS)
+    if(k<1.or.k>TET_SURF_NUM)then
       write(*,'(a,i2,a)'),'ERROR: a tetrahedron can not have ',k,'th surface'
       stop
     end if
@@ -471,7 +498,7 @@ contains
   ! Note: actually we are finding the average position of the vertices
   function findHexPC(this)
     class(typeHex),intent(in)::this
-    double precision findHexPC(3)
+    double precision findHexPC(DIMS)
     findHexPC(:)=(Node(this%NodeInd(1))%Pos(:)+Node(this%NodeInd(2))%Pos(:)&
     &            +Node(this%NodeInd(3))%Pos(:)+Node(this%NodeInd(4))%Pos(:)&
     &            +Node(this%NodeInd(5))%Pos(:)+Node(this%NodeInd(6))%Pos(:)&
@@ -507,19 +534,19 @@ contains
   function getHexNeib(this,k)
     class(typeHex),intent(in)::this
     integer,intent(in)::k
-    integer getHexNeib,lPHex(8),lPQuad(4)
-    logical maskHex(8)
+    integer getHexNeib,lPHex(HEX_NODE_NUM),lPQuad(QUAD_NODE_NUM)
+    logical maskHex(HEX_NODE_NUM)
     getHexNeib=0
-    if(k<1.or.k>6)then
+    if(k<1.or.k>HEX_SURF_NUM)then
       write(*,'(a,i2,a)'),'ERROR: a hexahedron can not have ',k,'th surface'
       stop
     end if
     do i=1,nEle
       select case(Ele(i)%ShapeType)
-        case(5) ! the neigbour element can be a hexahedron
+        case(HEX_TYPE) ! the neigbour element can be a hexahedron
           maskHex(:)=.false.
           lPHex(:)=Hex(Ele(i)%ShapeInd)%NodeInd(:)
-          do j=1,8
+          do j=1,HEX_NODE_NUM
             if(any(lPHex(:)==this%NodeInd(j)))then
               maskHex(j)=.true.
             end if
@@ -533,10 +560,10 @@ contains
     end do
     do i=1,nFacet
       select case(Facet(i)%ShapeType)
-        case(3) ! the neigbour facet can be a quadrilateral
+        case(QUAD_TYPE) ! the neigbour facet can be a quadrilateral
           maskHex(:)=.false.
           lPQuad(:)=Quad(Facet(i)%ShapeInd)%NodeInd(:)
-          do j=1,8
+          do j=1,HEX_NODE_NUM
             if(any(lPQuad(:)==this%NodeInd(j)))then
               maskHex(j)=.true.
             end if
@@ -561,7 +588,7 @@ contains
     class(typeHex),intent(in)::this
     integer,intent(in)::k
     double precision findHexSurfPC(3)
-    if(k<1.or.k>6)then
+    if(k<1.or.k>HEX_SURF_NUM)then
       write(*,'(a,i2,a)'),'ERROR: a hexahedron can not have ',k,'th surface'
       stop
     end if
@@ -578,7 +605,7 @@ contains
     class(typeHex),intent(in)::this
     integer,intent(in)::k
     double precision findHexSurfArea
-    if(k<1.or.k>6)then
+    if(k<1.or.k>HEX_SURF_NUM)then
       write(*,'(a,i2,a)'),'ERROR: a hexahedron can not have ',k,'th surface'
       stop
     end if
@@ -596,8 +623,8 @@ contains
   function findHexSurfNorm(this,k)
     class(typeHex),intent(in)::this
     integer,intent(in)::k
-    double precision findHexSurfNorm(3)
-    if(k<1.or.k>6)then
+    double precision findHexSurfNorm(DIMS)
+    if(k<1.or.k>HEX_SURF_NUM)then
       write(*,'(a,i2,a)'),'ERROR: a hexahedron can not have ',k,'th surface'
       stop
     end if
@@ -611,12 +638,12 @@ contains
   !-------------------------------------------
   function getFacetNodeInd(this)
     class(typeFacet),intent(in)::this
-    integer getFacetNodeInd(15) ! 15 is the maximum possible number of nodes an facet can have
+    integer getFacetNodeInd(FACET_MAX_NODE_NUM)
     getFacetNodeInd(:)=0
     select case(this%ShapeType)
-      case(2)
+      case(TRI_TYPE)
         getFacetNodeInd(1:this%NodeNum)=Tri(this%ShapeInd)%NodeInd(:)
-      case(3)
+      case(QUAD_TYPE)
         getFacetNodeInd(1:this%NodeNum)=Quad(this%ShapeInd)%NodeInd(:)
       case default
         write(*,'(a,i2)'),'ERROR: unknown facet shapeType: ',this%shapeType
@@ -630,11 +657,11 @@ contains
   ! Note: actually we are finding the average position of the vertices
   function findFacetPC(this)
     class(typeFacet),intent(in)::this
-    double precision findFacetPC(3)
+    double precision findFacetPC(DIMS)
     select case(this%ShapeType)
-      case(2)
+      case(TRI_TYPE)
         findFacetPC(:)=Tri(this%ShapeInd)%findPC()
-      case(3)
+      case(QUAD_TYPE)
         findFacetPC(:)=Quad(this%ShapeInd)%findPC()
       case default
         write(*,'(a,i2)'),'ERROR: unknown facet shapeType: ',this%shapeType
@@ -649,9 +676,9 @@ contains
     class(typeFacet),intent(in)::this
     double precision findFacetArea
     select case(this%ShapeType)
-      case(2)
+      case(TRI_TYPE)
         findFacetArea=Tri(this%ShapeInd)%findArea()
-      case(3)
+      case(QUAD_TYPE)
         findFacetArea=Quad(this%ShapeInd)%findArea()
       case default
         write(*,'(a,i2)'),'ERROR: unknown facet shapeType: ',this%shapeType
@@ -665,11 +692,11 @@ contains
   ! Note: actually we are finding the average position of the vertices
   function findFacetNorm(this)
     class(typeFacet),intent(in)::this
-    double precision findFacetNorm(3)
+    double precision findFacetNorm(DIMS)
     select case(this%ShapeType)
-      case(2)
+      case(TRI_TYPE)
         findFacetNorm(:)=Tri(this%ShapeInd)%findNorm()
-      case(3)
+      case(QUAD_TYPE)
         findFacetNorm(:)=Quad(this%ShapeInd)%findNorm()
       case default
         write(*,'(a,i2)'),'ERROR: unknown facet shapeType: ',this%shapeType
@@ -684,9 +711,9 @@ contains
     class(typeFacet),intent(in)::this
     integer getFacetGeoEnti
     select case(this%ShapeType)
-      case(2)
+      case(TRI_TYPE)
         getFacetGeoEnti=Tri(this%ShapeInd)%GeoEnti
-      case(3)
+      case(QUAD_TYPE)
         getFacetGeoEnti=Quad(this%ShapeInd)%GeoEnti
       case default
         write(*,'(a,i2)'),'ERROR: unknown facet shapeType: ',this%shapeType
@@ -700,11 +727,11 @@ contains
   ! Note: a facet may have 2 neighbour elements
   function getFacetNeibEle(this)
     class(typeFacet),intent(in)::this
-    integer getFacetNeibEle(2)
+    integer getFacetNeibEle(FACET_NEIB_ELE_NUM)
     select case(this%ShapeType)
-      case(2)
+      case(TRI_TYPE)
         getFacetNeibEle(:)=Tri(this%ShapeInd)%getNeibEle()
-      case(3)
+      case(QUAD_TYPE)
         getFacetNeibEle(:)=Quad(this%ShapeInd)%getNeibEle()
       case default
         write(*,'(a,i2)'),'ERROR: unknown facet shapeType: ',this%shapeType
@@ -717,12 +744,12 @@ contains
   !---------------------------------------------
   function getEleNodeInd(this)
     class(typeEle),intent(in)::this
-    integer getEleNodeInd(27) ! 27 is the maximum possible number of nodes an element can have
+    integer getEleNodeInd(ELE_MAX_NODE_NUM)
     getEleNodeInd(:)=0
     select case(this%ShapeType)
-      case(4)
+      case(TET_TYPE)
         getEleNodeInd(1:this%NodeNum)=Tet(this%ShapeInd)%NodeInd(:)
-      case(5)
+      case(HEX_TYPE)
         getEleNodeInd(1:this%NodeNum)=Hex(this%ShapeInd)%NodeInd(:)
       case default
         write(*,'(a,i2)'),'ERROR: unknown element shapeType: ',this%shapeType
@@ -736,11 +763,11 @@ contains
   ! Note: actually we are finding the average position of the vertices
   function findElePC(this)
     class(typeEle),intent(in)::this
-    double precision findElePC(3)
+    double precision findElePC(DIMS)
     select case(this%ShapeType)
-      case(4)
+      case(TET_TYPE)
         findElePC(:)=Tet(this%ShapeInd)%findPC()
-      case(5)
+      case(HEX_TYPE)
         findElePC(:)=Hex(this%ShapeInd)%findPC()
       case default
         write(*,'(a,i2)'),'ERROR: unknown element shapeType: ',this%shapeType
@@ -755,9 +782,9 @@ contains
     class(typeEle),intent(in)::this
     double precision findEleVol
     select case(this%ShapeType)
-      case(4)
+      case(TET_TYPE)
         findEleVol=Tet(this%ShapeInd)%findVol()
-      case(5)
+      case(HEX_TYPE)
         findEleVol=Hex(this%ShapeInd)%findVol()
       case default
         write(*,'(a,i2)'),'ERROR: unknown element shapeType: ',this%shapeType
@@ -772,9 +799,9 @@ contains
     class(typeEle),intent(in)::this
     integer getEleGeoEnti
     select case(this%ShapeType)
-      case(4)
+      case(TET_TYPE)
         getEleGeoEnti=Tet(this%ShapeInd)%GeoEnti
-      case(5)
+      case(HEX_TYPE)
         getEleGeoEnti=Hex(this%ShapeInd)%GeoEnti
       case default
         write(*,'(a,i2)'),'ERROR: unknown element shapeType: ',this%shapeType
@@ -789,9 +816,9 @@ contains
     class(typeEle),intent(in)::this
     integer getElePrt
     select case(this%ShapeType)
-      case(4)
+      case(TET_TYPE)
         getElePrt=Tet(this%ShapeInd)%Prt
-      case(5)
+      case(HEX_TYPE)
         getElePrt=Hex(this%ShapeInd)%Prt
       case default
         write(*,'(a,i2)'),'ERROR: unknown element shapeType: ',this%shapeType
@@ -808,9 +835,9 @@ contains
     integer getEleNeib
     getEleNeib=0
     select case(this%ShapeType)
-      case(4)
+      case(TET_TYPE)
         getEleNeib=Tet(this%ShapeInd)%getNeib(k)
-      case(5)
+      case(HEX_TYPE)
         getEleNeib=Hex(this%ShapeInd)%getNeib(k)
       case default
         write(*,'(a,i2)'),'ERROR: unknown element shapeType: ',this%shapeType
@@ -825,11 +852,11 @@ contains
   function findEleSurfPC(this,k)
     class(typeEle),intent(in)::this
     integer,intent(in)::k
-    double precision findEleSurfPC(3)
+    double precision findEleSurfPC(DIMS)
     select case(this%ShapeType)
-      case(4)
+      case(TET_TYPE)
         findEleSurfPC(:)=Tet(this%ShapeInd)%findSurfPC(k)
-      case(5)
+      case(HEX_TYPE)
         findEleSurfPC(:)=Hex(this%ShapeInd)%findSurfPC(k)
       case default
         write(*,'(a,i2)'),'ERROR: unknown element shapeType: ',this%shapeType
@@ -845,9 +872,9 @@ contains
     integer,intent(in)::k
     double precision findEleSurfArea
     select case(this%ShapeType)
-      case(4)
+      case(TET_TYPE)
         findEleSurfArea=Tet(this%ShapeInd)%findSurfArea(k)
-      case(5)
+      case(HEX_TYPE)
         findEleSurfArea=Hex(this%ShapeInd)%findSurfArea(k)
       case default
         write(*,'(a,i2)'),'ERROR: unknown element shapeType: ',this%shapeType
@@ -861,11 +888,11 @@ contains
   function findEleSurfNorm(this,k)
     class(typeEle),intent(in)::this
     integer,intent(in)::k
-    double precision findEleSurfNorm(3)
+    double precision findEleSurfNorm(DIMS)
     select case(this%ShapeType)
-      case(4)
+      case(TET_TYPE)
         findEleSurfNorm(:)=Tet(this%ShapeInd)%findSurfNorm(k)
-      case(5)
+      case(HEX_TYPE)
         findEleSurfNorm(:)=Hex(this%ShapeInd)%findSurfNorm(k)
       case default
         write(*,'(a,i2)'),'ERROR: unknown element shapeType: ',this%shapeType

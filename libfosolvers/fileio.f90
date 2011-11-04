@@ -73,22 +73,22 @@ subroutine readmsh(fname,gridfile)
           write(*,'(a)'),'WARNING: element data may be not in sequence'
         end if
         select case(k) ! type of element
-          case(15) ! point
-            np=1
-          case(1) ! line
-            np=2
-          case(2) ! tri
-            np=3
-          case(3) ! quad
-            np=4
-          case(4) ! tet
-            np=4
-          case(5) ! hex
-            np=8
+          case(POINT_TYPE) ! point
+            np=POINT_NODE_NUM
+          case(LINE_TYPE) ! line
+            np=LINE_NODE_NUM
+          case(TRI_TYPE) ! tri
+            np=TRI_NODE_NUM
+          case(QUAD_TYPE) ! quad
+            np=QUAD_NODE_NUM
+          case(TET_TYPE) ! tet
+            np=TET_NODE_NUM
+          case(HEX_TYPE) ! hex
+            np=HEX_NODE_NUM
         end select
         read(temp_string,*),temp_int_vect1(1:3+nt+np)
         select case(temp_int_vect1(2)) ! type of element
-          case(15) ! point
+          case(POINT_TYPE) ! point
             nPoint=nPoint+1
             Point(nPoint)%NodeInd=temp_int_vect1(3+nt+1)
             if(nt>=2)then
@@ -96,7 +96,7 @@ subroutine readmsh(fname,gridfile)
             else
               Point(nPoint)%GeoEnti=0
             end if
-          case(1) ! line
+          case(LINE_TYPE) ! line
             nLine=nLine+1
             Line(nLine)%NodeInd(:)=temp_int_vect1(3+nt+1:3+nt+np)
             if(nt>=2)then
@@ -104,7 +104,7 @@ subroutine readmsh(fname,gridfile)
             else
               Line(nLine)%GeoEnti=0
             end if
-          case(2) ! tri
+          case(TRI_TYPE) ! tri
             nTri=nTri+1
             Tri(nTri)%NodeInd(:)=temp_int_vect1(3+nt+1:3+nt+np)
             if(nt>=2)then
@@ -112,7 +112,7 @@ subroutine readmsh(fname,gridfile)
             else
               Tri(nTri)%GeoEnti=0
             end if
-          case(3) ! quad
+          case(QUAD_TYPE) ! quad
             nQuad=nQuad+1
             Quad(nQuad)%NodeInd(:)=temp_int_vect1(3+nt+1:3+nt+np)
             if(nt>=2)then
@@ -120,7 +120,7 @@ subroutine readmsh(fname,gridfile)
             else
               Quad(nQuad)%GeoEnti=0
             end if
-          case(4) ! tet
+          case(TET_TYPE) ! tet
             nTet=nTet+1
             Tet(nTet)%NodeInd(:)=temp_int_vect1(3+nt+1:3+nt+np)
             if(nt>=2)then
@@ -133,7 +133,7 @@ subroutine readmsh(fname,gridfile)
             else
               Tet(nTet)%GeoEnti=0
             end if
-          case(5) ! hex
+          case(HEX_TYPE) ! hex
             nHex=nHex+1
             Hex(nHex)%NodeInd(:)=temp_int_vect1(3+nt+1:3+nt+np)
             if(nt>=2)then
@@ -206,28 +206,28 @@ subroutine readmsh(fname,gridfile)
       nFacet=nTri+nQuad
       allocate(Facet(nFacet))
       forall(i=1:nTri)
-        Facet(i)%ShapeType=2
+        Facet(i)%ShapeType=TRI_TYPE
         Facet(i)%ShapeInd=i
-        Facet(i)%NodeNum=3
+        Facet(i)%NodeNum=TRI_NODE_NUM
       end forall
       forall(i=1:nQuad)
-        Facet(nTri+i)%ShapeType=3
+        Facet(nTri+i)%ShapeType=QUAD_TYPE
         Facet(nTri+i)%ShapeInd=i
-        Facet(nTri+i)%NodeNum=4
+        Facet(nTri+i)%NodeNum=QUAD_NODE_NUM
       end forall
       nEle=nTet+nHex
       allocate(Ele(nEle))
       forall(i=1:nTet)
-        Ele(i)%ShapeType=4
+        Ele(i)%ShapeType=TET_TYPE
         Ele(i)%ShapeInd=i
-        Ele(i)%NodeNum=4
-        Ele(i)%SurfNum=4
+        Ele(i)%NodeNum=TET_NODE_NUM
+        Ele(i)%SurfNum=TET_SURF_NUM
       end forall
       forall(i=1:nHex)
-        Ele(nTet+i)%ShapeType=5
+        Ele(nTet+i)%ShapeType=HEX_TYPE
         Ele(nTet+i)%ShapeInd=i
-        Ele(nTet+i)%NodeNum=8
-        Ele(nTet+i)%SurfNum=6
+        Ele(nTet+i)%NodeNum=HEX_NODE_NUM
+        Ele(nTet+i)%SurfNum=HEX_SURF_NUM
       end forall
       cycle
     end if
@@ -329,7 +329,7 @@ subroutine writerst(fname,ifile,hold)
     write(ifile,'(a)'),trim(tempstring)
     do i=1,nNode
       write(tempstring,*),&
-      &    i,Node(i)%Pos(1),Node(i)%Pos(2),Node(i)%Pos(3)
+      &    i,Node(i)%Pos(:)
       tempstring=adjustl(tempstring)
       write(ifile,'(a)'),trim(tempstring)
     end do
@@ -348,13 +348,13 @@ subroutine writerst(fname,ifile,hold)
     end do
     do i=1,nPoint
       write(tempstring,*),&
-      &    nEle+i,15,2,0,Point(i)%GeoEnti,Point(i)%NodeInd
+      &    nEle+i,POINT_TYPE,2,0,Point(i)%GeoEnti,Point(i)%NodeInd
       tempstring=adjustl(tempstring)
       write(ifile,'(a)'),trim(tempstring)
     end do
     do i=1,nLine
       write(tempstring,*),&
-      &    nEle+nPoint+i,1,2,0,Line(i)%GeoEnti,Line(i)%NodeInd(:)
+      &    nEle+nPoint+i,LINE_TYPE,2,0,Line(i)%GeoEnti,Line(i)%NodeInd(:)
       tempstring=adjustl(tempstring)
       write(ifile,'(a)'),trim(tempstring)
     end do
