@@ -9,7 +9,7 @@ module moduleMPIvar
   integer,save::errMPI,pidMPI,sizeMPI
   integer,allocatable,save::statMPI(:)
   integer,save::typeNodeMPI,typePointMPI,typeLineMPI,typeTriMPI,typeQuadMPI,typeTetMPI,typeHexMPI,&
-  &             typeFacetMPI,typeEleMPI
+  &             typeFacetMPI,typeEleMPI,typeCondMPI
   integer,allocatable,save::mapNode(:),mapPoint(:),mapLine(:),mapTri(:),mapQuad(:),mapTet(:),&
   &                         mapHex(:),mapFacet(:),mapEle(:)
   type(typePtrScalArray),allocatable,save::transNodeScal(:),transEleScal(:)
@@ -24,6 +24,7 @@ end module
 !****************************
 subroutine initMPI()
   use moduleGrid
+  use moduleCond
   use moduleMPIvar
   
   integer nblkMPI
@@ -40,6 +41,7 @@ subroutine initMPI()
   type(typeHex)::sampHex
   type(typeFacet)::sampFacet
   type(typeEle)::sampEle
+  type(typeCond)::sampCondition
   
   allocate(statMPI(MPI_status_size))
   call MPI_init(errMPI)
@@ -230,6 +232,30 @@ subroutine initMPI()
   call MPI_type_create_struct(nblkMPI,llenMPI,ldispMPI,ltypeMPI,typeEleMPI,errMPI)
   call MPI_type_commit(typeEleMPI,errMPI)
   deallocate(llenMPI,ldispMPI,ltypeMPI)
+  ! condition struct
+  nblkMPI=9
+  allocate(llenMPI(nblkMPI))
+  allocate(ldispMPI(nblkMPI))
+  allocate(ltypeMPI(nblkMPI))
+  llenMPI(:)=1
+  call MPI_get_address(sampCondition%GeoEnti,ldispMPI(1),errMPI)
+  do i=1,2
+    call MPI_get_address(sampCondition%what(i:i),ldispMPI(i+1),errMPI)
+  end do
+  call MPI_get_address(sampCondition%val,ldispMPI(4),errMPI)
+  call MPI_get_address(sampCondition%val2,ldispMPI(5),errMPI)
+  call MPI_get_address(sampCondition%val3,ldispMPI(6),errMPI)
+  call MPI_get_address(sampCondition%val4,ldispMPI(7),errMPI)
+  call MPI_get_address(sampCondition%tab,ldispMPI(8),errMPI)
+  call MPI_get_address(sampCondition%tab2,ldispMPI(9),errMPI)
+  baseMPI=ldispMPI(1)
+  ldispMPI(:)=ldispMPI(:)-baseMPI
+  ltypeMPI([1,8,9])=MPI_integer
+  ltypeMPI(2:3)=MPI_character
+  ltypeMPI(4:7)=MPI_double_precision
+  call MPI_type_create_struct(nblkMPI,llenMPI,ldispMPI,ltypeMPI,typeCondMPI,errMPI)
+  call MPI_type_commit(typeCondMPI,errMPI)
+  deallocate(llenMPI,ldispMPI,ltypeMPI)
 end subroutine
 
 !**************************
@@ -247,6 +273,58 @@ subroutine finalMPI()
   call MPI_type_free(typeFacetMPI,errMPI)
   call MPI_type_free(typeEleMPI,errMPI)
   call MPI_finalize(errMPI)
+end subroutine
+
+!***************************************************
+! broadcast static information (Conditions,dataTab)
+!***************************************************
+subroutine bcastStatic()
+  use moduleCond
+  use moduleMPIvar
+  
+  integer n
+  
+  ! broadcast Conditions
+  n=size(Conditions)
+  call MPI_bcast(n,1,MPI_integer,0,MPI_comm_world,errMPI)
+  call MPI_bcast(Conditions,n,typeCondMPI,0,MPI_comm_world,errMPI)
+  
+  ! broadcast dataTab
+  n=size(dataTab)
+  call MPI_bcast(n,1,MPI_integer,0,MPI_comm_world,errMPI)
+  do i=1,n
+    call MPI_bcast(dataTab(i)%length,1,MPI_integer,0,MPI_comm_world,errMPI)
+    call MPI_bcast(dataTab(i)%x,dataTab(i)%length,MPI_double_precision,0,MPI_comm_world,errMPI)
+    call MPI_bcast(dataTab(i)%y,dataTab(i)%length,MPI_double_precision,0,MPI_comm_world,errMPI)
+  end do
+  
+end subroutine
+
+!*************************************************
+! receive static information (Conditions,dataTab)
+!*************************************************
+subroutine recvStatic()
+  use moduleCond
+  use moduleMPIvar
+  
+  integer n
+  
+  ! receive Conditions
+  call MPI_bcast(n,1,MPI_integer,0,MPI_comm_world,errMPI)
+  allocate(Conditions(n))
+  call MPI_bcast(Conditions,n,typeCondMPI,0,MPI_comm_world,errMPI)
+  
+  ! receive dataTab
+  call MPI_bcast(n,1,MPI_integer,0,MPI_comm_world,errMPI)
+  allocate(dataTab(n))
+  do i=1,n
+    call MPI_bcast(dataTab(i)%length,1,MPI_integer,0,MPI_comm_world,errMPI)
+    allocate(dataTab(i)%x(dataTab(i)%length))
+    allocate(dataTab(i)%y(dataTab(i)%length))
+    call MPI_bcast(dataTab(i)%x,dataTab(i)%length,MPI_double_precision,0,MPI_comm_world,errMPI)
+    call MPI_bcast(dataTab(i)%y,dataTab(i)%length,MPI_double_precision,0,MPI_comm_world,errMPI)
+  end do
+  
 end subroutine
 
 !****************************************************

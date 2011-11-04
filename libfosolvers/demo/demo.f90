@@ -1,5 +1,6 @@
 program libtest
   use moduleGrid
+  use moduleCond
   use moduleWrite
   use moduleMPIvar
   
@@ -22,6 +23,22 @@ program libtest
     vv(:,:)=0d0
     transEleVect(1)%ptr=>vv
     
+    ! define conditions
+    allocate(Conditions(1))
+    Conditions(1)%GeoEnti=20
+    Conditions(1)%what(1:2)='Dr'
+    Conditions(1)%val=32.3
+    Conditions(1)%tab2=1900
+    allocate(dataTab(1))
+    dataTab(1)%length=5
+    allocate(dataTab(1)%x(5))
+    allocate(dataTab(1)%y(5))
+    dataTab(1)%x(:)=[1,2,3,4,5]
+    dataTab(1)%y(:)=[7,8,10,11,12]
+    
+    ! broadcast static information
+    call bcastStatic()
+    
     ! assign task
     call distriPrt(1,1)
     
@@ -34,6 +51,11 @@ program libtest
     rstEleVect(1)%ptr=>vv
     call writerst('rst.msh',11,.false.)
   else
+    ! receive static informaion
+    call recvStatic()
+    write(*,*),Conditions(1)%GeoEnti,Conditions(1)%what,Conditions(1)%val,Conditions(1)%tab2
+    write(*,*),dataTab(1)%lookup(2.85d0)
+    
     ! receive task
     call recvPrt()
     allocate(v(nEle))
