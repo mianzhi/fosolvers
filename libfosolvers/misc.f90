@@ -345,6 +345,44 @@ function find4PVol(P1,P2,P3,P4)
   find4PVol=abs(find4PVol)
 end function
 
+!****************
+! get file names
+!****************
+subroutine getfNames(fnameGrid,fnameCond,fnameData,fnameRst)
+  character(100),intent(out)::fnameGrid,fnameCond,fnameData,fnameRst
+  character(100) arg
+  ! default file names
+  write(fnameGrid,'(a)'),'grid.msh'
+  write(fnameCond,'(a)'),'conditions.cod'
+  write(fnameData,'(a)'),'data.tab'
+  write(fnameRst,'(a)'),'rst.msh'
+  ! get file names from arguments
+  i=1
+  do while(.true.)
+    call get_command_argument(i,arg)
+    if(len_trim(arg)==0)then
+      exit
+    end if
+    select case(arg(1:6))
+      case('--grid')
+        i=i+1
+        call get_command_argument(i,fnameGrid)
+      case('--cond')
+        i=i+1
+        call get_command_argument(i,fnameCond)
+      case('--data')
+        i=i+1
+        call get_command_argument(i,fnameData)
+      case('--rst')
+        i=i+1
+        call get_command_argument(i,fnameRst)
+      case default
+        write(*,'(a,a)'),'Warning: unknown argument: ',trim(arg)
+    end select
+    i=i+1
+  end do
+end subroutine
+
 !***************
 ! show progress
 !***************

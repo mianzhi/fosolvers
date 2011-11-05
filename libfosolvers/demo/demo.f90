@@ -1,17 +1,23 @@
-program libtest
+!----------------------------------------------------------------------------- best with 100 columns
+
+program demo
   use moduleGrid
   use moduleCond
   use moduleWrite
   use moduleMPIvar
   
+  character(100) fnameGrid,fnameCond,fnameData,fnameRst
   double precision,target,allocatable::v(:),vv(:,:)
   double precision g(3)
+  integer,parameter::FGRID_ID=10
+  integer,parameter::FRST_ID=11
   
   call initMPI()
   call genPrtDataTab(0,0,0,1,1,0)
   
   if(pidMPI==0)then
-    call readmsh('./grid.msh',10)
+    call getfNames(fnameGrid,fnameCond,fnameData,fnameRst)
+    call readmsh(fnameGrid,FGRID_ID)
     call updateFacetPara()
     call updateElePara()
     
@@ -49,7 +55,7 @@ program libtest
     call initWriteEnv(0,0,0,1,1,0)
     rstEleScal(1)%ptr=>v
     rstEleVect(1)%ptr=>vv
-    call writerst('rst.msh',11,.false.)
+    call writerst(fnameRst,FRST_ID,.false.)
   else
     ! receive static informaion
     call recvStatic()
