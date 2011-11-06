@@ -1,3 +1,3 @@
 #!/bin/sh
 
-mpirun -np 2 demo --grid grid.msh --rst rst1.msh
+mpirun -np 2 demo --grid grid.msh --rst rst.msh

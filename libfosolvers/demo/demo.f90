@@ -49,7 +49,7 @@ program demo
     call distriPrt(1,1)
     
     ! gather data
-    call gathData(i)
+    call gathData(i,j)
     
     ! write result
     call initWriteEnv(0,0,0,1,1,0)
