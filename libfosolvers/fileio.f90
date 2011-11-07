@@ -257,6 +257,85 @@ subroutine readmsh(fname,gridfile)
   close(gridfile)
 end subroutine
 
+!****************
+! read data file
+!****************
+subroutine readdata(fname,datafile)
+  use moduleCond
+  
+  integer datafile,readerr
+  character(100) temp_string,fname
+  
+  open(datafile,file=fname,status='old')
+  readerr=0
+  
+  l=0
+  
+  do while(readerr==0)
+    ! skip the irrelevant lines
+    do while(readerr==0)
+      read(datafile,'(a100)',iostat=readerr),temp_string
+      if(temp_string(1:1)=='$')then
+        exit
+      end if
+    end do
+    ! check if finished
+    if(readerr/=0)then
+      exit
+    end if
+    
+    ! Note: the data is counted but not recorded during the 1st reading
+    ! read 1-dimensional table
+    if(temp_string(1:6)=='$Tab1D')then
+      do while(readerr==0)
+        read(datafile,'(a100)',iostat=readerr),temp_string
+        if(temp_string(1:4)=='$End')then
+          exit
+        end if
+        l=l+1
+      end do
+    end if
+  end do
+  
+  rewind(datafile)
+  readerr=0
+  allocate(dataTab1d(l/3))
+  
+  do while(readerr==0)
+    ! skip the irrelevant lines
+    do while(readerr==0)
+      read(datafile,'(a100)',iostat=readerr),temp_string
+      if(temp_string(1:1)=='$')then
+        exit
+      end if
+    end do
+    ! check if finished
+    if(readerr/=0)then
+      exit
+    end if
+    
+    i=1
+    ! read 1-dimensional table
+    if(temp_string(1:6)=='$Tab1D')then
+      do while(readerr==0)
+        read(datafile,'(a100)',iostat=readerr),temp_string
+        if(temp_string(1:4)=='$End')then
+          exit
+        end if
+        read(temp_string,*),dataTab1d(i)%length
+        allocate(dataTab1d(i)%x(dataTab1d(i)%length))
+        allocate(dataTab1d(i)%y(dataTab1d(i)%length))
+        read(datafile,*,iostat=readerr),(dataTab1d(i)%x(k),k=1,dataTab1d(i)%length)
+        read(datafile,*,iostat=readerr),(dataTab1d(i)%y(k),k=1,dataTab1d(i)%length)
+        i=i+1
+        
+      end do
+    end if
+  end do
+  
+  close(datafile)
+end subroutine
+
 !*********************************
 ! result output related variables
 !*********************************

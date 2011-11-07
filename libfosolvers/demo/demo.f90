@@ -10,7 +10,8 @@ program demo
   double precision,target,allocatable::v(:),vv(:,:)
   double precision g(3)
   integer,parameter::FGRID_ID=10
-  integer,parameter::FRST_ID=11
+  integer,parameter::FDATA_ID=12
+  integer,parameter::FRST_ID=15
   
   call initMPI()
   call genPrtDataTab(0,0,0,1,1,0)
@@ -35,12 +36,9 @@ program demo
     Conditions(1)%what(1:2)='Dr'
     Conditions(1)%val=32.3
     Conditions(1)%tab2=1900
-    allocate(dataTab(1))
-    dataTab(1)%length=5
-    allocate(dataTab(1)%x(5))
-    allocate(dataTab(1)%y(5))
-    dataTab(1)%x(:)=[1,2,3,4,5]
-    dataTab(1)%y(:)=[7,8,10,11,12]
+    
+    ! read data tables
+    call readdata(fnameData,FDATA_ID)
     
     ! broadcast static information
     call bcastStatic()
@@ -60,7 +58,7 @@ program demo
     ! receive static informaion
     call recvStatic()
     write(*,*),Conditions(1)%GeoEnti,Conditions(1)%what,Conditions(1)%val,Conditions(1)%tab2
-    write(*,*),dataTab(1)%lookup(2.85d0)
+    write(*,*),dataTab1d(1)%lookup(2.85d0)
     
     ! receive task
     call recvPrt()

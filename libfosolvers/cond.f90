@@ -37,7 +37,7 @@ module moduleCond
   contains
     procedure::lookup=>lookupTab1d
   end type
-  type(typeTab1d),allocatable,save::dataTab(:)
+  type(typeTab1d),allocatable,save::dataTab1d(:)
   
 contains
   

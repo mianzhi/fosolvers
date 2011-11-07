@@ -290,12 +290,12 @@ subroutine bcastStatic()
   call MPI_bcast(Conditions,n,typeCondMPI,0,MPI_comm_world,errMPI)
   
   ! broadcast dataTab
-  n=size(dataTab)
+  n=size(dataTab1d)
   call MPI_bcast(n,1,MPI_integer,0,MPI_comm_world,errMPI)
   do i=1,n
-    call MPI_bcast(dataTab(i)%length,1,MPI_integer,0,MPI_comm_world,errMPI)
-    call MPI_bcast(dataTab(i)%x,dataTab(i)%length,MPI_double_precision,0,MPI_comm_world,errMPI)
-    call MPI_bcast(dataTab(i)%y,dataTab(i)%length,MPI_double_precision,0,MPI_comm_world,errMPI)
+    call MPI_bcast(dataTab1d(i)%length,1,MPI_integer,0,MPI_comm_world,errMPI)
+    call MPI_bcast(dataTab1d(i)%x,dataTab1d(i)%length,MPI_double_precision,0,MPI_comm_world,errMPI)
+    call MPI_bcast(dataTab1d(i)%y,dataTab1d(i)%length,MPI_double_precision,0,MPI_comm_world,errMPI)
   end do
   
 end subroutine
@@ -316,13 +316,13 @@ subroutine recvStatic()
   
   ! receive dataTab
   call MPI_bcast(n,1,MPI_integer,0,MPI_comm_world,errMPI)
-  allocate(dataTab(n))
+  allocate(dataTab1d(n))
   do i=1,n
-    call MPI_bcast(dataTab(i)%length,1,MPI_integer,0,MPI_comm_world,errMPI)
-    allocate(dataTab(i)%x(dataTab(i)%length))
-    allocate(dataTab(i)%y(dataTab(i)%length))
-    call MPI_bcast(dataTab(i)%x,dataTab(i)%length,MPI_double_precision,0,MPI_comm_world,errMPI)
-    call MPI_bcast(dataTab(i)%y,dataTab(i)%length,MPI_double_precision,0,MPI_comm_world,errMPI)
+    call MPI_bcast(dataTab1d(i)%length,1,MPI_integer,0,MPI_comm_world,errMPI)
+    allocate(dataTab1d(i)%x(dataTab1d(i)%length))
+    allocate(dataTab1d(i)%y(dataTab1d(i)%length))
+    call MPI_bcast(dataTab1d(i)%x,dataTab1d(i)%length,MPI_double_precision,0,MPI_comm_world,errMPI)
+    call MPI_bcast(dataTab1d(i)%y,dataTab1d(i)%length,MPI_double_precision,0,MPI_comm_world,errMPI)
   end do
   
 end subroutine
