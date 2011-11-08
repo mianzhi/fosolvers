@@ -285,12 +285,21 @@ subroutine bcastStatic()
   integer n
   
   ! broadcast Conditions
-  n=size(Conditions)
-  call MPI_bcast(n,1,MPI_integer,0,MPI_comm_world,errMPI)
-  call MPI_bcast(Conditions,n,typeCondMPI,0,MPI_comm_world,errMPI)
+  if(allocated(Conditions))then
+    n=size(Conditions)
+    call MPI_bcast(n,1,MPI_integer,0,MPI_comm_world,errMPI)
+    call MPI_bcast(Conditions,n,typeCondMPI,0,MPI_comm_world,errMPI)
+  else
+    n=0
+    call MPI_bcast(n,1,MPI_integer,0,MPI_comm_world,errMPI)
+  end if
   
   ! broadcast dataTab
-  n=size(dataTab1d)
+  if(allocated(dataTab1d))then
+    n=size(dataTab1d)
+  else
+    n=0
+  end if
   call MPI_bcast(n,1,MPI_integer,0,MPI_comm_world,errMPI)
   do i=1,n
     call MPI_bcast(dataTab1d(i)%length,1,MPI_integer,0,MPI_comm_world,errMPI)
@@ -311,12 +320,16 @@ subroutine recvStatic()
   
   ! receive Conditions
   call MPI_bcast(n,1,MPI_integer,0,MPI_comm_world,errMPI)
-  allocate(Conditions(n))
-  call MPI_bcast(Conditions,n,typeCondMPI,0,MPI_comm_world,errMPI)
+  if(n>0)then
+    allocate(Conditions(n))
+    call MPI_bcast(Conditions,n,typeCondMPI,0,MPI_comm_world,errMPI)
+  end if
   
   ! receive dataTab
   call MPI_bcast(n,1,MPI_integer,0,MPI_comm_world,errMPI)
-  allocate(dataTab1d(n))
+  if(n>0)then
+    allocate(dataTab1d(n))
+  end if
   do i=1,n
     call MPI_bcast(dataTab1d(i)%length,1,MPI_integer,0,MPI_comm_world,errMPI)
     allocate(dataTab1d(i)%x(dataTab1d(i)%length))
