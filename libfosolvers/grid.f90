@@ -207,7 +207,7 @@ module moduleGrid
     procedure,public::findSurfNorm=>findEleSurfNorm
   end type
   type(typeEle),public,allocatable,save::Ele(:)
-  integer,public,save::nEle
+  integer,public,save::nEle,nPrt
   
 contains
   

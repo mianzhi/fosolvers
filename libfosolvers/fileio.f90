@@ -128,7 +128,7 @@ subroutine readmsh(fname,gridfile)
               if(nt>=4)then
                 Tet(nTet)%Prt=maxval(temp_int_vect1(7:6+temp_int_vect1(6)))
               else
-                Tet(nTet)%Prt=0
+                Tet(nTet)%Prt=1
               end if
             else
               Tet(nTet)%GeoEnti=0
@@ -141,7 +141,7 @@ subroutine readmsh(fname,gridfile)
               if(nt>=4)then
                 Hex(nHex)%Prt=maxval(temp_int_vect1(7:6+temp_int_vect1(6)))
               else
-                Hex(nHex)%Prt=0
+                Hex(nHex)%Prt=1
               end if
             else
               Hex(nHex)%GeoEnti=0
@@ -244,15 +244,23 @@ subroutine readmsh(fname,gridfile)
   SurfTabHex(4,:)=[1,2,6,5]
   SurfTabHex(5,:)=[5,6,7,8]
   SurfTabHex(6,:)=[1,4,3,2]
+  nPrt=1
+  if(nTet>0)then
+    nPrt=max(nPrt,maxval(Tet(:)%Prt))
+  end if
+  if(nHex>0)then
+    nPrt=max(nPrt,maxval(Hex(:)%Prt))
+  end if
   
   write(*,'(a)'),'grid summary:'
-  write(*,'(a,i8)'),'  number of nodes: ',nNode
-  write(*,'(a,i8)'),'  number of points:',nPoint
-  write(*,'(a,i8)'),'  number of lines: ',nLine
-  write(*,'(a,i8)'),'  number of tri.:  ',nTri
-  write(*,'(a,i8)'),'  number of quad.: ',nQuad
-  write(*,'(a,i8)'),'  number of tet.:  ',nTet
-  write(*,'(a,i8,/)'),'  number of hex.:  ',nHex
+  write(*,'(a,i8)'),'  number of nodes:        ',nNode
+  write(*,'(a,i8)'),'  number of points:       ',nPoint
+  write(*,'(a,i8)'),'  number of lines:        ',nLine
+  write(*,'(a,i8)'),'  number of tri.:         ',nTri
+  write(*,'(a,i8)'),'  number of quad.:        ',nQuad
+  write(*,'(a,i8)'),'  number of tet.:         ',nTet
+  write(*,'(a,i8)'),'  number of hex.:         ',nHex
+  write(*,'(a,i8,/)'),'  number of partitions.:  ',nPrt
   
   close(gridfile)
 end subroutine
