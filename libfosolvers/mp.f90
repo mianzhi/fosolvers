@@ -41,7 +41,6 @@ subroutine initMPI()
   type(typeHex)::sampHex
   type(typeFacet)::sampFacet
   type(typeEle)::sampEle
-  type(typeCond)::sampCondition
   
   allocate(statMPI(MPI_status_size))
   call MPI_init(errMPI)
@@ -232,30 +231,6 @@ subroutine initMPI()
   call MPI_type_create_struct(nblkMPI,llenMPI,ldispMPI,ltypeMPI,typeEleMPI,errMPI)
   call MPI_type_commit(typeEleMPI,errMPI)
   deallocate(llenMPI,ldispMPI,ltypeMPI)
-  ! condition struct
-  nblkMPI=9
-  allocate(llenMPI(nblkMPI))
-  allocate(ldispMPI(nblkMPI))
-  allocate(ltypeMPI(nblkMPI))
-  llenMPI(:)=1
-  call MPI_get_address(sampCondition%GeoEnti,ldispMPI(1),errMPI)
-  do i=1,2
-    call MPI_get_address(sampCondition%what(i:i),ldispMPI(i+1),errMPI)
-  end do
-  call MPI_get_address(sampCondition%val,ldispMPI(4),errMPI)
-  call MPI_get_address(sampCondition%val2,ldispMPI(5),errMPI)
-  call MPI_get_address(sampCondition%val3,ldispMPI(6),errMPI)
-  call MPI_get_address(sampCondition%val4,ldispMPI(7),errMPI)
-  call MPI_get_address(sampCondition%tab,ldispMPI(8),errMPI)
-  call MPI_get_address(sampCondition%tab2,ldispMPI(9),errMPI)
-  baseMPI=ldispMPI(1)
-  ldispMPI(:)=ldispMPI(:)-baseMPI
-  ltypeMPI([1,8,9])=MPI_integer
-  ltypeMPI(2:3)=MPI_character
-  ltypeMPI(4:7)=MPI_double_precision
-  call MPI_type_create_struct(nblkMPI,llenMPI,ldispMPI,ltypeMPI,typeCondMPI,errMPI)
-  call MPI_type_commit(typeCondMPI,errMPI)
-  deallocate(llenMPI,ldispMPI,ltypeMPI)
 end subroutine
 
 !**************************
@@ -284,16 +259,6 @@ subroutine bcastStatic()
   
   integer n
   
-  ! broadcast Conditions
-  if(allocated(Conditions))then
-    n=size(Conditions)
-    call MPI_bcast(n,1,MPI_integer,0,MPI_comm_world,errMPI)
-    call MPI_bcast(Conditions,n,typeCondMPI,0,MPI_comm_world,errMPI)
-  else
-    n=0
-    call MPI_bcast(n,1,MPI_integer,0,MPI_comm_world,errMPI)
-  end if
-  
   ! broadcast dataTab
   if(allocated(dataTab1d))then
     n=size(dataTab1d)
@@ -317,13 +282,6 @@ subroutine recvStatic()
   use moduleMPIvar
   
   integer n
-  
-  ! receive Conditions
-  call MPI_bcast(n,1,MPI_integer,0,MPI_comm_world,errMPI)
-  if(n>0)then
-    allocate(Conditions(n))
-    call MPI_bcast(Conditions,n,typeCondMPI,0,MPI_comm_world,errMPI)
-  end if
   
   ! receive dataTab
   call MPI_bcast(n,1,MPI_integer,0,MPI_comm_world,errMPI)
@@ -372,6 +330,7 @@ end subroutine
 !   call distriPrt(k,p)
 subroutine distriPrt(k,p)
   use moduleGrid
+  use moduleCond
   use moduleMPIvar
   
   integer,intent(in)::k,p
@@ -562,7 +521,13 @@ subroutine distriPrt(k,p)
     end select
     buffFacet(i)%NodeInd(1:buffFacet(i)%NodeNum)=&
     &           gmapNode(buffFacet(i)%NodeInd(1:buffFacet(i)%NodeNum))
-    buffFacet(i)%NeibEle(:)=gmapEle(buffFacet(i)%NeibEle(:))
+    do j=1,FACET_NEIB_ELE_NUM
+      if(buffFacet(i)%NeibEle(j)>0)then
+        buffFacet(i)%NeibEle(j)=gmapEle(buffFacet(i)%NeibEle(j))
+      else
+        buffFacet(i)%NeibEle(j)=0
+      end if
+    end do
   end do
   ! correct elements
   do i=1,nkEle
@@ -575,7 +540,13 @@ subroutine distriPrt(k,p)
         write(*,'(a,i2)'),'ERROR: unknown element ShapeType: ',buffEle(i)%ShapeType
     end select
     buffEle(i)%NodeInd(1:buffEle(i)%NodeNum)=gmapNode(buffEle(i)%NodeInd(1:buffEle(i)%NodeNum))
-    buffEle(i)%Neib(1:buffEle(i)%SurfNum)=gmapEle(buffEle(i)%Neib(1:buffEle(i)%SurfNum))
+    do j=1,buffEle(i)%SurfNum
+      if(buffEle(i)%Neib(j)>0)then
+        buffEle(i)%Neib(j)=gmapEle(buffEle(i)%Neib(j))
+      else
+        buffEle(i)%Neib(j)=-gmapFacet(-buffEle(i)%Neib(j))
+      end if
+    end do
   end do
   
   ! send nodes
@@ -614,6 +585,24 @@ subroutine distriPrt(k,p)
   call MPI_send(nkEle,1,MPI_integer,p,p,MPI_comm_world,errMPI)
   call MPI_send(mapEle,nkEle,MPI_integer,p,p,MPI_comm_world,errMPI)
   call MPI_send(buffEle,nkEle,typeEleMPI,p,p,MPI_comm_world,errMPI)
+  
+  ! send conditions at nodes
+  if(allocated(CondNode))then
+    call MPI_send(.true.,1,MPI_logical,p,p,MPI_comm_world,errMPI)
+    do i=1,nkNode
+      if(allocated(CondNode(i)%Cond))then
+        n=size(CondNode(mapNode(i))%Cond) ! number of conditions at i_th node of partition k
+        call MPI_send(n,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+        do j=1,n
+          call MPI_send(CondNode(mapNode(i))%Cond(j)%what,2,MPI_character,p,p,MPI_comm_world,errMPI)
+        end do
+      else
+        call MPI_send(0,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+      end if
+    end do
+  else
+    call MPI_send(.false.,1,MPI_logical,p,p,MPI_comm_world,errMPI)
+  end if
   
   ! send scaler data on nodes
   allocate(buffDataScal(nkNode))
@@ -685,7 +674,10 @@ end subroutine
 !   deallocate(transEleScal(1)%ptr)
 subroutine recvPrt()
   use moduleGrid
+  use moduleCond
   use moduleMPIvar
+  
+  logical flag
   
   ! receive nodes
   call MPI_recv(nNode,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
@@ -741,6 +733,22 @@ subroutine recvPrt()
   allocate(mapEle(nEle))
   call MPI_recv(mapEle,nEle,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
   call MPI_recv(Ele,nEle,typeEleMPI,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  
+  ! receive conditions at nodes
+  call MPI_recv(flag,1,MPI_logical,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  if(flag)then
+    allocate(CondNode(nNode))
+    do i=1,nNode
+      call MPI_recv(n,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+      if(n>0)then
+        allocate(CondNode(i)%Cond(n))
+        do j=1,n
+          call MPI_recv(CondNode(i)%Cond(j)%what,2,MPI_character,&
+          &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+        end do
+      end if
+    end do
+  end if
   
   ! receive scaler data at nodes
   do i=1,ntransNodeScal

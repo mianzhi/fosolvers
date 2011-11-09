@@ -31,11 +31,13 @@ program demo
     transEleVect(1)%ptr=>vv
     
     ! define conditions
-    allocate(Conditions(1))
-    Conditions(1)%GeoEnti=20
-    Conditions(1)%what(1:2)='Dr'
-    Conditions(1)%val=32.3
-    Conditions(1)%tab2=1900
+    allocate(CondNode(nNode))
+    do i=1,nNode
+      allocate(CondNode(i)%Cond(1))
+      allocate(CondNode(i)%Cond(1)%Val(1))
+      CondNode(i)%Cond(1)%what='Dr'
+      CondNode(i)%Cond(1)%Val(1)=32.3
+    end do
     
     ! read data tables
     call readdata(fnameData,FDATA_ID)
@@ -54,11 +56,11 @@ program demo
     rstEleScal(1)%ptr=>v
     rstEleVect(1)%ptr=>vv
     call writerst(fnameRst,FRST_ID,.false.)
+    
   else
+  
     ! receive static informaion
     call recvStatic()
-    write(*,*),Conditions(1)%GeoEnti,Conditions(1)%what,Conditions(1)%val,Conditions(1)%tab2
-    write(*,*),dataTab1d(1)%lookup(2.85d0)
     
     ! receive task
     call recvPrt()
@@ -70,6 +72,7 @@ program demo
     deallocate(transEleVect(1)%ptr)
     
     ! do work
+    write(*,*),CondNode(5)%Cond(1)%what!,CondNode(5)%Cond(1)%Val(1)
     do i=1,nEle
       v(i)=sin(t+10d0*Ele(i)%PC(1))+cos(5d0*Ele(i)%PC(2))-sin(5d0*Ele(i)%PC(3))
     end do

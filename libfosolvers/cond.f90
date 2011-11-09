@@ -9,23 +9,17 @@ module moduleCond
   ! simulation condition information
   !----------------------------------
   type::typeCond
-    ! geometric entity where the condition is applied
-    integer GeoEnti
-    ! type of condition can be stored in what
+    ! type of condition can be stored in 'what'
     !   e.g. what='Dr' ~ Dirichlet
     character(2) what
-    ! four double float numbers is available for parameters of the condition
-    !   e.g. val=1d0 ~ Dirichlet value is 1d0
-    double precision val
-    double precision val2
-    double precision val3
-    double precision val4
-    ! index of 1-dimensional tables associated with the condition
-    !   e.g. tab=10 ~ source value which is a function of t is stored in table 10
-    integer tab
-    integer tab2
+    double precision,allocatable::Val(:)
+    integer,allocatable::Tab(:)
   end type
-  type(typeCond),allocatable,save::Conditions(:)
+  
+  type::typeCondList
+    type(typeCond),allocatable::Cond(:)
+  end type
+  type(typeCondList),allocatable,save::CondNode(:),CondFacet(:),CondEle(:)
   
   !---------------------
   ! 1-dimensional table
