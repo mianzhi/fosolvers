@@ -4,21 +4,24 @@
 ! simulation condition related data
 !***********************************
 module moduleCond
+  private
+  
+  integer,parameter,public::COND_NAME_LEN=2
   
   !----------------------------------
   ! simulation condition information
   !----------------------------------
-  type::typeCond
+  type,public::typeCond
     ! type of condition can be stored in 'what'
     !   e.g. what='Dr' ~ Dirichlet
-    character(2) what
-    double precision,allocatable::Val(:)
-    integer,allocatable::Tab(:)
+    character(COND_NAME_LEN),public::what
+    double precision,public,allocatable::Val(:)
+    integer,public,allocatable::Tab(:)
   end type
   
-  type::typeCondList
-    type(typeCond),allocatable::Cond(:)
+  type,public::typeCondList
+    type(typeCond),public,allocatable::Cond(:)
   end type
-  type(typeCondList),allocatable,save::CondNode(:),CondFacet(:),CondEle(:)
+  type(typeCondList),public,allocatable,save::CondNode(:),CondFacet(:),CondEle(:)
   
 end module

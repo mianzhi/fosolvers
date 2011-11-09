@@ -6,6 +6,9 @@
 module moduleMPIvar
   use mpi
   use moduleMiscDataStruct
+  
+  integer,parameter::ROOT_PID=0
+  
   integer,save::errMPI,pidMPI,sizeMPI
   integer,allocatable,save::statMPI(:)
   integer,save::typeNodeMPI,typePointMPI,typeLineMPI,typeTriMPI,typeQuadMPI,typeTetMPI,typeHexMPI,&
@@ -49,12 +52,12 @@ subroutine initMPI()
   
   ! Note: all the types are split into scalers to ensure correctness
   ! node struct
-  nblkMPI=3
+  nblkMPI=DIMS
   allocate(llenMPI(nblkMPI))
   allocate(ldispMPI(nblkMPI))
   allocate(ltypeMPI(nblkMPI))
   llenMPI(:)=1
-  do i=1,3
+  do i=1,DIMS
     call MPI_get_address(sampNode%Pos(i),ldispMPI(i),errMPI)
   end do
   baseMPI=ldispMPI(1)
@@ -64,7 +67,7 @@ subroutine initMPI()
   call MPI_type_commit(typeNodeMPI,errMPI)
   deallocate(llenMPI,ldispMPI,ltypeMPI)
   ! point struct
-  nblkMPI=2
+  nblkMPI=POINT_NODE_NUM+1
   allocate(llenMPI(nblkMPI))
   allocate(ldispMPI(nblkMPI))
   allocate(ltypeMPI(nblkMPI))
@@ -78,12 +81,12 @@ subroutine initMPI()
   call MPI_type_commit(typePointMPI,errMPI)
   deallocate(llenMPI,ldispMPI,ltypeMPI)
   ! line struct
-  nblkMPI=3
+  nblkMPI=LINE_NODE_NUM+1
   allocate(llenMPI(nblkMPI))
   allocate(ldispMPI(nblkMPI))
   allocate(ltypeMPI(nblkMPI))
   llenMPI(:)=1
-  do i=1,2
+  do i=1,LINE_NODE_NUM
     call MPI_get_address(sampLine%NodeInd(i),ldispMPI(i),errMPI)
   end do
   call MPI_get_address(sampLine%GeoEnti,ldispMPI(3),errMPI)
@@ -94,12 +97,12 @@ subroutine initMPI()
   call MPI_type_commit(typeLineMPI,errMPI)
   deallocate(llenMPI,ldispMPI,ltypeMPI)
   ! triangle struct
-  nblkMPI=4
+  nblkMPI=TRI_NODE_NUM+1
   allocate(llenMPI(nblkMPI))
   allocate(ldispMPI(nblkMPI))
   allocate(ltypeMPI(nblkMPI))
   llenMPI(:)=1
-  do i=1,3
+  do i=1,TRI_NODE_NUM
     call MPI_get_address(sampTri%NodeInd(i),ldispMPI(i),errMPI)
   end do
   call MPI_get_address(sampTri%GeoEnti,ldispMPI(4),errMPI)
@@ -110,12 +113,12 @@ subroutine initMPI()
   call MPI_type_commit(typeTriMPI,errMPI)
   deallocate(llenMPI,ldispMPI,ltypeMPI)
   ! quadrilateral struct
-  nblkMPI=5
+  nblkMPI=QUAD_NODE_NUM+1
   allocate(llenMPI(nblkMPI))
   allocate(ldispMPI(nblkMPI))
   allocate(ltypeMPI(nblkMPI))
   llenMPI(:)=1
-  do i=1,4
+  do i=1,QUAD_NODE_NUM
     call MPI_get_address(sampQuad%NodeInd(i),ldispMPI(i),errMPI)
   end do
   call MPI_get_address(sampQuad%GeoEnti,ldispMPI(5),errMPI)
@@ -126,12 +129,12 @@ subroutine initMPI()
   call MPI_type_commit(typeQuadMPI,errMPI)
   deallocate(llenMPI,ldispMPI,ltypeMPI)
   ! tetrahedron struct
-  nblkMPI=6
+  nblkMPI=TET_NODE_NUM+2
   allocate(llenMPI(nblkMPI))
   allocate(ldispMPI(nblkMPI))
   allocate(ltypeMPI(nblkMPI))
   llenMPI(:)=1
-  do i=1,4
+  do i=1,TET_NODE_NUM
     call MPI_get_address(sampTet%NodeInd(i),ldispMPI(i),errMPI)
   end do
   call MPI_get_address(sampTet%GeoEnti,ldispMPI(5),errMPI)
@@ -143,12 +146,12 @@ subroutine initMPI()
   call MPI_type_commit(typeTetMPI,errMPI)
   deallocate(llenMPI,ldispMPI,ltypeMPI)
   ! hexahedron struct
-  nblkMPI=10
+  nblkMPI=HEX_NODE_NUM+2
   allocate(llenMPI(nblkMPI))
   allocate(ldispMPI(nblkMPI))
   allocate(ltypeMPI(nblkMPI))
   llenMPI(:)=1
-  do i=1,8
+  do i=1,HEX_NODE_NUM
     call MPI_get_address(sampHex%NodeInd(i),ldispMPI(i),errMPI)
   end do
   call MPI_get_address(sampHex%GeoEnti,ldispMPI(9),errMPI)
@@ -160,7 +163,7 @@ subroutine initMPI()
   call MPI_type_commit(typeHexMPI,errMPI)
   deallocate(llenMPI,ldispMPI,ltypeMPI)
   ! facet struct
-  nblkMPI=28
+  nblkMPI=FACET_MAX_NODE_NUM+FACET_NEIB_ELE_NUM+DIMS+DIMS+5
   allocate(llenMPI(nblkMPI))
   allocate(ldispMPI(nblkMPI))
   allocate(ltypeMPI(nblkMPI))
@@ -168,18 +171,18 @@ subroutine initMPI()
   call MPI_get_address(sampFacet%ShapeType,ldispMPI(1),errMPI)
   call MPI_get_address(sampFacet%ShapeInd,ldispMPI(2),errMPI)
   call MPI_get_address(sampFacet%NodeNum,ldispMPI(3),errMPI)
-  do i=1,15
+  do i=1,FACET_MAX_NODE_NUM
     call MPI_get_address(sampFacet%NodeInd(i),ldispMPI(i+3),errMPI)
   end do
   call MPI_get_address(sampFacet%GeoEnti,ldispMPI(19),errMPI)
-  do i=1,2
+  do i=1,FACET_NEIB_ELE_NUM
     call MPI_get_address(sampFacet%NeibEle(i),ldispMPI(i+19),errMPI)
   end do
-  do i=1,3
+  do i=1,DIMS
     call MPI_get_address(sampFacet%PC(i),ldispMPI(i+21),errMPI)
   end do
   call MPI_get_address(sampFacet%Area,ldispMPI(25),errMPI)
-  do i=1,3
+  do i=1,DIMS
     call MPI_get_address(sampFacet%Norm(i),ldispMPI(i+25),errMPI)
   end do
   baseMPI=ldispMPI(1)
@@ -199,28 +202,28 @@ subroutine initMPI()
   call MPI_get_address(sampEle%ShapeInd,ldispMPI(2),errMPI)
   call MPI_get_address(sampEle%NodeNum,ldispMPI(3),errMPI)
   call MPI_get_address(sampEle%SurfNum,ldispMPI(4),errMPI)
-  do i=1,27
+  do i=1,ELE_MAX_NODE_NUM
     call MPI_get_address(sampEle%NodeInd(i),ldispMPI(i+4),errMPI)
   end do
   call MPI_get_address(sampEle%GeoEnti,ldispMPI(32),errMPI)
   call MPI_get_address(sampEle%Prt,ldispMPI(33),errMPI)
-  do i=1,6
+  do i=1,ELE_MAX_SURF_NUM
     call MPI_get_address(sampEle%Neib(i),ldispMPI(i+33),errMPI)
   end do
-  do i=1,3
+  do i=1,DIMS
     call MPI_get_address(sampEle%PC(i),ldispMPI(i+39),errMPI)
   end do
   call MPI_get_address(sampEle%Vol,ldispMPI(43),errMPI)
-  do i=1,6
-    do j=1,3
+  do i=1,ELE_MAX_SURF_NUM
+    do j=1,DIMS
       call MPI_get_address(sampEle%SurfPC(i,j),ldispMPI((i-1)*3+j+43),errMPI)
     end do
   end do
-  do i=1,6
+  do i=1,ELE_MAX_SURF_NUM
     call MPI_get_address(sampEle%SurfArea(i),ldispMPI(i+61),errMPI)
   end do
-  do i=1,6
-    do j=1,3
+  do i=1,ELE_MAX_SURF_NUM
+    do j=1,DIMS
       call MPI_get_address(sampEle%SurfNorm(i,j),ldispMPI((i-1)*3+j+67),errMPI)
     end do
   end do
@@ -250,9 +253,9 @@ subroutine finalMPI()
   call MPI_finalize(errMPI)
 end subroutine
 
-!***************************************************
-! broadcast static information (Conditions,dataTab)
-!***************************************************
+!********************************************
+! broadcast static information (data tables)
+!********************************************
 subroutine bcastStatic()
   use moduleCond
   use moduleMPIvar
@@ -265,11 +268,13 @@ subroutine bcastStatic()
   else
     n=0
   end if
-  call MPI_bcast(n,1,MPI_integer,0,MPI_comm_world,errMPI)
+  call MPI_bcast(n,1,MPI_integer,ROOT_PID,MPI_comm_world,errMPI)
   do i=1,n
-    call MPI_bcast(dataTab1d(i)%length,1,MPI_integer,0,MPI_comm_world,errMPI)
-    call MPI_bcast(dataTab1d(i)%x,dataTab1d(i)%length,MPI_double_precision,0,MPI_comm_world,errMPI)
-    call MPI_bcast(dataTab1d(i)%y,dataTab1d(i)%length,MPI_double_precision,0,MPI_comm_world,errMPI)
+    call MPI_bcast(dataTab1d(i)%length,1,MPI_integer,ROOT_PID,MPI_comm_world,errMPI)
+    call MPI_bcast(dataTab1d(i)%x,dataTab1d(i)%length,MPI_double_precision,&
+    &              ROOT_PID,MPI_comm_world,errMPI)
+    call MPI_bcast(dataTab1d(i)%y,dataTab1d(i)%length,MPI_double_precision,&
+    &              ROOT_PID,MPI_comm_world,errMPI)
   end do
   
 end subroutine
@@ -284,16 +289,18 @@ subroutine recvStatic()
   integer n
   
   ! receive dataTab
-  call MPI_bcast(n,1,MPI_integer,0,MPI_comm_world,errMPI)
+  call MPI_bcast(n,1,MPI_integer,ROOT_PID,MPI_comm_world,errMPI)
   if(n>0)then
     allocate(dataTab1d(n))
   end if
   do i=1,n
-    call MPI_bcast(dataTab1d(i)%length,1,MPI_integer,0,MPI_comm_world,errMPI)
+    call MPI_bcast(dataTab1d(i)%length,1,MPI_integer,ROOT_PID,MPI_comm_world,errMPI)
     allocate(dataTab1d(i)%x(dataTab1d(i)%length))
     allocate(dataTab1d(i)%y(dataTab1d(i)%length))
-    call MPI_bcast(dataTab1d(i)%x,dataTab1d(i)%length,MPI_double_precision,0,MPI_comm_world,errMPI)
-    call MPI_bcast(dataTab1d(i)%y,dataTab1d(i)%length,MPI_double_precision,0,MPI_comm_world,errMPI)
+    call MPI_bcast(dataTab1d(i)%x,dataTab1d(i)%length,MPI_double_precision,&
+    &              ROOT_PID,MPI_comm_world,errMPI)
+    call MPI_bcast(dataTab1d(i)%y,dataTab1d(i)%length,MPI_double_precision,&
+    &              ROOT_PID,MPI_comm_world,errMPI)
   end do
   
 end subroutine
@@ -377,12 +384,12 @@ subroutine distriPrt(k,p)
   end do
   buffFacet(:)=Facet(mapFacet)
   ! copy tetrahedrons
-  nkTet=count(buffEle(:)%ShapeType==4)
+  nkTet=count(buffEle(:)%ShapeType==TET_TYPE)
   allocate(buffTet(nkTet))
   allocate(mapTet(nkTet))
   j=1
   do i=1,nkEle
-    if(buffEle(i)%ShapeType==4)then
+    if(buffEle(i)%ShapeType==TET_TYPE)then
       mapTet(j)=buffEle(i)%ShapeInd
       gmapTet(buffEle(i)%ShapeInd)=j
       j=j+1
@@ -390,12 +397,12 @@ subroutine distriPrt(k,p)
   end do
   buffTet(:)=Tet(mapTet)
   ! copy hexahedrons
-  nkHex=count(buffEle(:)%ShapeType==5)
+  nkHex=count(buffEle(:)%ShapeType==HEX_TYPE)
   allocate(buffHex(nkHex))
   allocate(mapHex(nkHex))
   j=1
   do i=1,nkEle
-    if(buffEle(i)%ShapeType==5)then
+    if(buffEle(i)%ShapeType==HEX_TYPE)then
       mapHex(j)=buffEle(i)%ShapeInd
       gmapHex(buffEle(i)%ShapeInd)=j
       j=j+1
@@ -403,12 +410,12 @@ subroutine distriPrt(k,p)
   end do
   buffHex(:)=Hex(mapHex)
   ! copy triangles
-  nkTri=count(buffFacet(:)%ShapeType==2)
+  nkTri=count(buffFacet(:)%ShapeType==TRI_TYPE)
   allocate(buffTri(nkTri))
   allocate(mapTri(nkTri))
   j=1
   do i=1,nkFacet
-    if(buffFacet(i)%ShapeType==2)then
+    if(buffFacet(i)%ShapeType==TRI_TYPE)then
       mapTri(j)=buffFacet(i)%ShapeInd
       gmapTri(buffFacet(i)%ShapeInd)=j
       j=j+1
@@ -416,12 +423,12 @@ subroutine distriPrt(k,p)
   end do
   buffTri(:)=Tri(mapTri)
   ! copy quadrilaterals
-  nkQuad=count(buffFacet(:)%ShapeType==3)
+  nkQuad=count(buffFacet(:)%ShapeType==QUAD_TYPE)
   allocate(buffQuad(nkQuad))
   allocate(mapQuad(nkQuad))
   j=1
   do i=1,nkFacet
-    if(buffFacet(i)%ShapeType==3)then
+    if(buffFacet(i)%ShapeType==QUAD_TYPE)then
       mapQuad(j)=buffFacet(i)%ShapeInd
       gmapQuad(buffFacet(i)%ShapeInd)=j
       j=j+1
@@ -512,9 +519,9 @@ subroutine distriPrt(k,p)
   ! correct facets
   do i=1,nkFacet
     select case(buffFacet(i)%ShapeType)
-      case(2)
+      case(TRI_TYPE)
         buffFacet(i)%ShapeInd=gmapTri(buffFacet(i)%ShapeInd)
-      case(3)
+      case(QUAD_TYPE)
         buffFacet(i)%ShapeInd=gmapQuad(buffFacet(i)%ShapeInd)
       case default
         write(*,'(a,i2)'),'ERROR: unknown facet ShapeType: ',buffFacet(i)%ShapeType
@@ -532,9 +539,9 @@ subroutine distriPrt(k,p)
   ! correct elements
   do i=1,nkEle
     select case(buffEle(i)%ShapeType)
-      case(4)
+      case(TET_TYPE)
         buffEle(i)%ShapeInd=gmapTet(buffEle(i)%ShapeInd)
-      case(5)
+      case(HEX_TYPE)
         buffEle(i)%ShapeInd=gmapHex(buffEle(i)%ShapeInd)
       case default
         write(*,'(a,i2)'),'ERROR: unknown element ShapeType: ',buffEle(i)%ShapeType
@@ -594,7 +601,8 @@ subroutine distriPrt(k,p)
         n=size(CondNode(mapNode(i))%Cond) ! number of conditions at i_th node of partition k
         call MPI_send(n,1,MPI_integer,p,p,MPI_comm_world,errMPI)
         do j=1,n
-          call MPI_send(CondNode(mapNode(i))%Cond(j)%what,2,MPI_character,p,p,MPI_comm_world,errMPI)
+          call MPI_send(CondNode(mapNode(i))%Cond(j)%what,COND_NAME_LEN,MPI_character,&
+          &             p,p,MPI_comm_world,errMPI)
           if(allocated(CondNode(mapNode(i))%Cond(j)%Val))then
             m=size(CondNode(mapNode(i))%Cond(j)%Val) ! number of data cells
             call MPI_send(m,1,MPI_integer,p,p,MPI_comm_world,errMPI)
@@ -626,7 +634,7 @@ subroutine distriPrt(k,p)
         n=size(CondFacet(mapFacet(i))%Cond) ! number of conditions at i_th facet of partition k
         call MPI_send(n,1,MPI_integer,p,p,MPI_comm_world,errMPI)
         do j=1,n
-          call MPI_send(CondFacet(mapFacet(i))%Cond(j)%what,2,MPI_character,&
+          call MPI_send(CondFacet(mapFacet(i))%Cond(j)%what,COND_NAEM_LEN,MPI_character,&
           &             p,p,MPI_comm_world,errMPI)
           if(allocated(CondFacet(mapFacet(i))%Cond(j)%Val))then
             m=size(CondFacet(mapFacet(i))%Cond(j)%Val) ! number of data cells
@@ -660,7 +668,8 @@ subroutine distriPrt(k,p)
         n=size(CondEle(mapEle(i))%Cond) ! number of conditions at i_th element of partition k
         call MPI_send(n,1,MPI_integer,p,p,MPI_comm_world,errMPI)
         do j=1,n
-          call MPI_send(CondEle(mapEle(i))%Cond(j)%what,2,MPI_character,p,p,MPI_comm_world,errMPI)
+          call MPI_send(CondEle(mapEle(i))%Cond(j)%what,COND_NAME_LEN,MPI_character,&
+          &             p,p,MPI_comm_world,errMPI)
           if(allocated(CondEle(mapEle(i))%Cond(j)%Val))then
             m=size(CondEle(mapEle(i))%Cond(j)%Val) ! number of data cells
             call MPI_send(m,1,MPI_integer,p,p,MPI_comm_world,errMPI)
@@ -693,20 +702,20 @@ subroutine distriPrt(k,p)
   end do
   deallocate(buffDataScal)
   ! send vector data on nodes
-  allocate(buffDataVect(nkNode,3))
+  allocate(buffDataVect(nkNode,DIMS))
   do i=1,ntransNodeVect
     buffDataVect(:,:)=transNodeVect(i)%ptr(mapNode,:)
-    do j=1,3
+    do j=1,DIMS
       call MPI_send(buffDataVect(:,j),nkNode,MPI_double_precision,p,p,MPI_comm_world,errMPI)
     end do
   end do
   deallocate(buffDataVect)
   ! send tensor data on nodes
-  allocate(buffDataTens(nkNode,3,3))
+  allocate(buffDataTens(nkNode,DIMS,DIMS))
   do i=1,ntransNodeTens
     buffDataTens(:,:,:)=transNodeTens(i)%ptr(mapNode,:,:)
-    do j=1,3
-      do l=1,3
+    do j=1,DIMS
+      do l=1,DIMS
         call MPI_send(buffDataTens(:,j,l),nkNode,MPI_double_precision,p,p,MPI_comm_world,errMPI)
       end do
     end do
@@ -720,20 +729,20 @@ subroutine distriPrt(k,p)
   end do
   deallocate(buffDataScal)
   ! send vector data in elements
-  allocate(buffDataVect(nkEle,3))
+  allocate(buffDataVect(nkEle,DIMS))
   do i=1,ntransEleVect
     buffDataVect(:,:)=transEleVect(i)%ptr(mapEle,:)
-    do j=1,3
+    do j=1,DIMS
       call MPI_send(buffDataVect(:,j),nkEle,MPI_double_precision,p,p,MPI_comm_world,errMPI)
     end do
   end do
   deallocate(buffDataVect)
   ! send tensor data in elements
-  allocate(buffDataTens(nkEle,3,3))
+  allocate(buffDataTens(nkEle,DIMS,DIMS))
   do i=1,ntransEleTens
     buffDataTens(:,:,:)=transEleTens(i)%ptr(mapEle,:,:)
-    do j=1,3
-      do l=1,3
+    do j=1,DIMS
+      do l=1,DIMS
         call MPI_send(buffDataTens(:,j,l),nkEle,MPI_double_precision,p,p,MPI_comm_world,errMPI)
       end do
     end do
@@ -761,136 +770,136 @@ subroutine recvPrt()
   logical flag
   
   ! receive nodes
-  call MPI_recv(nNode,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(nNode,1,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   allocate(Node(nNode))
   allocate(mapNode(nNode))
-  call MPI_recv(mapNode,nNode,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
-  call MPI_recv(Node,nNode,typeNodeMPI,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(mapNode,nNode,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(Node,nNode,typeNodeMPI,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   ! receive points
-  call MPI_recv(nPoint,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(nPoint,1,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   allocate(Point(nPoint))
   allocate(mapPoint(nPoint))
-  call MPI_recv(mapPoint,nPoint,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
-  call MPI_recv(Point,nPoint,typePointMPI,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(mapPoint,nPoint,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(Point,nPoint,typePointMPI,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   ! receive lines
-  call MPI_recv(nLine,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(nLine,1,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   allocate(Line(nLine))
   allocate(mapLine(nLine))
-  call MPI_recv(mapLine,nLine,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
-  call MPI_recv(Line,nLine,typeLineMPI,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(mapLine,nLine,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(Line,nLine,typeLineMPI,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   ! receive triangles
-  call MPI_recv(nTri,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(nTri,1,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   allocate(Tri(nTri))
   allocate(mapTri(nTri))
-  call MPI_recv(mapTri,nTri,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
-  call MPI_recv(Tri,nTri,typeTriMPI,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(mapTri,nTri,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(Tri,nTri,typeTriMPI,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   ! receive quadrilaterals
-  call MPI_recv(nQuad,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(nQuad,1,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   allocate(Quad(nQuad))
   allocate(mapQuad(nQuad))
-  call MPI_recv(mapQuad,nQuad,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
-  call MPI_recv(Quad,nQuad,typeQuadMPI,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(mapQuad,nQuad,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(Quad,nQuad,typeQuadMPI,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   ! receive tetrahedrons
-  call MPI_recv(nTet,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(nTet,1,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   allocate(Tet(nTet))
   allocate(mapTet(nTet))
-  call MPI_recv(mapTet,nTet,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
-  call MPI_recv(Tet,nTet,typeTetMPI,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(mapTet,nTet,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(Tet,nTet,typeTetMPI,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   ! receive hexahedrons
-  call MPI_recv(nHex,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(nHex,1,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   allocate(Hex(nHex))
   allocate(mapHex(nHex))
-  call MPI_recv(mapHex,nHex,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
-  call MPI_recv(Hex,nHex,typeHexMPI,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(mapHex,nHex,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(Hex,nHex,typeHexMPI,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   ! receive facets
-  call MPI_recv(nFacet,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(nFacet,1,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   allocate(Facet(nFacet))
   allocate(mapFacet(nFacet))
-  call MPI_recv(mapFacet,nFacet,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
-  call MPI_recv(Facet,nFacet,typeFacetMPI,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(mapFacet,nFacet,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(Facet,nFacet,typeFacetMPI,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   ! receive elements
-  call MPI_recv(nEle,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(nEle,1,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   allocate(Ele(nEle))
   allocate(mapEle(nEle))
-  call MPI_recv(mapEle,nEle,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
-  call MPI_recv(Ele,nEle,typeEleMPI,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(mapEle,nEle,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(Ele,nEle,typeEleMPI,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   
   ! receive conditions at nodes
-  call MPI_recv(flag,1,MPI_logical,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(flag,1,MPI_logical,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   if(flag)then
     allocate(CondNode(nNode))
     do i=1,nNode
-      call MPI_recv(n,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+      call MPI_recv(n,1,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
       if(n>0)then
         allocate(CondNode(i)%Cond(n))
         do j=1,n
-          call MPI_recv(CondNode(i)%Cond(j)%what,2,MPI_character,&
-          &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
-          call MPI_recv(m,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+          call MPI_recv(CondNode(i)%Cond(j)%what,COND_NAME_LEN,MPI_character,&
+          &             ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
+          call MPI_recv(m,1,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
           if(m>0)then
             allocate(CondNode(i)%Cond(j)%Val(m))
             call MPI_recv(CondNode(i)%Cond(j)%Val,m,MPI_double_precision,&
-            &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+            &             ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
           end if
-          call MPI_recv(m,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+          call MPI_recv(m,1,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
           if(m>0)then
             allocate(CondNode(i)%Cond(j)%Tab(m))
             call MPI_recv(CondNode(i)%Cond(j)%Tab,m,MPI_integer,&
-            &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+            &             ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
           end if
         end do
       end if
     end do
   end if
   ! receive conditions on facets
-  call MPI_recv(flag,1,MPI_logical,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(flag,1,MPI_logical,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   if(flag)then
     allocate(CondFacet(nFacet))
     do i=1,nFacet
-      call MPI_recv(n,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+      call MPI_recv(n,1,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
       if(n>0)then
         allocate(CondFacet(i)%Cond(n))
         do j=1,n
-          call MPI_recv(CondFacet(i)%Cond(j)%what,2,MPI_character,&
-          &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
-          call MPI_recv(m,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+          call MPI_recv(CondFacet(i)%Cond(j)%what,COND_NAME_LEN,MPI_character,&
+          &             ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
+          call MPI_recv(m,1,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
           if(m>0)then
             allocate(CondFacet(i)%Cond(j)%Val(m))
             call MPI_recv(CondFacet(i)%Cond(j)%Val,m,MPI_double_precision,&
-            &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+            &             ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
           end if
-          call MPI_recv(m,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+          call MPI_recv(m,1,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
           if(m>0)then
             allocate(CondFacet(i)%Cond(j)%Tab(m))
             call MPI_recv(CondFacet(i)%Cond(j)%Tab,m,MPI_integer,&
-            &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+            &             ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
           end if
         end do
       end if
     end do
   end if
   ! receive conditions in elements
-  call MPI_recv(flag,1,MPI_logical,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  call MPI_recv(flag,1,MPI_logical,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   if(flag)then
     allocate(CondEle(nEle))
     do i=1,nEle
-      call MPI_recv(n,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+      call MPI_recv(n,1,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
       if(n>0)then
         allocate(CondEle(i)%Cond(n))
         do j=1,n
-          call MPI_recv(CondEle(i)%Cond(j)%what,2,MPI_character,&
-          &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
-          call MPI_recv(m,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+          call MPI_recv(CondEle(i)%Cond(j)%what,COND_NAME_LEN,MPI_character,&
+          &             ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
+          call MPI_recv(m,1,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
           if(m>0)then
             allocate(CondEle(i)%Cond(j)%Val(m))
             call MPI_recv(CondEle(i)%Cond(j)%Val,m,MPI_double_precision,&
-            &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+            &             ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
           end if
-          call MPI_recv(m,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+          call MPI_recv(m,1,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
           if(m>0)then
             allocate(CondEle(i)%Cond(j)%Tab(m))
             call MPI_recv(CondEle(i)%Cond(j)%Tab,m,MPI_integer,&
-            &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+            &             ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
           end if
         end do
       end if
@@ -901,23 +910,23 @@ subroutine recvPrt()
   do i=1,ntransNodeScal
     allocate(transNodeScal(i)%ptr(nNode))
     call MPI_recv(transNodeScal(i)%ptr,nNode,MPI_double_precision,&
-    &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+    &             ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   end do
   ! receive vector data at nodes
   do i=1,ntransNodeVect
-    allocate(transNodeVect(i)%ptr(nNode,3))
-    do j=1,3
+    allocate(transNodeVect(i)%ptr(nNode,DIMS))
+    do j=1,DIMS
       call MPI_recv(transNodeVect(i)%ptr(:,j),nNode,MPI_double_precision,&
-      &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+      &             ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
     end do
   end do
   ! receive tensor data at nodes
   do i=1,ntransNodeTens
-    allocate(transNodeTens(i)%ptr(nNode,3,3))
-    do j=1,3
-      do k=1,3
+    allocate(transNodeTens(i)%ptr(nNode,DIMS,DIMS))
+    do j=1,DIMS
+      do k=1,DIMS
         call MPI_recv(transNodeTens(i)%ptr(:,j,k),nNode,MPI_double_precision,&
-        &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+        &             ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
       end do
     end do
   end do
@@ -925,23 +934,23 @@ subroutine recvPrt()
   do i=1,ntransEleScal
     allocate(transEleScal(i)%ptr(nEle))
     call MPI_recv(transEleScal(i)%ptr,nEle,MPI_double_precision,&
-    &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+    &             ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
   end do
   ! receive vector data in elements
   do i=1,ntransEleVect
-    allocate(transEleVect(i)%ptr(nEle,3))
-    do j=1,3
+    allocate(transEleVect(i)%ptr(nEle,DIMS))
+    do j=1,DIMS
       call MPI_recv(transEleVect(i)%ptr(:,j),nEle,MPI_double_precision,&
-      &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+      &             ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
     end do
   end do
   ! receive tensor data in elements
   do i=1,ntransEleTens
-    allocate(transEleTens(i)%ptr(nEle,3,3))
-    do j=1,3
-      do k=1,3
+    allocate(transEleTens(i)%ptr(nEle,DIMS,DIMS))
+    do j=1,DIMS
+      do k=1,DIMS
         call MPI_recv(transEleTens(i)%ptr(:,j,k),nEle,MPI_double_precision,&
-        &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+        &             ROOT_PID,pidMPI,MPI_comm_world,statMPI,errMPI)
       end do
     end do
   end do
@@ -955,48 +964,50 @@ subroutine retnData()
   use moduleGrid
   
   ! send auxiliary data
-  call MPI_send(nNode,1,MPI_integer,0,pidMPI,MPI_comm_world,errMPI)
-  call MPI_send(nEle,1,MPI_integer,0,pidMPI,MPI_comm_world,errMPI)
-  call MPI_send(mapNode,nNode,MPI_integer,0,pidMPI,MPI_comm_world,errMPI)
-  call MPI_send(mapEle,nEle,MPI_integer,0,pidMPI,MPI_comm_world,errMPI)
+  call MPI_send(nNode,1,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,errMPI)
+  call MPI_send(nEle,1,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,errMPI)
+  call MPI_send(mapNode,nNode,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,errMPI)
+  call MPI_send(mapEle,nEle,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,errMPI)
   
   ! send scaler data on nodes
   do i=1,ntransNodeScal
-    call MPI_send(transNodeScal(i)%ptr,nNode,MPI_double_precision,0,pidMPI,MPI_comm_world,errMPI)
+    call MPI_send(transNodeScal(i)%ptr,nNode,MPI_double_precision,&
+    &             ROOT_PID,pidMPI,MPI_comm_world,errMPI)
   end do
   ! send vector data on nodes
   do i=1,ntransNodeVect
-    do j=1,3
+    do j=1,DIMS
       call MPI_send(transNodeVect(i)%ptr(:,j),nNode,MPI_double_precision,&
-      &             0,pidMPI,MPI_comm_world,errMPI)
+      &             ROOT_PID,pidMPI,MPI_comm_world,errMPI)
     end do
   end do
   ! send tensor data on nodes
   do i=1,ntransNodeTens
-    do j=1,3
-      do k=1,3
+    do j=1,DIMS
+      do k=1,DIMS
         call MPI_send(transNodeTens(i)%ptr(:,j,k),nNode,MPI_double_precision,&
-        &             0,pidMPI,MPI_comm_world,errMPI)
+        &             ROOT_PID,pidMPI,MPI_comm_world,errMPI)
       end do
     end do
   end do
   ! send scaler data in elements
   do i=1,ntransEleScal
-    call MPI_send(transEleScal(i)%ptr,nEle,MPI_double_precision,0,pidMPI,MPI_comm_world,errMPI)
+    call MPI_send(transEleScal(i)%ptr,nEle,MPI_double_precision,&
+    &             ROOT_PID,pidMPI,MPI_comm_world,errMPI)
   end do
   ! send vector data in elements
   do i=1,ntransEleVect
-    do j=1,3
+    do j=1,DIMS
       call MPI_send(transEleVect(i)%ptr(:,j),nEle,MPI_double_precision,&
-      &             0,pidMPI,MPI_comm_world,errMPI)
+      &             ROOT_PID,pidMPI,MPI_comm_world,errMPI)
     end do
   end do
   ! send tensor data in elements
   do i=1,ntransEleTens
-    do j=1,3
-      do k=1,3
+    do j=1,DIMS
+      do k=1,DIMS
         call MPI_send(transEleTens(i)%ptr(:,j,k),nEle,MPI_double_precision,&
-        &             0,pidMPI,MPI_comm_world,errMPI)
+        &             ROOT_PID,pidMPI,MPI_comm_world,errMPI)
       end do
     end do
   end do
@@ -1025,8 +1036,8 @@ subroutine gathData(t,p)
   t=Ele(mapEle(1))%Prt
     
   allocate(buffDataScal(nNode))
-  allocate(buffDataVect(nNode,3))
-  allocate(buffDataTens(nNode,3,3))
+  allocate(buffDataVect(nNode,DIMS))
+  allocate(buffDataTens(nNode,DIMS,DIMS))
   ! receive scaler data at nodes
   do i=1,ntransNodeScal
     call MPI_recv(buffDataScal,nkNode,MPI_double_precision,p,p,MPI_comm_world,statMPI,errMPI)
@@ -1034,15 +1045,15 @@ subroutine gathData(t,p)
   end do
   ! receive vector data at nodes
   do i=1,ntransNodeVect
-    do j=1,3
+    do j=1,DIMS
       call MPI_recv(buffDataVect(:,j),nkNode,MPI_double_precision,p,p,MPI_comm_world,statMPI,errMPI)
     end do
     transNodeVect(i)%ptr(mapNode,:)=buffDataVect(:,:)
   end do
   ! receive tensor data at nodes
   do i=1,ntransNodeTens
-    do j=1,3
-      do k=1,3
+    do j=1,DIMS
+      do k=1,DIMS
         call MPI_recv(buffDataTens(:,j,k),nkNode,MPI_double_precision,&
         &             p,p,MPI_comm_world,statMPI,errMPI)
       end do
@@ -1052,8 +1063,8 @@ subroutine gathData(t,p)
   deallocate(buffDataScal,buffDataVect,buffDataTens)
   
   allocate(buffDataScal(nEle))
-  allocate(buffDataVect(nEle,3))
-  allocate(buffDataTens(nEle,3,3))
+  allocate(buffDataVect(nEle,DIMS))
+  allocate(buffDataTens(nEle,DIMS,DIMS))
   ! receive scaler data in elements
   do i=1,ntransEleScal
     call MPI_recv(buffDataScal,nkEle,MPI_double_precision,p,p,MPI_comm_world,statMPI,errMPI)
@@ -1061,15 +1072,15 @@ subroutine gathData(t,p)
   end do
   ! receive vector data in elements
   do i=1,ntransEleVect
-    do j=1,3
+    do j=1,DIMS
       call MPI_recv(buffDataVect(:,j),nkEle,MPI_double_precision,p,p,MPI_comm_world,statMPI,errMPI)
     end do
     transEleVect(i)%ptr(mapEle,:)=buffDataVect(:,:)
   end do
   ! receive tensor data in elements
   do i=1,ntransEleTens
-    do j=1,3
-      do k=1,3
+    do j=1,DIMS
+      do k=1,DIMS
         call MPI_recv(buffDataTens(:,j,k),nkEle,MPI_double_precision,&
         &             p,p,MPI_comm_world,statMPI,errMPI)
       end do

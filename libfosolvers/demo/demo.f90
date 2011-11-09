@@ -16,7 +16,7 @@ program demo
   call initMPI()
   call genPrtDataTab(0,0,0,1,1,0)
   
-  if(pidMPI==0)then
+  if(pidMPI==ROOT_PID)then
     call getfNames(fnameGrid,fnameCond,fnameData,fnameRst)
     call readmsh(fnameGrid,FGRID_ID)
     call updateFacetPara()
@@ -26,7 +26,7 @@ program demo
     allocate(v(nEle))
     v(:)=0d0
     transEleScal(1)%ptr=>v
-    allocate(vv(nEle,3))
+    allocate(vv(nEle,DIMS))
     vv(:,:)=0d0
     transEleVect(1)%ptr=>vv
     
@@ -74,7 +74,7 @@ program demo
     allocate(v(nEle))
     v=transEleScal(1)%ptr
     deallocate(transEleScal(1)%ptr)
-    allocate(vv(nEle,3))
+    allocate(vv(nEle,DIMS))
     vv=transEleVect(1)%ptr
     deallocate(transEleVect(1)%ptr)
     

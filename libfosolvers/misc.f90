@@ -140,7 +140,7 @@ end subroutine
 !*******************
 subroutine sortEle()
   use moduleGrid
-  double precision sortData(nEle),tempData,tempPos(3)
+  double precision sortData(nEle),tempData,tempPos(DIMS)
   integer m
   type(typeEle)::tempEle
   ! decide which direction we will sort along
