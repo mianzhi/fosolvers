@@ -269,7 +269,7 @@ end subroutine
 ! read data file
 !****************
 subroutine readdata(fname,datafile)
-  use moduleCond
+  use moduleMiscDataStruct
   
   integer datafile,readerr
   character(100) temp_string,fname
