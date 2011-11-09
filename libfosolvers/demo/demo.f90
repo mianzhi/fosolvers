@@ -38,6 +38,13 @@ program demo
       CondNode(i)%Cond(1)%what='Dr'
       CondNode(i)%Cond(1)%Val(1)=32.3
     end do
+    allocate(CondFacet(nFacet))
+    do i=1,nFacet
+      allocate(CondFacet(i)%Cond(2))
+      allocate(CondFacet(i)%Cond(2)%Val(1))
+      CondFacet(i)%Cond(2)%what='Nu'
+      CondFacet(i)%Cond(2)%Val(1)=12.4
+    end do
     
     ! read data tables
     call readdata(fnameData,FDATA_ID)
@@ -72,7 +79,8 @@ program demo
     deallocate(transEleVect(1)%ptr)
     
     ! do work
-    write(*,*),CondNode(5)%Cond(1)%what!,CondNode(5)%Cond(1)%Val(1)
+    write(*,*),CondNode(5)%Cond(1)%what,CondNode(5)%Cond(1)%Val(1)
+    write(*,*),CondFacet(3)%Cond(2)%what,CondFacet(3)%Cond(2)%Val(1)
     do i=1,nEle
       v(i)=sin(t+10d0*Ele(i)%PC(1))+cos(5d0*Ele(i)%PC(2))-sin(5d0*Ele(i)%PC(3))
     end do

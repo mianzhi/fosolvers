@@ -590,11 +590,92 @@ subroutine distriPrt(k,p)
   if(allocated(CondNode))then
     call MPI_send(.true.,1,MPI_logical,p,p,MPI_comm_world,errMPI)
     do i=1,nkNode
-      if(allocated(CondNode(i)%Cond))then
+      if(allocated(CondNode(mapNode(i))%Cond))then
         n=size(CondNode(mapNode(i))%Cond) ! number of conditions at i_th node of partition k
         call MPI_send(n,1,MPI_integer,p,p,MPI_comm_world,errMPI)
         do j=1,n
           call MPI_send(CondNode(mapNode(i))%Cond(j)%what,2,MPI_character,p,p,MPI_comm_world,errMPI)
+          if(allocated(CondNode(mapNode(i))%Cond(j)%Val))then
+            m=size(CondNode(mapNode(i))%Cond(j)%Val) ! number of data cells
+            call MPI_send(m,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+            call MPI_send(CondNode(mapNode(i))%Cond(j)%Val,m,MPI_double_precision,&
+            &             p,p,MPI_comm_world,errMPI)
+          else
+            call MPI_send(0,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+          end if
+          if(allocated(CondNode(mapNode(i))%Cond(j)%Tab))then
+            m=size(CondNode(mapNode(i))%Cond(j)%Tab) ! number of associated tables
+            call MPI_send(m,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+            call MPI_send(CondNode(mapNode(i))%Cond(j)%Tab,m,MPI_integer,p,p,MPI_comm_world,errMPI)
+          else
+            call MPI_send(0,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+          end if
+        end do
+      else
+        call MPI_send(0,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+      end if
+    end do
+  else
+    call MPI_send(.false.,1,MPI_logical,p,p,MPI_comm_world,errMPI)
+  end if
+  ! send conditions on facets
+  if(allocated(CondFacet))then
+    call MPI_send(.true.,1,MPI_logical,p,p,MPI_comm_world,errMPI)
+    do i=1,nkFacet
+      if(allocated(CondFacet(mapFacet(i))%Cond))then
+        n=size(CondFacet(mapFacet(i))%Cond) ! number of conditions at i_th facet of partition k
+        call MPI_send(n,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+        do j=1,n
+          call MPI_send(CondFacet(mapFacet(i))%Cond(j)%what,2,MPI_character,&
+          &             p,p,MPI_comm_world,errMPI)
+          if(allocated(CondFacet(mapFacet(i))%Cond(j)%Val))then
+            m=size(CondFacet(mapFacet(i))%Cond(j)%Val) ! number of data cells
+            call MPI_send(m,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+            call MPI_send(CondFacet(mapFacet(i))%Cond(j)%Val,m,MPI_double_precision,&
+            &             p,p,MPI_comm_world,errMPI)
+          else
+            call MPI_send(0,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+          end if
+          if(allocated(CondFacet(mapFacet(i))%Cond(j)%Tab))then
+            m=size(CondFacet(mapFacet(i))%Cond(j)%Tab) ! number of associated tables
+            call MPI_send(m,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+            call MPI_send(CondFacet(mapFacet(i))%Cond(j)%Tab,m,MPI_integer,&
+            &             p,p,MPI_comm_world,errMPI)
+          else
+            call MPI_send(0,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+          end if
+        end do
+      else
+        call MPI_send(0,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+      end if
+    end do
+  else
+    call MPI_send(.false.,1,MPI_logical,p,p,MPI_comm_world,errMPI)
+  end if
+  ! send conditions in elements
+  if(allocated(CondEle))then
+    call MPI_send(.true.,1,MPI_logical,p,p,MPI_comm_world,errMPI)
+    do i=1,nkEle
+      if(allocated(CondEle(mapEle(i))%Cond))then
+        n=size(CondEle(mapEle(i))%Cond) ! number of conditions at i_th element of partition k
+        call MPI_send(n,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+        do j=1,n
+          call MPI_send(CondEle(mapEle(i))%Cond(j)%what,2,MPI_character,p,p,MPI_comm_world,errMPI)
+          if(allocated(CondEle(mapEle(i))%Cond(j)%Val))then
+            m=size(CondEle(mapEle(i))%Cond(j)%Val) ! number of data cells
+            call MPI_send(m,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+            call MPI_send(CondEle(mapEle(i))%Cond(j)%Val,m,MPI_double_precision,&
+            &             p,p,MPI_comm_world,errMPI)
+          else
+            call MPI_send(0,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+          end if
+          if(allocated(CondEle(mapEle(i))%Cond(j)%Tab))then
+            m=size(CondEle(mapEle(i))%Cond(j)%Tab) ! number of associated tables
+            call MPI_send(m,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+            call MPI_send(CondEle(mapEle(i))%Cond(j)%Tab,m,MPI_integer,p,p,MPI_comm_world,errMPI)
+          else
+            call MPI_send(0,1,MPI_integer,p,p,MPI_comm_world,errMPI)
+          end if
         end do
       else
         call MPI_send(0,1,MPI_integer,p,p,MPI_comm_world,errMPI)
@@ -745,6 +826,72 @@ subroutine recvPrt()
         do j=1,n
           call MPI_recv(CondNode(i)%Cond(j)%what,2,MPI_character,&
           &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+          call MPI_recv(m,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+          if(m>0)then
+            allocate(CondNode(i)%Cond(j)%Val(m))
+            call MPI_recv(CondNode(i)%Cond(j)%Val,m,MPI_double_precision,&
+            &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+          end if
+          call MPI_recv(m,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+          if(m>0)then
+            allocate(CondNode(i)%Cond(j)%Tab(m))
+            call MPI_recv(CondNode(i)%Cond(j)%Tab,m,MPI_integer,&
+            &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+          end if
+        end do
+      end if
+    end do
+  end if
+  ! receive conditions on facets
+  call MPI_recv(flag,1,MPI_logical,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  if(flag)then
+    allocate(CondFacet(nFacet))
+    do i=1,nFacet
+      call MPI_recv(n,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+      if(n>0)then
+        allocate(CondFacet(i)%Cond(n))
+        do j=1,n
+          call MPI_recv(CondFacet(i)%Cond(j)%what,2,MPI_character,&
+          &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+          call MPI_recv(m,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+          if(m>0)then
+            allocate(CondFacet(i)%Cond(j)%Val(m))
+            call MPI_recv(CondFacet(i)%Cond(j)%Val,m,MPI_double_precision,&
+            &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+          end if
+          call MPI_recv(m,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+          if(m>0)then
+            allocate(CondFacet(i)%Cond(j)%Tab(m))
+            call MPI_recv(CondFacet(i)%Cond(j)%Tab,m,MPI_integer,&
+            &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+          end if
+        end do
+      end if
+    end do
+  end if
+  ! receive conditions in elements
+  call MPI_recv(flag,1,MPI_logical,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+  if(flag)then
+    allocate(CondEle(nEle))
+    do i=1,nEle
+      call MPI_recv(n,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+      if(n>0)then
+        allocate(CondEle(i)%Cond(n))
+        do j=1,n
+          call MPI_recv(CondEle(i)%Cond(j)%what,2,MPI_character,&
+          &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+          call MPI_recv(m,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+          if(m>0)then
+            allocate(CondEle(i)%Cond(j)%Val(m))
+            call MPI_recv(CondEle(i)%Cond(j)%Val,m,MPI_double_precision,&
+            &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+          end if
+          call MPI_recv(m,1,MPI_integer,0,pidMPI,MPI_comm_world,statMPI,errMPI)
+          if(m>0)then
+            allocate(CondEle(i)%Cond(j)%Tab(m))
+            call MPI_recv(CondEle(i)%Cond(j)%Tab,m,MPI_integer,&
+            &             0,pidMPI,MPI_comm_world,statMPI,errMPI)
+          end if
         end do
       end if
     end do
