@@ -10,6 +10,7 @@ program demo
   double precision,target,allocatable::v(:),vv(:,:)
   double precision g(3)
   integer,parameter::FGRID_ID=10
+  integer,parameter::FCOND_ID=11
   integer,parameter::FDATA_ID=12
   integer,parameter::FRST_ID=15
   
@@ -31,20 +32,7 @@ program demo
     transEleVect(1)%ptr=>vv
     
     ! define conditions
-    allocate(CondNode(nNode))
-    do i=1,nNode
-      allocate(CondNode(i)%Cond(1))
-      allocate(CondNode(i)%Cond(1)%Val(1))
-      CondNode(i)%Cond(1)%what='Dr'
-      CondNode(i)%Cond(1)%Val(1)=32.3
-    end do
-    allocate(CondFacet(nFacet))
-    do i=1,nFacet
-      allocate(CondFacet(i)%Cond(2))
-      allocate(CondFacet(i)%Cond(2)%Val(1))
-      CondFacet(i)%Cond(2)%what='Nu'
-      CondFacet(i)%Cond(2)%Val(1)=12.4
-    end do
+    call readcod(fnameCond,FCOND_ID)
     
     ! read data tables
     call readdata(fnameData,FDATA_ID)
@@ -53,7 +41,7 @@ program demo
     call bcastStatic()
     
     ! assign task
-    call distriPrt(1,1)
+    call distriPrt(2,1)
     
     ! gather data
     call gathData(i,j)
@@ -79,8 +67,21 @@ program demo
     deallocate(transEleVect(1)%ptr)
     
     ! do work
-    write(*,*),CondNode(5)%Cond(1)%what,CondNode(5)%Cond(1)%Val(1)
-    write(*,*),CondFacet(3)%Cond(2)%what,CondFacet(3)%Cond(2)%Val(1)
+    do i=1,nNode
+      if(allocated(CondNode(i)%Cond))then
+        write(*,*),'Node',CondNode(i)%Cond(1)%what,CondNode(i)%Cond(1)%Val
+      end if
+    end do
+    do i=1,nFacet
+      if(allocated(CondFacet(i)%Cond))then
+        write(*,*),'Facet',CondFacet(i)%Cond(1)%what,CondFacet(i)%Cond(1)%Tab
+      end if
+    end do
+    do i=1,nEle
+      if(allocated(CondEle(i)%Cond))then
+        write(*,*),'Ele',CondEle(i)%Cond(1)%what,CondEle(i)%Cond(1)%Val,CondEle(i)%Cond(1)%Tab
+      end if
+    end do
     do i=1,nEle
       v(i)=sin(t+10d0*Ele(i)%PC(1))+cos(5d0*Ele(i)%PC(2))-sin(5d0*Ele(i)%PC(3))
     end do

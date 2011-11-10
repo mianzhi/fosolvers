@@ -344,6 +344,162 @@ subroutine readdata(fname,datafile)
   close(datafile)
 end subroutine
 
+!****************************
+! read simulation conditions
+!****************************
+subroutine readcod(fname,codfile)
+  use moduleGrid
+  use moduleWrite
+  use moduleCond
+  
+  character(100),intent(in)::fname
+  integer,intent(in)::codfile
+  integer readerr,GeoEntity,nVal,nTab,iCond
+  character(200) temp_string
+  logical isNodeDone(nNode),isFacetDone(nFacet),isEleDone(nEle)
+  type(typeCond)::tempCond
+  
+  allocate(CondNode(nNode))
+  allocate(CondFacet(nFacet))
+  allocate(CondEle(nEle))
+  
+  open(codfile,file=fname,status='old')
+  readerr=0
+  
+  do while(readerr==0)
+    ! skip the irrelevant lines
+    do while(readerr==0)
+      read(codfile,'(a200)',iostat=readerr),temp_string
+      if(temp_string(1:1)=='$')then
+        exit
+      end if
+    end do
+    ! check if finished
+    if(readerr/=0)then
+      exit
+    end if
+    ! read node conditions
+    if(temp_string(1:9)=='$NodeCond')then
+      do while(readerr==0)
+        read(codfile,'(a200)',iostat=readerr),temp_string
+        if(temp_string(1:4)=='$End')then
+          exit
+        end if
+        read(temp_string,*),tempCond%what,GeoEntity,nVal,nTab
+        if(nVal>0)then
+          allocate(tempCond%Val(nVal))
+        end if
+        if(nTab>0)then
+          allocate(tempCond%Tab(nTab))
+        end if
+        read(temp_string,*),tempCond%what,GeoEntity,nVal,nTab,&
+        &                   (tempCond%Val(i),i=1,nVal),(tempCond%Tab(i),i=1,nTab)
+        isNodeDone(:)=.false.
+        do i=1,nPoint
+          if(Point(i)%GeoEnti==GeoEntity.and.(.not.isNodeDone(Point(i)%NodeInd)))then
+            iCond=CondNode(Point(i)%NodeInd)%getSpace()
+            CondNode(Point(i)%NodeInd)%Cond(iCond)=tempCond
+            isNodeDone(Point(i)%NodeInd)=.true.
+          end if
+        end do
+        do i=1,nFacet
+          do j=1,Facet(i)%NodeNum
+            if(Facet(i)%GeoEnti==GeoEntity.and.(.not.isNodeDone(Facet(i)%NodeInd(j))))then
+              iCond=CondNode(Facet(i)%NodeInd(j))%getSpace()
+              CondNode(Facet(i)%NodeInd(j))%Cond(iCond)=tempCond
+              isNodeDone(Facet(i)%NodeInd(j))=.true.
+            end if
+          end do
+        end do
+        do i=1,nEle
+          do j=1,Ele(i)%NodeNum
+            if(Ele(i)%GeoEnti==GeoEntity.and.(.not.isNodeDone(Ele(i)%NodeInd(j))))then
+              iCond=CondNode(Ele(i)%NodeInd(j))%getSpace()
+              CondNode(Ele(i)%NodeInd(j))%Cond(iCond)=tempCond
+              isNodeDone(Ele(i)%NodeInd(j))=.true.
+            end if
+          end do
+        end do
+        ! clean ups
+        if(allocated(tempCond%Val))then
+          deallocate(tempCond%Val)
+        end if
+        if(allocated(tempCond%Tab))then
+          deallocate(tempCond%Tab)
+        end if
+      end do
+    end if
+    ! read facet conditions
+    if(temp_string(1:10)=='$FacetCond')then
+      do while(readerr==0)
+        read(codfile,'(a200)',iostat=readerr),temp_string
+        if(temp_string(1:4)=='$End')then
+          exit
+        end if
+        read(temp_string,*),tempCond%what,GeoEntity,nVal,nTab
+        if(nVal>0)then
+          allocate(tempCond%Val(nVal))
+        end if
+        if(nTab>0)then
+          allocate(tempCond%Tab(nTab))
+        end if
+        read(temp_string,*),tempCond%what,GeoEntity,nVal,nTab,&
+        &                   (tempCond%Val(i),i=1,nVal),(tempCond%Tab(i),i=1,nTab)
+        isFacetDone(:)=.false.
+        do i=1,nFacet
+          if(Facet(i)%GeoEnti==GeoEntity.and.(.not.isFacetDone(i)))then
+            iCond=CondFacet(i)%getSpace()
+            CondFacet(i)%Cond(iCond)=tempCond
+            isFacetDone(i)=.true.
+          end if
+        end do
+        ! clean ups
+        if(allocated(tempCond%Val))then
+          deallocate(tempCond%Val)
+        end if
+        if(allocated(tempCond%Tab))then
+          deallocate(tempCond%Tab)
+        end if
+      end do
+    end if
+    ! read element conditions
+    if(temp_string(1:8)=='$EleCond')then
+      do while(readerr==0)
+        read(codfile,'(a200)',iostat=readerr),temp_string
+        if(temp_string(1:4)=='$End')then
+          exit
+        end if
+        read(temp_string,*),tempCond%what,GeoEntity,nVal,nTab
+        if(nVal>0)then
+          allocate(tempCond%Val(nVal))
+        end if
+        if(nTab>0)then
+          allocate(tempCond%Tab(nTab))
+        end if
+        read(temp_string,*),tempCond%what,GeoEntity,nVal,nTab,&
+        &                   (tempCond%Val(i),i=1,nVal),(tempCond%Tab(i),i=1,nTab)
+        isEleDone(:)=.false.
+        do i=1,nEle
+          if(Ele(i)%GeoEnti==GeoEntity.and.(.not.isEleDone(i)))then
+            iCond=CondEle(i)%getSpace()
+            CondEle(i)%Cond(iCond)=tempCond
+            isEleDone(i)=.true.
+          end if
+        end do
+        ! clean ups
+        if(allocated(tempCond%Val))then
+          deallocate(tempCond%Val)
+        end if
+        if(allocated(tempCond%Tab))then
+          deallocate(tempCond%Tab)
+        end if
+      end do
+    end if
+  end do
+  
+  close(codfile)
+end subroutine
+
 !*********************************
 ! result output related variables
 !*********************************

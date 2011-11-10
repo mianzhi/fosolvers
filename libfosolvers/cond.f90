@@ -21,7 +21,28 @@ module moduleCond
   
   type,public::typeCondList
     type(typeCond),public,allocatable::Cond(:)
+  contains
+    procedure,public::getSpace=>getCondSpace
   end type
   type(typeCondList),public,allocatable,save::CondNode(:),CondFacet(:),CondEle(:)
   
+contains
+  
+  function getCondSpace(this)
+    class(typeCondList),intent(inout)::this
+    integer getCondSpace
+    type(typeCond),allocatable::tempCond(:)
+    
+    getCondSpace=0
+    
+    if(allocated(this%Cond))then
+      getCondSpace=size(this%Cond)+1
+      allocate(tempCond(getCondSpace))
+      tempCond(1:getCondSpace-1)=this%Cond(:)
+      call move_alloc(tempCond,this%Cond)
+    else
+      allocate(this%Cond(1))
+      getCondSpace=1
+    end if
+  end function
 end module

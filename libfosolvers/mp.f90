@@ -634,7 +634,7 @@ subroutine distriPrt(k,p)
         n=size(CondFacet(mapFacet(i))%Cond) ! number of conditions at i_th facet of partition k
         call MPI_send(n,1,MPI_integer,p,p,MPI_comm_world,errMPI)
         do j=1,n
-          call MPI_send(CondFacet(mapFacet(i))%Cond(j)%what,COND_NAEM_LEN,MPI_character,&
+          call MPI_send(CondFacet(mapFacet(i))%Cond(j)%what,COND_NAME_LEN,MPI_character,&
           &             p,p,MPI_comm_world,errMPI)
           if(allocated(CondFacet(mapFacet(i))%Cond(j)%Val))then
             m=size(CondFacet(mapFacet(i))%Cond(j)%Val) ! number of data cells

@@ -1,0 +1,16 @@
+$Example
+condition_name(2char) geometric_entity(int) number_of_values(int) number_of_tables(int) [numbers(double)] [tables(int)]
+$EndExample
+
+$NodeConditions
+AB 10 1 0 0.3d0
+$EndNodeConditions
+
+$FacetConditions
+cd 59 2 1 0.5d0 0.7d0 2011
+Ef -8 0 2 5 6
+$EndFacetConditions
+
+$EleConditions
+d0 91 1 1 3.14d0 40 
+$EndEleConditions

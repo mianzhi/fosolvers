@@ -406,7 +406,7 @@ subroutine getfNames(fnameGrid,fnameCond,fnameData,fnameRst)
       case('--data')
         i=i+1
         call get_command_argument(i,fnameData)
-      case('--rst')
+      case('--resu')
         i=i+1
         call get_command_argument(i,fnameRst)
       case default
