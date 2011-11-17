@@ -7,7 +7,6 @@ module moduleWrite
   use moduleMiscDataStruct
 
   ! output control related variables
-  double precision,save::t,tFinal
   integer,save::nWrite
   ! data to be output
   type(typePtrScalArray),allocatable,save::rstNodeScal(:),rstEleScal(:)

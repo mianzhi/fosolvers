@@ -1023,15 +1023,15 @@ subroutine retnData()
   
 end subroutine
 
-!**************************************************************************
-! try to gather data from any process, received partition t from process p
-!**************************************************************************
-subroutine gathData(t,p)
+!****************************************************************************
+! try to gather data from any process, received partition prt from process p
+!****************************************************************************
+subroutine gathData(prt,p)
   use moduleMPIvar
   use moduleGrid
   use mpi
   
-  integer,intent(out)::t,p
+  integer,intent(out)::prt,p
   integer nkNode,nkEle
   double precision,allocatable::buffDataScal(:),buffDataVect(:,:),buffDataTens(:,:,:)
   
@@ -1043,7 +1043,7 @@ subroutine gathData(t,p)
   allocate(mapEle(nkEle))
   call MPI_recv(mapNode,nkNode,MPI_integer,p,p,MPI_comm_world,statMPI,errMPI)
   call MPI_recv(mapEle,nkEle,MPI_integer,p,p,MPI_comm_world,statMPI,errMPI)
-  t=Ele(mapEle(1))%Prt
+  prt=Ele(mapEle(1))%Prt
     
   allocate(buffDataScal(nNode))
   allocate(buffDataVect(nNode,DIMS))

@@ -42,6 +42,9 @@ module moduleGrid
   ! bounding box of the geometry
   double precision,public,save::BoundBox(2,DIMS)
   
+  ! times
+  double precision,public,save::t,tFinal
+  
   ! make some functions properly accessible (both privately & publicly)
   interface
     function find3PNorm(P1,P2,P3)
