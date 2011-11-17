@@ -34,7 +34,10 @@ module moduleGrid
   integer,parameter,public::ELE_MAX_SURF_NUM=6
   
   ! table of surface nodes for all kinds of elements
-  integer,public,save::SurfTabTet(TET_SURF_NUM,TRI_NODE_NUM),SurfTabHex(HEX_SURF_NUM,QUAD_NODE_NUM)
+  integer,public::SurfTabTet(TET_SURF_NUM,TRI_NODE_NUM),SurfTabHex(HEX_SURF_NUM,QUAD_NODE_NUM)
+  parameter(SurfTabTet=reshape([1,1,1,2,3,2,4,3,2,4,3,4],[TET_SURF_NUM,TRI_NODE_NUM]))
+  parameter(SurfTabHex=reshape([2,1,3,1,5,1,3,5,4,2,6,4,7,8,8,6,7,3,6,4,7,5,8,2],&
+  &                            [HEX_SURF_NUM,QUAD_NODE_NUM]))
   
   ! bounding box of the geometry
   double precision,public,save::BoundBox(2,DIMS)
@@ -466,7 +469,7 @@ contains
   function findTetSurfArea(this,k)
     class(typeTet),intent(in)::this
     integer,intent(in)::k
-    double precision findTetSurfArea
+    double precision findTetSurfArea,find3PArea
     if(k<1.or.k>TET_SURF_NUM)then
       write(*,'(a,i2,a)'),'ERROR: a tetrahedron can not have ',k,'th surface'
       stop
@@ -604,7 +607,7 @@ contains
   function findHexSurfArea(this,k)
     class(typeHex),intent(in)::this
     integer,intent(in)::k
-    double precision findHexSurfArea
+    double precision findHexSurfArea,find3PArea
     if(k<1.or.k>HEX_SURF_NUM)then
       write(*,'(a,i2,a)'),'ERROR: a hexahedron can not have ',k,'th surface'
       stop

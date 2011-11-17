@@ -4,7 +4,6 @@
 ! global data related to MPI
 !****************************
 module moduleMPIvar
-  use mpi
   use moduleMiscDataStruct
   
   integer,parameter::ROOT_PID=0
@@ -29,6 +28,7 @@ subroutine initMPI()
   use moduleGrid
   use moduleCond
   use moduleMPIvar
+  use mpi
   
   integer nblkMPI
   integer,allocatable::llenMPI(:),ltypeMPI(:)
@@ -241,6 +241,8 @@ end subroutine
 !**************************
 subroutine finalMPI()
   use moduleMPIvar
+  use mpi
+  
   call MPI_type_free(typeNodeMPI,errMPI)
   call MPI_type_free(typePointMPI,errMPI)
   call MPI_type_free(typeLineMPI,errMPI)
@@ -259,6 +261,7 @@ end subroutine
 subroutine bcastStatic()
   use moduleCond
   use moduleMPIvar
+  use mpi
   
   integer n
   
@@ -285,6 +288,7 @@ end subroutine
 subroutine recvStatic()
   use moduleCond
   use moduleMPIvar
+  use mpi
   
   integer n
   
@@ -310,6 +314,8 @@ end subroutine
 !****************************************************
 subroutine genPrtDataTab(a,b,c,d,e,f)
   use moduleMPIvar
+  use mpi
+  
   integer,intent(in)::a,b,c,d,e,f
   ! allocate output data space
   ntransNodeScal=a
@@ -339,6 +345,7 @@ subroutine distriPrt(k,p)
   use moduleGrid
   use moduleCond
   use moduleMPIvar
+  use mpi
   
   integer,intent(in)::k,p
   integer nkNode,nkPoint,nkLine,nkTri,nkQuad,nkTet,nkHex,nkFacet,nkEle
@@ -766,6 +773,7 @@ subroutine recvPrt()
   use moduleGrid
   use moduleCond
   use moduleMPIvar
+  use mpi
   
   logical flag
   
@@ -962,6 +970,7 @@ end subroutine
 subroutine retnData()
   use moduleMPIvar
   use moduleGrid
+  use mpi
   
   ! send auxiliary data
   call MPI_send(nNode,1,MPI_integer,ROOT_PID,pidMPI,MPI_comm_world,errMPI)
@@ -1020,6 +1029,7 @@ end subroutine
 subroutine gathData(t,p)
   use moduleMPIvar
   use moduleGrid
+  use mpi
   
   integer,intent(out)::t,p
   integer nkNode,nkEle

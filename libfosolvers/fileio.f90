@@ -1,5 +1,21 @@
 !----------------------------------------------------------------------------- best with 100 columns
 
+!*********************************
+! result output related variables
+!*********************************
+module moduleWrite
+  use moduleMiscDataStruct
+
+  ! output control related variables
+  double precision,save::t,tFinal
+  integer,save::nWrite
+  ! data to be output
+  type(typePtrScalArray),allocatable,save::rstNodeScal(:),rstEleScal(:)
+  type(typePtrVectArray),allocatable,save::rstNodeVect(:),rstEleVect(:)
+  type(typePtrTensArray),allocatable,save::rstNodeTens(:),rstEleTens(:)
+  integer,save::nrstNodeScal,nrstNodeVect,nrstNodeTens,nrstEleScal,nrstEleVect,nrstEleTens
+end module
+
 !****************
 ! read mesh file
 !****************
@@ -234,16 +250,6 @@ subroutine readmsh(fname,gridfile)
   end do
   
   ! auxiliary operations
-  SurfTabTet(1,:)=[1,3,2] ! table of surface nodes for all kinds of elements
-  SurfTabTet(2,:)=[1,2,4]
-  SurfTabTet(3,:)=[1,4,3]
-  SurfTabTet(4,:)=[2,3,4]
-  SurfTabHex(1,:)=[2,3,7,6]
-  SurfTabHex(2,:)=[1,5,8,4]
-  SurfTabHex(3,:)=[3,4,8,7]
-  SurfTabHex(4,:)=[1,2,6,5]
-  SurfTabHex(5,:)=[5,6,7,8]
-  SurfTabHex(6,:)=[1,4,3,2]
   nPrt=1
   if(nTet>0)then
     nPrt=max(nPrt,maxval(Tet(:)%Prt))
@@ -499,22 +505,6 @@ subroutine readcod(fname,codfile)
   
   close(codfile)
 end subroutine
-
-!*********************************
-! result output related variables
-!*********************************
-module moduleWrite
-  use moduleMiscDataStruct
-
-  ! output control related variables
-  double precision,save::t,tFinal
-  integer,save::nWrite
-  ! data to be output
-  type(typePtrScalArray),allocatable,save::rstNodeScal(:),rstEleScal(:)
-  type(typePtrVectArray),allocatable,save::rstNodeVect(:),rstEleVect(:)
-  type(typePtrTensArray),allocatable,save::rstNodeTens(:),rstEleTens(:)
-  integer,save::nrstNodeScal,nrstNodeVect,nrstNodeTens,nrstEleScal,nrstEleVect,nrstEleTens
-end module
 
 !************************************
 ! initialize data output environment
