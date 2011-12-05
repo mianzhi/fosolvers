@@ -1,8 +1,8 @@
-objects=grid.o misc.o cond.o fileio.o mp.o
+objects=misc.o utility.o grid.o
 target=libfosolvers.a
 
 FC=mpif90
-FFLAGS=-Wall -fopenmp -O2 -mtune=native
+FFLAGS=-Wall -fopenmp -O3 -mtune=native
 
 %.o:%.f90
 	$(FC) -c $(FFLAGS) -o $@ $<
