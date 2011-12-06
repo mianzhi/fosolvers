@@ -4,7 +4,7 @@ libs=-lfosolvers -llapack
 target=demo
 
 FC=mpif90
-FFLAGS=-Wall -fopenmp -O2 -mtune=native -I$(libpath) -L$(libpath)
+FFLAGS=-Wall -fopenmp -O3 -mtune=native -I$(libpath) -L$(libpath)
 
 %.o:%.f90
 	$(FC) -c $(FFLAGS) -o $@ $^

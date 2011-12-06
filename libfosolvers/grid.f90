@@ -4,6 +4,13 @@
 ! simple geometry
 !*****************
 module moduleSimpleGeometry
+  private
+  
+  ! procedures
+  public find3PArea
+  public find3PNorm
+  public find4PVol
+  
 contains
 
   !------------------------------------------------------
@@ -98,6 +105,9 @@ module moduleGrid
   
   ! bounding box of the geometry
   double precision,public,save::BoundBox(2,DIMS)
+  
+  ! stand-along procedures
+  public updateGrid
   
   !----------
   ! typeNode
@@ -400,6 +410,7 @@ contains
     end select
     this%ShapeType=shapetype
     this%NodeNum=nodenum
+    this%SurfNum=surfnum
     if(allocated(this%NodeInd))then
       deallocate(this%NodeInd)
     end if
@@ -623,6 +634,56 @@ contains
     end if
     if(allocated(this%SurfNorm))then
       deallocate(this%SurfNorm)
+    end if
+  end subroutine
+  
+  !-------------------------------------------
+  ! update all components of grid information
+  !-------------------------------------------
+  subroutine updateGrid()
+    !$omp parallel do
+    do i=1,nNode
+      Node(i)%Ind=i
+      call Node(i)%updateFacetInd()
+      call Node(i)%updateBlockInd()
+    end do
+    !$omp end parallel do
+    !$omp parallel do
+    do i=1,nPoint
+      Point(i)%Ind=i
+      call Point(i)%updatePos()
+    end do
+    !$omp end parallel do
+    !$omp parallel do
+    do i=1,nLine
+      Line(i)%Ind=i
+      call Line(i)%updatePC()
+      call Line(i)%updateLength()
+    end do
+    !$omp end parallel do
+    !$omp parallel do
+    do i=1,nFacet
+      Facet(i)%Ind=i
+      call Facet(i)%updatePC()
+      call Facet(i)%updateArea()
+      call Facet(i)%updateNorm()
+      call Facet(i)%updateNeibBlock()
+    end do
+    !$omp end parallel do
+    !$omp parallel do
+    do i=1,nBlock
+      Block(i)%Ind=i
+      call Block(i)%updatePC()
+      call Block(i)%updateVol()
+      call Block(i)%updateNeib()
+      call Block(i)%updateSurfPC()
+      call Block(i)%updateSurfArea()
+      call Block(i)%updateSurfNorm()
+    end do
+    !$omp end parallel do
+    nPrt=0
+    if(nBlock>0)then
+      nPrt=maxval([(maxval(Block(i)%Prt(:)),i=1,nBlock)])
     end if
   end subroutine
   
