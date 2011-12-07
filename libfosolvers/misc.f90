@@ -6,6 +6,22 @@
 module moduleMiscDataStruct
   private
   
+  !-------------------
+  ! pointers to array
+  !-------------------
+  type::typePtrScalArray
+    double precision,pointer::ptr(:)
+  end type
+  public::typePtrScalArray
+  type::typePtrVectArray
+    double precision,pointer::ptr(:,:)
+  end type
+  public::typePtrVectArray
+  type::typePtrTensArray
+    double precision,pointer::ptr(:,:,:)
+  end type
+  public::typePtrTensArray
+  
   !------------------------------------
   ! extend a generic allocatable array
   !------------------------------------

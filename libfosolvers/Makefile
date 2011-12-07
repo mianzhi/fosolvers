@@ -1,4 +1,4 @@
-objects=misc.o utility.o grid.o fileio.o
+objects=misc.o utility.o grid.o time.o fileio.o
 target=libfosolvers.a
 
 FC=mpif90
