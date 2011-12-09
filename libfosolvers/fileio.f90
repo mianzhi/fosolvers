@@ -11,15 +11,22 @@ module moduleFileIO
   integer,parameter,public::DEFAULT_STRING_LEN=200
   
   ! output control related variables
-  integer,public,save::nWrite
+  integer,public,save::nWrite=0
   ! data to be output
   type(typePtrScalArray),allocatable,public,save::rstNodeScal(:),rstFacetScal(:),rstBlockScal(:)
   type(typePtrVectArray),allocatable,public,save::rstNodeVect(:),rstFacetVect(:),rstBlockVect(:)
   type(typePtrTensArray),allocatable,public,save::rstNodeTens(:),rstFacetTens(:),rstBlockTens(:)
   
-  ! procedures
+  ! generic add write list
+  interface addWrite
+    module procedure::addWriteScal
+    module procedure::addWriteVect
+    module procedure::addWriteTens
+  end interface
+  public addWrite
+  
+  ! other procedures
   public readmsh
-  public initWriteEnv
   public writerst
   
 contains
@@ -274,6 +281,165 @@ contains
     nWrite=0
   end subroutine
   
+  !-------------------------------
+  ! add scaler data to write list
+  !-------------------------------
+  subroutine addWriteScal(v)
+    use moduleGrid
+    use moduleUtility
+    double precision,target,intent(in)::v(:)
+    type(typePtrScalArray),allocatable::temp(:)
+    
+    n=count([size(v,1)==nNode,size(v,1)==nFacet,size(v,1)==nBlock])
+    if(n<1)then
+      call showWarning('can not match data with nodes, facets or blocks.')
+    else if(n>1)then
+      call showWarning('data matches with more than one of nodes, facets and blocks.')
+    end if
+    
+    if(size(v,1)==nNode)then
+      if(allocated(rstNodeScal))then
+        allocate(temp(size(rstNodeScal)+1))
+        temp(1:size(rstNodeScal))=rstNodeScal(:)
+        temp(size(temp))%ptr=>v
+        call move_alloc(temp,rstNodeScal)
+      else
+        allocate(rstNodeScal(1))
+        rstNodeScal(1)%ptr=>v
+      end if
+    end if
+    if(size(v,1)==nFacet)then
+      if(allocated(rstFacetScal))then
+        allocate(temp(size(rstFacetScal)+1))
+        temp(1:size(rstFacetScal))=rstFacetScal(:)
+        temp(size(temp))%ptr=>v
+        call move_alloc(temp,rstFacetScal)
+      else
+        allocate(rstFacetScal(1))
+        rstFacetScal(1)%ptr=>v
+      end if
+    end if
+    if(size(v,1)==nBlock)then
+      if(allocated(rstBlockScal))then
+        allocate(temp(size(rstBlockScal)+1))
+        temp(1:size(rstBlockScal))=rstBlockScal(:)
+        temp(size(temp))%ptr=>v
+        call move_alloc(temp,rstBlockScal)
+      else
+        allocate(rstBlockScal(1))
+        rstBlockScal(1)%ptr=>v
+      end if
+    end if
+    
+    nWrite=0
+  end subroutine
+  
+  !-------------------------------
+  ! add vector data to write list
+  !-------------------------------
+  subroutine addWriteVect(v)
+    use moduleGrid
+    use moduleUtility
+    double precision,target,intent(in)::v(:,:)
+    type(typePtrVectArray),allocatable::temp(:)
+    
+    n=count([size(v,1)==nNode,size(v,1)==nFacet,size(v,1)==nBlock])
+    if(n<1)then
+      call showWarning('can not match data with nodes, facets or blocks.')
+    else if(n>1)then
+      call showWarning('data matches with more than one of nodes, facets and blocks.')
+    end if
+    
+    if(size(v,1)==nNode)then
+      if(allocated(rstNodeVect))then
+        allocate(temp(size(rstNodeVect)+1))
+        temp(1:size(rstNodeVect))=rstNodeVect(:)
+        temp(size(temp))%ptr=>v
+        call move_alloc(temp,rstNodeVect)
+      else
+        allocate(rstNodeVect(1))
+        rstNodeVect(1)%ptr=>v
+      end if
+    end if
+    if(size(v,1)==nFacet)then
+      if(allocated(rstFacetVect))then
+        allocate(temp(size(rstFacetVect)+1))
+        temp(1:size(rstFacetVect))=rstFacetVect(:)
+        temp(size(temp))%ptr=>v
+        call move_alloc(temp,rstFacetVect)
+      else
+        allocate(rstFacetVect(1))
+        rstFacetVect(1)%ptr=>v
+      end if
+    end if
+    if(size(v,1)==nBlock)then
+      if(allocated(rstBlockVect))then
+        allocate(temp(size(rstBlockVect)+1))
+        temp(1:size(rstBlockVect))=rstBlockVect(:)
+        temp(size(temp))%ptr=>v
+        call move_alloc(temp,rstBlockVect)
+      else
+        allocate(rstBlockVect(1))
+        rstBlockVect(1)%ptr=>v
+      end if
+    end if
+    
+    nWrite=0
+  end subroutine
+  
+  !-------------------------------
+  ! add tensor data to write list
+  !-------------------------------
+  subroutine addWriteTens(v)
+    use moduleGrid
+    use moduleUtility
+    double precision,target,intent(in)::v(:,:,:)
+    type(typePtrTensArray),allocatable::temp(:)
+    
+    n=count([size(v,1)==nNode,size(v,1)==nFacet,size(v,1)==nBlock])
+    if(n<1)then
+      call showWarning('can not match data with nodes, facets or blocks.')
+    else if(n>1)then
+      call showWarning('data matches with more than one of nodes, facets and blocks.')
+    end if
+    
+    if(size(v,1)==nNode)then
+      if(allocated(rstNodeTens))then
+        allocate(temp(size(rstNodeTens)+1))
+        temp(1:size(rstNodeTens))=rstNodeTens(:)
+        temp(size(temp))%ptr=>v
+        call move_alloc(temp,rstNodeTens)
+      else
+        allocate(rstNodeTens(1))
+        rstNodeTens(1)%ptr=>v
+      end if
+    end if
+    if(size(v,1)==nFacet)then
+      if(allocated(rstFacetTens))then
+        allocate(temp(size(rstFacetTens)+1))
+        temp(1:size(rstFacetTens))=rstFacetTens(:)
+        temp(size(temp))%ptr=>v
+        call move_alloc(temp,rstFacetTens)
+      else
+        allocate(rstFacetTens(1))
+        rstFacetTens(1)%ptr=>v
+      end if
+    end if
+    if(size(v,1)==nBlock)then
+      if(allocated(rstBlockTens))then
+        allocate(temp(size(rstBlockTens)+1))
+        temp(1:size(rstBlockTens))=rstBlockTens(:)
+        temp(size(temp))%ptr=>v
+        call move_alloc(temp,rstBlockTens)
+      else
+        allocate(rstBlockTens(1))
+        rstBlockTens(1)%ptr=>v
+      end if
+    end if
+    
+    nWrite=0
+  end subroutine
+  
   !---------------
   ! write results
   !---------------
@@ -342,173 +508,191 @@ contains
     end if
     
     ! write scalers at nodes
-    do i=1,size(rstNodeScal)
-      write(fid,'(a)'),'$NodeData'
-      write(fid,'(i1)'),1 ! 1 string tag
-      write(fid,'(a,i2,a)'),'"scalNode',i,'"' ! name of the data-set
-      write(fid,'(i1)'),1 ! 1 real tag
-      write(fid,*),t ! time
-      write(fid,'(i1)'),3 ! 3 integer tags
-      write(fid,*),merge(nWrite,1,hold) ! time step index
-      write(fid,'(i1)'),1 ! 1 component scaler
-      write(fid,*),nNode
-      do j=1,nNode
-        write(tempString,*),j,rstNodeScal(i)%ptr(j)
-        tempString=adjustl(tempString)
-        write(fid,'(a)'),trim(tempString)
+    if(allocated(rstNodeScal))then
+      do i=1,size(rstNodeScal)
+        write(fid,'(a)'),'$NodeData'
+        write(fid,'(i1)'),1 ! 1 string tag
+        write(fid,'(a,i2,a)'),'"scalNode',i,'"' ! name of the data-set
+        write(fid,'(i1)'),1 ! 1 real tag
+        write(fid,*),t ! time
+        write(fid,'(i1)'),3 ! 3 integer tags
+        write(fid,*),merge(nWrite,1,hold) ! time step index
+        write(fid,'(i1)'),1 ! 1 component scaler
+        write(fid,*),nNode
+        do j=1,nNode
+          write(tempString,*),j,rstNodeScal(i)%ptr(j)
+          tempString=adjustl(tempString)
+          write(fid,'(a)'),trim(tempString)
+        end do
+        write(fid,'(a)'),'$EndNodeData'
       end do
-      write(fid,'(a)'),'$EndNodeData'
-    end do
+    end if
     ! write vectors at nodes
-    do i=1,size(rstNodeVect)
-      write(fid,'(a)'),'$NodeData'
-      write(fid,'(i1)'),1 ! 1 string tag
-      write(fid,'(a,i2,a)'),'"vectNode',i,'"' ! name of the data-set
-      write(fid,'(i1)'),1 ! 1 real tag
-      write(fid,*),t ! time
-      write(fid,'(i1)'),3 ! 3 integer tags
-      write(fid,*),merge(nWrite,1,hold) ! time step index
-      write(fid,'(i1)'),3 ! 3 components vector
-      write(fid,*),nNode
-      do j=1,nNode
-        write(tempString,*),j,rstNodeVect(i)%ptr(j,:)
-        tempString=adjustl(tempString)
-        write(fid,'(a)'),trim(tempString)
+    if(allocated(rstNodeVect))then
+      do i=1,size(rstNodeVect)
+        write(fid,'(a)'),'$NodeData'
+        write(fid,'(i1)'),1 ! 1 string tag
+        write(fid,'(a,i2,a)'),'"vectNode',i,'"' ! name of the data-set
+        write(fid,'(i1)'),1 ! 1 real tag
+        write(fid,*),t ! time
+        write(fid,'(i1)'),3 ! 3 integer tags
+        write(fid,*),merge(nWrite,1,hold) ! time step index
+        write(fid,'(i1)'),3 ! 3 components vector
+        write(fid,*),nNode
+        do j=1,nNode
+          write(tempString,*),j,rstNodeVect(i)%ptr(j,:)
+          tempString=adjustl(tempString)
+          write(fid,'(a)'),trim(tempString)
+        end do
+        write(fid,'(a)'),'$EndNodeData'
       end do
-      write(fid,'(a)'),'$EndNodeData'
-    end do
+    end if
     ! write tensors at nodes
-    do i=1,size(rstNodeTens)
-      write(fid,'(a)'),'$NodeData'
-      write(fid,'(i1)'),1 ! 1 string tag
-      write(fid,'(a,i2,a)'),'"tensNode',i,'"' ! name of the data-set
-      write(fid,'(i1)'),1 ! 1 real tag
-      write(fid,*),t ! time
-      write(fid,'(i1)'),3 ! 3 integer tags
-      write(fid,*),merge(nWrite,1,hold) ! time step index
-      write(fid,'(i1)'),9 ! 9 components tensor
-      write(fid,*),nNode
-      do j=1,nNode
-        write(tempString,*),j,rstNodeTens(i)%ptr(j,1,:),rstNodeTens(i)%ptr(j,2,:),&
-        &                     rstNodeTens(i)%ptr(j,3,:)
-        tempString=adjustl(tempString)
-        write(fid,'(a)'),trim(tempString)
+    if(allocated(rstNodeTens))then
+      do i=1,size(rstNodeTens)
+        write(fid,'(a)'),'$NodeData'
+        write(fid,'(i1)'),1 ! 1 string tag
+        write(fid,'(a,i2,a)'),'"tensNode',i,'"' ! name of the data-set
+        write(fid,'(i1)'),1 ! 1 real tag
+        write(fid,*),t ! time
+        write(fid,'(i1)'),3 ! 3 integer tags
+        write(fid,*),merge(nWrite,1,hold) ! time step index
+        write(fid,'(i1)'),9 ! 9 components tensor
+        write(fid,*),nNode
+        do j=1,nNode
+          write(tempString,*),j,rstNodeTens(i)%ptr(j,1,:),rstNodeTens(i)%ptr(j,2,:),&
+          &                     rstNodeTens(i)%ptr(j,3,:)
+          tempString=adjustl(tempString)
+          write(fid,'(a)'),trim(tempString)
+        end do
+        write(fid,'(a)'),'$EndNodeData'
       end do
-      write(fid,'(a)'),'$EndNodeData'
-    end do
+    end if
     
     ! write scalers at the centre of blocks
-    do i=1,size(rstBlockScal)
-      write(fid,'(a)'),'$ElementData'
-      write(fid,'(i1)'),1 ! 1 string tag
-      write(fid,'(a,i2,a)'),'"scalBlock',i,'"' ! name of the data-set
-      write(fid,'(i1)'),1 ! 1 real tag
-      write(fid,*),t ! time
-      write(fid,'(i1)'),3 ! 3 integer tags
-      write(fid,*),merge(nWrite,1,hold) ! time step index
-      write(fid,'(i1)'),1 ! 1 component scaler
-      write(fid,*),nBlock
-      do j=1,nBlock
-        write(tempString,*),j,rstBlockScal(i)%ptr(j)
-        tempString=adjustl(tempString)
-        write(fid,'(a)'),trim(tempString)
+    if(allocated(rstBlockScal))then
+      do i=1,size(rstBlockScal)
+        write(fid,'(a)'),'$ElementData'
+        write(fid,'(i1)'),1 ! 1 string tag
+        write(fid,'(a,i2,a)'),'"scalBlock',i,'"' ! name of the data-set
+        write(fid,'(i1)'),1 ! 1 real tag
+        write(fid,*),t ! time
+        write(fid,'(i1)'),3 ! 3 integer tags
+        write(fid,*),merge(nWrite,1,hold) ! time step index
+        write(fid,'(i1)'),1 ! 1 component scaler
+        write(fid,*),nBlock
+        do j=1,nBlock
+          write(tempString,*),j,rstBlockScal(i)%ptr(j)
+          tempString=adjustl(tempString)
+          write(fid,'(a)'),trim(tempString)
+        end do
+        write(fid,'(a)'),'$EndElementData'
       end do
-      write(fid,'(a)'),'$EndElementData'
-    end do
+    end if
     ! write vectors at the centre of blocks
-    do i=1,size(rstBlockVect)
-      write(fid,'(a)'),'$ElementData'
-      write(fid,'(i1)'),1 ! 1 string tag
-      write(fid,'(a,i2,a)'),'"vectBlock',i,'"' ! name of the data-set
-      write(fid,'(i1)'),1 ! 1 real tag
-      write(fid,*),t ! time
-      write(fid,'(i1)'),3 ! 3 integer tags
-      write(fid,*),merge(nWrite,1,hold) ! time step index
-      write(fid,'(i1)'),3 ! 3 components vector
-      write(fid,*),nBlock
-      do j=1,nBlock
-        write(tempString,*),j,rstBlockVect(i)%ptr(j,:)
-        tempString=adjustl(tempString)
-        write(fid,'(a)'),trim(tempString)
+    if(allocated(rstBlockVect))then
+      do i=1,size(rstBlockVect)
+        write(fid,'(a)'),'$ElementData'
+        write(fid,'(i1)'),1 ! 1 string tag
+        write(fid,'(a,i2,a)'),'"vectBlock',i,'"' ! name of the data-set
+        write(fid,'(i1)'),1 ! 1 real tag
+        write(fid,*),t ! time
+        write(fid,'(i1)'),3 ! 3 integer tags
+        write(fid,*),merge(nWrite,1,hold) ! time step index
+        write(fid,'(i1)'),3 ! 3 components vector
+        write(fid,*),nBlock
+        do j=1,nBlock
+          write(tempString,*),j,rstBlockVect(i)%ptr(j,:)
+          tempString=adjustl(tempString)
+          write(fid,'(a)'),trim(tempString)
+        end do
+        write(fid,'(a)'),'$EndElementData'
       end do
-      write(fid,'(a)'),'$EndElementData'
-    end do
+    end if
     ! write tensors at the centre of blocks
-    do i=1,size(rstBlockTens)
-      write(fid,'(a)'),'$ElementData'
-      write(fid,'(i1)'),1 ! 1 string tag
-      write(fid,'(a,i2,a)'),'"tensBlock',i,'"' ! name of the data-set
-      write(fid,'(i1)'),1 ! 1 real tag
-      write(fid,*),t ! time
-      write(fid,'(i1)'),3 ! 3 integer tags
-      write(fid,*),merge(nWrite,1,hold) ! time step index
-      write(fid,'(i1)'),9 ! 9 components tensor
-      write(fid,*),nBlock
-      do j=1,nBlock
-        write(tempString,*),j,rstBlockTens(i)%ptr(j,1,:),rstBlockTens(i)%ptr(j,2,:),&
-        &                     rstBlockTens(i)%ptr(j,3,:)
-        tempString=adjustl(tempString)
-        write(fid,'(a)'),trim(tempString)
+    if(allocated(rstBlockTens))then
+      do i=1,size(rstBlockTens)
+        write(fid,'(a)'),'$ElementData'
+        write(fid,'(i1)'),1 ! 1 string tag
+        write(fid,'(a,i2,a)'),'"tensBlock',i,'"' ! name of the data-set
+        write(fid,'(i1)'),1 ! 1 real tag
+        write(fid,*),t ! time
+        write(fid,'(i1)'),3 ! 3 integer tags
+        write(fid,*),merge(nWrite,1,hold) ! time step index
+        write(fid,'(i1)'),9 ! 9 components tensor
+        write(fid,*),nBlock
+        do j=1,nBlock
+          write(tempString,*),j,rstBlockTens(i)%ptr(j,1,:),rstBlockTens(i)%ptr(j,2,:),&
+          &                     rstBlockTens(i)%ptr(j,3,:)
+          tempString=adjustl(tempString)
+          write(fid,'(a)'),trim(tempString)
+        end do
+        write(fid,'(a)'),'$EndElementData'
       end do
-      write(fid,'(a)'),'$EndElementData'
-    end do
+    end if
     
     ! write scalers at the centre of facets
-    do i=1,size(rstFacetScal)
-      write(fid,'(a)'),'$ElementData'
-      write(fid,'(i1)'),1 ! 1 string tag
-      write(fid,'(a,i2,a)'),'"scalFacet',i,'"' ! name of the data-set
-      write(fid,'(i1)'),1 ! 1 real tag
-      write(fid,*),t ! time
-      write(fid,'(i1)'),3 ! 3 integer tags
-      write(fid,*),merge(nWrite,1,hold) ! time step index
-      write(fid,'(i1)'),1 ! 1 component scaler
-      write(fid,*),nFacet
-      do j=1,nFacet
-        write(tempString,*),nBlock+nPoint+nLine+j,rstFacetScal(i)%ptr(j)
-        tempString=adjustl(tempString)
-        write(fid,'(a)'),trim(tempString)
+    if(allocated(rstFacetScal))then
+      do i=1,size(rstFacetScal)
+        write(fid,'(a)'),'$ElementData'
+        write(fid,'(i1)'),1 ! 1 string tag
+        write(fid,'(a,i2,a)'),'"scalFacet',i,'"' ! name of the data-set
+        write(fid,'(i1)'),1 ! 1 real tag
+        write(fid,*),t ! time
+        write(fid,'(i1)'),3 ! 3 integer tags
+        write(fid,*),merge(nWrite,1,hold) ! time step index
+        write(fid,'(i1)'),1 ! 1 component scaler
+        write(fid,*),nFacet
+        do j=1,nFacet
+          write(tempString,*),nBlock+nPoint+nLine+j,rstFacetScal(i)%ptr(j)
+          tempString=adjustl(tempString)
+          write(fid,'(a)'),trim(tempString)
+        end do
+        write(fid,'(a)'),'$EndElementData'
       end do
-      write(fid,'(a)'),'$EndElementData'
-    end do
+    end if
     ! write vectors at the centre of blocks
-    do i=1,size(rstFacetVect)
-      write(fid,'(a)'),'$ElementData'
-      write(fid,'(i1)'),1 ! 1 string tag
-      write(fid,'(a,i2,a)'),'"vectFacet',i,'"' ! name of the data-set
-      write(fid,'(i1)'),1 ! 1 real tag
-      write(fid,*),t ! time
-      write(fid,'(i1)'),3 ! 3 integer tags
-      write(fid,*),merge(nWrite,1,hold) ! time step index
-      write(fid,'(i1)'),3 ! 3 components vector
-      write(fid,*),nFacet
-      do j=1,nFacet
-        write(tempString,*),nBlock+nPoint+nLine+j,rstFacetVect(i)%ptr(j,:)
-        tempString=adjustl(tempString)
-        write(fid,'(a)'),trim(tempString)
+    if(allocated(rstFacetVect))then
+      do i=1,size(rstFacetVect)
+        write(fid,'(a)'),'$ElementData'
+        write(fid,'(i1)'),1 ! 1 string tag
+        write(fid,'(a,i2,a)'),'"vectFacet',i,'"' ! name of the data-set
+        write(fid,'(i1)'),1 ! 1 real tag
+        write(fid,*),t ! time
+        write(fid,'(i1)'),3 ! 3 integer tags
+        write(fid,*),merge(nWrite,1,hold) ! time step index
+        write(fid,'(i1)'),3 ! 3 components vector
+        write(fid,*),nFacet
+        do j=1,nFacet
+          write(tempString,*),nBlock+nPoint+nLine+j,rstFacetVect(i)%ptr(j,:)
+          tempString=adjustl(tempString)
+          write(fid,'(a)'),trim(tempString)
+        end do
+        write(fid,'(a)'),'$EndElementData'
       end do
-      write(fid,'(a)'),'$EndElementData'
-    end do
+    end if
     ! write tensors at the centre of blocks
-    do i=1,size(rstFacetTens)
-      write(fid,'(a)'),'$ElementData'
-      write(fid,'(i1)'),1 ! 1 string tag
-      write(fid,'(a,i2,a)'),'"tensFacet',i,'"' ! name of the data-set
-      write(fid,'(i1)'),1 ! 1 real tag
-      write(fid,*),t ! time
-      write(fid,'(i1)'),3 ! 3 integer tags
-      write(fid,*),merge(nWrite,1,hold) ! time step index
-      write(fid,'(i1)'),9 ! 9 components tensor
-      write(fid,*),nFacet
-      do j=1,nFacet
-        write(tempString,*),nBlock+nPoint+nLine+j,rstFacetTens(i)%ptr(j,1,:),&
-        &                                         rstFacetTens(i)%ptr(j,2,:),&
-        &                                         rstFacetTens(i)%ptr(j,3,:)
-        tempString=adjustl(tempString)
-        write(fid,'(a)'),trim(tempString)
+    if(allocated(rstFacetTens))then
+      do i=1,size(rstFacetTens)
+        write(fid,'(a)'),'$ElementData'
+        write(fid,'(i1)'),1 ! 1 string tag
+        write(fid,'(a,i2,a)'),'"tensFacet',i,'"' ! name of the data-set
+        write(fid,'(i1)'),1 ! 1 real tag
+        write(fid,*),t ! time
+        write(fid,'(i1)'),3 ! 3 integer tags
+        write(fid,*),merge(nWrite,1,hold) ! time step index
+        write(fid,'(i1)'),9 ! 9 components tensor
+        write(fid,*),nFacet
+        do j=1,nFacet
+          write(tempString,*),nBlock+nPoint+nLine+j,rstFacetTens(i)%ptr(j,1,:),&
+          &                                         rstFacetTens(i)%ptr(j,2,:),&
+          &                                         rstFacetTens(i)%ptr(j,3,:)
+          tempString=adjustl(tempString)
+          write(fid,'(a)'),trim(tempString)
+        end do
+        write(fid,'(a)'),'$EndElementData'
       end do
-      write(fid,'(a)'),'$EndElementData'
-    end do
+    end if
     
     if(hold)then
       nWrite=nWrite+1

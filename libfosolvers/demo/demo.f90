@@ -3,16 +3,27 @@
 program demo
   use moduleGrid
   use moduleFileIO
+  use moduleMiscDataStruct
   
-  double precision,target,allocatable::v(:)
+!  class(typeDataSet),pointer::vp(3)
+!  type(typeDataSetVal)::v
+!  v%Val=2
+!  allocate(vp,source=v)
+!  write(*,*),vp(1)%lookup()
+  
+  double precision,target,allocatable::v(:),vp(:,:)
   
   call readmsh('grid.msh',50,verbose=.true.)
-  call initWriteEnv(0,0,0,1,0,0,0,0,0)
   
   allocate(v(nFacet))
-  rstFacetScal(1)%ptr=>v
+  allocate(vp(nNode,DIMS))
+  call addWrite(v)
+  call addWrite(vp)
   do i=1,nFacet
     v(i)=norm2(Facet(i)%PC)
+  end do
+  do i=1,nNode
+    vp(i,:)=Node(i)%Pos(:)
   end do
   
   call writerst('rst.msh',55)
