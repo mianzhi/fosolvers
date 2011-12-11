@@ -5,33 +5,38 @@ program demo
   use moduleFileIO
   use moduleMiscDataStruct
   
-  type(typeDataSet)::v
-  type(typeDataItem)::ve
+  call readmsh('grid.msh',50,verbose=.true.)
+  do i=1,nBlock
+    write(*,*)i,Block(i)%Neib
+  end do
   
-  write(*,*),v%lookup('name3',stat=ierr)
-  write(*,*),ierr
-  
-  call v%extend(1)
-  call v%ptrLast%specify(TAB1D_TYPE,5)
-  v%ptrLast%DataName='name1'
-  v%ptrLast%Tab1d(:,1)=[1d0,2d0,3d0,4d0,5d0]
-  v%ptrLast%Tab1d(:,2)=[1d1,2d1,3d1,4d1,5d1]
-  
-  call v%extend(1)
-  call v%ptrLast%specify(VAL_TYPE)
-  v%ptrLast%DataName='name2'
-  v%ptrLast%Val=250d0
-  
-  call ve%specify(TAB1D_TYPE,5)
-  ve%DataName='name4'
-  ve%Tab1d(:,1)=[1d0,2d0,3d0,4d0,5d0]
-  ve%Tab1d(:,2)=[1d2,2d2,3d2,4d2,5d2]
-  call v%push(ve)
-  v%ptrLast%DataName='name4'
-  
-  write(*,*),v%lookup('name1',-2d0)
-  write(*,*),v%lookup('name2')
-  write(*,*),v%lookup('name4',3d0)
+!  type(typeDataSet)::v
+!  type(typeDataItem)::ve
+!  
+!  write(*,*),v%lookup('name3',stat=ierr)
+!  write(*,*),ierr
+!  
+!  call v%extend(1)
+!  call v%ptrLast%specify(TAB1D_TYPE,5)
+!  v%ptrLast%DataName='name1'
+!  v%ptrLast%Tab1d(:,1)=[1d0,2d0,3d0,4d0,5d0]
+!  v%ptrLast%Tab1d(:,2)=[1d1,2d1,3d1,4d1,5d1]
+!  
+!  call v%extend(1)
+!  call v%ptrLast%specify(VAL_TYPE)
+!  v%ptrLast%DataName='name2'
+!  v%ptrLast%Val=250d0
+!  
+!  call ve%specify(TAB1D_TYPE,5)
+!  ve%DataName='name4'
+!  ve%Tab1d(:,1)=[1d0,2d0,3d0,4d0,5d0]
+!  ve%Tab1d(:,2)=[1d2,2d2,3d2,4d2,5d2]
+!  call v%push(ve)
+!  v%ptrLast%DataName='name4'
+!  
+!  write(*,*),v%lookup('name1',-2d0)
+!  write(*,*),v%lookup('name2')
+!  write(*,*),v%lookup('name4',3d0)
   
 !  double precision,target,allocatable::v(:),vp(:,:)
 !  

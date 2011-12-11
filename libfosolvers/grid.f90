@@ -107,6 +107,8 @@ module moduleGrid
   double precision,public,save::BoundBox(2,DIMS)
   
   ! stand-along procedures
+  public updateAllNodeFacetInd
+  public updateAllNodeBlockInd
   public updateGrid
   
   !----------
@@ -215,6 +217,7 @@ contains
   !-------------------------------------------------------
   ! update the index of facets in which this node is used
   !-------------------------------------------------------
+  ! Note: not recommend to use in common cases. should use updateAllNodeFacetInd()
   elemental subroutine updateNodeFacetInd(this)
     class(typeNode),intent(inout)::this
     
@@ -229,9 +232,29 @@ contains
     end do
   end subroutine
   
+  !--------------------------------------------------------------------
+  ! update the index of facets in which one node is used for all nodes
+  !--------------------------------------------------------------------
+  subroutine updateAllNodeFacetInd()
+    !$omp parallel do
+    do i=1,nNode
+      if(allocated(Node(i)%FacetInd))then
+        deallocate(Node(i)%FacetInd)
+      end if
+    end do
+    !$omp end parallel do
+    do i=1,nFacet
+      do j=1,Facet(i)%NodeNum
+        call extendArray(Node(Facet(i)%NodeInd(j))%FacetInd,1)
+        Node(Facet(i)%NodeInd(j))%FacetInd(size(Node(Facet(i)%NodeInd(j))%FacetInd))=i
+      end do
+    end do
+  end subroutine
+  
   !-------------------------------------------------------
   ! update the index of blocks in which this node is used
   !-------------------------------------------------------
+  ! Note: not recommend to use in common cases. should use updateAllNodeBlockInd()
   elemental subroutine updateNodeBlockInd(this)
     class(typeNode),intent(inout)::this
     
@@ -243,6 +266,25 @@ contains
         call extendArray(this%BlockInd,1)
         this%BlockInd(size(this%BlockInd))=i
       end if
+    end do
+  end subroutine
+  
+  !--------------------------------------------------------------------
+  ! update the index of blocks in which one node is used for all nodes
+  !--------------------------------------------------------------------
+  subroutine updateAllNodeBlockInd()
+    !$omp parallel do
+    do i=1,nNode
+      if(allocated(Node(i)%BlockInd))then
+        deallocate(Node(i)%BlockInd)
+      end if
+    end do
+    !$omp end parallel do
+    do i=1,nBlock
+      do j=1,Block(i)%NodeNum
+        call extendArray(Node(Block(i)%NodeInd(j))%BlockInd,1)
+        Node(Block(i)%NodeInd(j))%BlockInd(size(Node(Block(i)%NodeInd(j))%BlockInd))=i
+      end do
     end do
   end subroutine
   
@@ -361,19 +403,22 @@ contains
     allocate(mask(this%NodeNum))
     this%NeibBlock(:)=0
     l=1
-    do i=1,nBlock
-      mask(:)=.false.
-      forall(j=1:this%NodeNum)
-        mask(j)=any(Block(i)%NodeInd(:)==this%NodeInd(j))
-      end forall
-      if(all(mask(:)))then
-        this%NeibBlock(l)=i
-        if(l==FACET_NEIB_BLOCK_NUM)then
-          exit
+    if(allocated(Node(this%NodeInd(1))%BlockInd))then
+      do i=1,size(Node(this%NodeInd(1))%BlockInd)
+        k=Node(this%NodeInd(1))%BlockInd(i)
+        mask(:)=.false.
+        forall(j=1:this%NodeNum)
+          mask(j)=any(Block(k)%NodeInd(:)==this%NodeInd(j))
+        end forall
+        if(all(mask(:)))then
+          this%NeibBlock(l)=k
+          if(l==FACET_NEIB_BLOCK_NUM)then
+            exit
+          end if
+          l=l+1
         end if
-        l=l+1
-      end if
-    end do
+      end do
+    end if
     deallocate(mask)
   end subroutine
   
@@ -479,24 +524,38 @@ contains
   elemental subroutine updateBlockNeib(this)
     class(typeBlock),intent(inout)::this
     logical,allocatable::mask(:)
+    integer,allocatable::scanlist(:)
     
     allocate(mask(this%NodeNum))
     this%Neib(:)=0
-    do i=1,nBlock
+    
+    allocate(scanlist(0))
+    do i=1,this%NodeNum
+      if(allocated(Node(this%NodeInd(i))%BlockInd))then
+        do j=1,size(Node(this%NodeInd(i))%BlockInd)
+          if(all(scanlist(:)/=Node(this%NodeInd(i))%BlockInd(j)))then
+            call extendArray(scanlist,1)
+            scanlist(size(scanlist))=Node(this%NodeInd(i))%BlockInd(j)
+          end if
+        end do
+      end if
+    end do
+    do i=1,size(scanlist)
+      k=scanlist(i)
       mask(:)=.false.
       forall(j=1:this%NodeNum)
-        mask(j)=any(Block(i)%NodeInd(:)==this%NodeInd(j))
+        mask(j)=any(Block(k)%NodeInd(:)==this%NodeInd(j))
       end forall
       do j=1,this%SurfNum
         select case(this%ShapeType)
           case(TET_TYPE)
             if(all(mask(TET_SURF_TAB(j,:))))then
-              this%Neib(j)=i
+              this%Neib(j)=k
               exit
             end if
           case(HEX_TYPE)
             if(all(mask(HEX_SURF_TAB(j,:))))then
-              this%Neib(j)=i
+              this%Neib(j)=k
               exit
             end if
           case default
@@ -506,24 +565,38 @@ contains
         exit
       end if
     end do
-    do i=1,nFacet
+    deallocate(scanlist)
+    
+    allocate(scanlist(0))
+    do i=1,this%NodeNum
+      if(allocated(Node(this%NodeInd(i))%FacetInd))then
+        do j=1,size(Node(this%NodeInd(i))%FacetInd)
+          if(all(scanlist(:)/=Node(this%NodeInd(i))%FacetInd(j)))then
+            call extendArray(scanlist,1)
+            scanlist(size(scanlist))=Node(this%NodeInd(i))%FacetInd(j)
+          end if
+        end do
+      end if
+    end do
+    do i=1,size(scanlist)
+      k=scanlist(i)
       mask(:)=.false.
       forall(j=1:this%NodeNum)
-        mask(j)=any(Facet(i)%NodeInd(:)==this%NodeInd(j))
+        mask(j)=any(Facet(k)%NodeInd(:)==this%NodeInd(j))
       end forall
       do j=1,this%SurfNum
         select case(this%ShapeType)
           case(TET_TYPE)
             if(all(mask(TET_SURF_TAB(j,:))))then
-              if(this%Neib(j)==0.or.Facet(i)%GeoEnti<0)then ! partition interface has GeoEnti<0
-                this%Neib(j)=-i
+              if(this%Neib(j)==0.or.Facet(k)%GeoEnti<0)then ! partition interface has GeoEnti<0
+                this%Neib(j)=-k
                 exit
               end if
             end if
           case(HEX_TYPE)
             if(all(mask(HEX_SURF_TAB(j,:))))then
-              if(this%Neib(j)==0.or.Facet(i)%GeoEnti<0)then ! partition interface has GeoEnti<0
-                this%Neib(j)=-i
+              if(this%Neib(j)==0.or.Facet(k)%GeoEnti<0)then ! partition interface has GeoEnti<0
+                this%Neib(j)=-k
                 exit
               end if
             end if
@@ -531,6 +604,9 @@ contains
         end select
       end do
     end do
+    deallocate(scanlist)
+    
+    deallocate(mask)
   end subroutine
   
   !----------------------------------------------------------
@@ -641,13 +717,9 @@ contains
   ! update all components of grid information
   !-------------------------------------------
   subroutine updateGrid()
-    !$omp parallel do
-    do i=1,nNode
-      Node(i)%Ind=i
-      call Node(i)%updateFacetInd()
-      call Node(i)%updateBlockInd()
-    end do
-    !$omp end parallel do
+    Node(:)%Ind=[(i,i=1,nNode)]
+    call updateAllNodeFacetInd()
+    call updateAllNodeBlockInd()
     !$omp parallel do
     do i=1,nPoint
       Point(i)%Ind=i
