@@ -252,35 +252,6 @@ contains
     close(fid)
   end subroutine
   
-  !------------------------------------
-  ! initialize data output environment
-  !------------------------------------
-  ! a: number of scaler data sets at nodes
-  ! b: number of vector data sets at nodes
-  ! c: number of tensor data sets at nodes
-  ! d: number of scaler data sets at the centre of facets
-  ! e: number of vector data sets at the centre of facets
-  ! f: number of tensor data sets at the centre of facets
-  ! g: number of scaler data sets at the centre of blocks
-  ! h: number of vector data sets at the centre of blocks
-  ! i: number of tensor data sets at the centre of blocks
-  subroutine initWriteEnv(a,b,c,d,e,f,g,h,i)
-    integer,intent(in)::a,b,c,d,e,f,g,h,i
-    
-    ! allocate output data space
-    allocate(rstNodeScal(a))
-    allocate(rstNodeVect(b))
-    allocate(rstNodeTens(c))
-    allocate(rstFacetScal(d))
-    allocate(rstFacetVect(e))
-    allocate(rstFacetTens(f))
-    allocate(rstBlockScal(g))
-    allocate(rstBlockVect(h))
-    allocate(rstBlockTens(i))
-    ! set output control variables
-    nWrite=0
-  end subroutine
-  
   !-------------------------------
   ! add scaler data to write list
   !-------------------------------
