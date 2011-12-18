@@ -4,6 +4,9 @@ program demo
   use moduleGrid
   use moduleFileIO
   use moduleMiscDataStruct
+  use moduleMtl
+  
+  call readMtl('materials.mtl',51)
   
 !  type(typeDataSet)::v
 !  type(typeDataItem)::ve
@@ -33,20 +36,20 @@ program demo
 !  write(*,*),v%lookup('name2')
 !  write(*,*),v%lookup('name4',3d0)
   
-  double precision,target,allocatable::v(:),vp(:,:)
-  
-  call readmsh('grid.msh',50,verbose=.true.)
-  
-  allocate(v(nFacet+100))
-  allocate(vp(nNode,DIMS))
-  call addWrite(v(1:nFacet),binding=RST_BIND_FACET)
-  call addWrite(vp,binding=RST_BIND_NODE)
-  do i=1,nFacet
-    v(i)=norm2(Facet(i)%PC)
-  end do
-  do i=1,nNode
-    vp(i,:)=Node(i)%Pos(:)
-  end do
-  
-  call writerst('rst.msh',55)
+!  double precision,target,allocatable::v(:),vp(:,:)
+!  
+!  call readMsh('grid.msh',50,verbose=.true.)
+!  
+!  allocate(v(nFacet+100))
+!  allocate(vp(nNode,DIMS))
+!  call addWrite(v(1:nFacet),binding=RST_BIND_FACET)
+!  call addWrite(vp,binding=RST_BIND_NODE)
+!  do i=1,nFacet
+!    v(i)=norm2(Facet(i)%PC)
+!  end do
+!  do i=1,nNode
+!    vp(i,:)=Node(i)%Pos(:)
+!  end do
+!  
+!  call writeRst('rst.msh',55)
 end program

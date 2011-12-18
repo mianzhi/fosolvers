@@ -30,15 +30,16 @@ module moduleFileIO
   public addWrite
   
   ! other procedures
-  public readmsh
-  public writerst
+  public readMsh
+  public writeRst
+  public readMtl
   
 contains
   
   !----------------
   ! read mesh file
   !----------------
-  subroutine readmsh(fname,fid,verbose)
+  subroutine readMsh(fname,fid,verbose)
     use moduleGrid
     use moduleUtility
     character(*),intent(in)::fname
@@ -459,7 +460,7 @@ contains
   !---------------
   ! hold=.true.: hold the file when exiting subroutine; good for writing a time span
   ! hold=.false.: close the file when exiting subroutine; good for writing a snapshot
-  subroutine writerst(fname,fid,span)
+  subroutine writeRst(fname,fid,span)
     use moduleGrid
     use moduleTime
     character(*),intent(in)::fname
@@ -715,6 +716,42 @@ contains
     if(t>tFinal.or..not.hold)then ! if it is the last time writing results
       close(fid)
     end if
+  end subroutine
+  
+  !--------------------
+  ! read material file
+  !--------------------
+  subroutine readMtl(fname,fid)
+    use moduleMtl
+    character(*),intent(in)::fname
+    integer,intent(in)::fid
+    integer readerr
+    character(DEFAULT_STRING_LEN) tempString
+    
+    open(fid,file=fname,status='old')
+    readerr=0
+    
+    read(fid,*,iostat=readerr),n
+    allocate(Mtl(n))
+    
+    do while(readerr==0)
+      ! skip the irrelevant lines
+      do while(readerr==0)
+        read(fid,*,iostat=readerr),tempString
+        if(tempString(1:1)=='$')then
+          exit
+        end if
+      end do
+      ! check if finished
+      if(readerr/=0)then
+        exit
+      end if
+      ! read node data
+      if(tempString(1:4)=='$Mtl'.or.tempString(1:4)=='$Mtl')then
+        !TODO: read
+        cycle
+      end if
+    end do
   end subroutine
   
 end module
