@@ -10,6 +10,10 @@ module moduleFileIO
   ! some constants
   integer,parameter,public::DEFAULT_STRING_LEN=200
   
+  integer,parameter,public::RST_BIND_NODE=1
+  integer,parameter,public::RST_BIND_FACET=2
+  integer,parameter,public::RST_BIND_BLOCK=3
+  
   ! output control related variables
   integer,public,save::nWrite=0
   ! data to be output
@@ -255,20 +259,33 @@ contains
   !-------------------------------
   ! add scaler data to write list
   !-------------------------------
-  subroutine addWriteScal(v)
+  subroutine addWriteScal(v,binding)
     use moduleGrid
-    use moduleUtility
     double precision,target,intent(in)::v(:)
+    integer,intent(in),optional::binding
+    logical bindnode,bindfacet,bindblock
     type(typePtrScalArray),allocatable::temp(:)
     
-    n=count([size(v,1)==nNode,size(v,1)==nFacet,size(v,1)==nBlock])
-    if(n<1)then
-      call showWarning('can not match data with nodes, facets or blocks.')
-    else if(n>1)then
-      call showWarning('data matches with more than one of nodes, facets and blocks.')
+    bindnode=.false.
+    bindfacet=.false.
+    bindblock=.false.
+    if(present(binding))then
+      select case(binding)
+        case(RST_BIND_NODE)
+          bindnode=.true.
+        case(RST_BIND_FACET)
+          bindfacet=.true.
+        case(RST_BIND_BLOCK)
+          bindblock=.true.
+        case default
+      end select
+    else
+      bindnode=(size(v,1)==nNode)
+      bindfacet=(size(v,1)==nFacet)
+      bindblock=(size(v,1)==nBlock)
     end if
     
-    if(size(v,1)==nNode)then
+    if(bindnode)then
       if(allocated(rstNodeScal))then
         allocate(temp(size(rstNodeScal)+1))
         temp(1:size(rstNodeScal))=rstNodeScal(:)
@@ -279,7 +296,7 @@ contains
         rstNodeScal(1)%ptr=>v
       end if
     end if
-    if(size(v,1)==nFacet)then
+    if(bindfacet)then
       if(allocated(rstFacetScal))then
         allocate(temp(size(rstFacetScal)+1))
         temp(1:size(rstFacetScal))=rstFacetScal(:)
@@ -290,7 +307,7 @@ contains
         rstFacetScal(1)%ptr=>v
       end if
     end if
-    if(size(v,1)==nBlock)then
+    if(bindblock)then
       if(allocated(rstBlockScal))then
         allocate(temp(size(rstBlockScal)+1))
         temp(1:size(rstBlockScal))=rstBlockScal(:)
@@ -308,20 +325,33 @@ contains
   !-------------------------------
   ! add vector data to write list
   !-------------------------------
-  subroutine addWriteVect(v)
+  subroutine addWriteVect(v,binding)
     use moduleGrid
-    use moduleUtility
     double precision,target,intent(in)::v(:,:)
+    integer,intent(in),optional::binding
+    logical bindnode,bindfacet,bindblock
     type(typePtrVectArray),allocatable::temp(:)
     
-    n=count([size(v,1)==nNode,size(v,1)==nFacet,size(v,1)==nBlock])
-    if(n<1)then
-      call showWarning('can not match data with nodes, facets or blocks.')
-    else if(n>1)then
-      call showWarning('data matches with more than one of nodes, facets and blocks.')
+    bindnode=.false.
+    bindfacet=.false.
+    bindblock=.false.
+    if(present(binding))then
+      select case(binding)
+        case(RST_BIND_NODE)
+          bindnode=.true.
+        case(RST_BIND_FACET)
+          bindfacet=.true.
+        case(RST_BIND_BLOCK)
+          bindblock=.true.
+        case default
+      end select
+    else
+      bindnode=(size(v,1)==nNode)
+      bindfacet=(size(v,1)==nFacet)
+      bindblock=(size(v,1)==nBlock)
     end if
     
-    if(size(v,1)==nNode)then
+    if(bindnode)then
       if(allocated(rstNodeVect))then
         allocate(temp(size(rstNodeVect)+1))
         temp(1:size(rstNodeVect))=rstNodeVect(:)
@@ -332,7 +362,7 @@ contains
         rstNodeVect(1)%ptr=>v
       end if
     end if
-    if(size(v,1)==nFacet)then
+    if(bindfacet)then
       if(allocated(rstFacetVect))then
         allocate(temp(size(rstFacetVect)+1))
         temp(1:size(rstFacetVect))=rstFacetVect(:)
@@ -343,7 +373,7 @@ contains
         rstFacetVect(1)%ptr=>v
       end if
     end if
-    if(size(v,1)==nBlock)then
+    if(bindblock)then
       if(allocated(rstBlockVect))then
         allocate(temp(size(rstBlockVect)+1))
         temp(1:size(rstBlockVect))=rstBlockVect(:)
@@ -361,20 +391,33 @@ contains
   !-------------------------------
   ! add tensor data to write list
   !-------------------------------
-  subroutine addWriteTens(v)
+  subroutine addWriteTens(v,binding)
     use moduleGrid
-    use moduleUtility
     double precision,target,intent(in)::v(:,:,:)
+    integer,intent(in),optional::binding
+    logical bindnode,bindfacet,bindblock
     type(typePtrTensArray),allocatable::temp(:)
     
-    n=count([size(v,1)==nNode,size(v,1)==nFacet,size(v,1)==nBlock])
-    if(n<1)then
-      call showWarning('can not match data with nodes, facets or blocks.')
-    else if(n>1)then
-      call showWarning('data matches with more than one of nodes, facets and blocks.')
+    bindnode=.false.
+    bindfacet=.false.
+    bindblock=.false.
+    if(present(binding))then
+      select case(binding)
+        case(RST_BIND_NODE)
+          bindnode=.true.
+        case(RST_BIND_FACET)
+          bindfacet=.true.
+        case(RST_BIND_BLOCK)
+          bindblock=.true.
+        case default
+      end select
+    else
+      bindnode=(size(v,1)==nNode)
+      bindfacet=(size(v,1)==nFacet)
+      bindblock=(size(v,1)==nBlock)
     end if
     
-    if(size(v,1)==nNode)then
+    if(bindnode)then
       if(allocated(rstNodeTens))then
         allocate(temp(size(rstNodeTens)+1))
         temp(1:size(rstNodeTens))=rstNodeTens(:)
@@ -385,7 +428,7 @@ contains
         rstNodeTens(1)%ptr=>v
       end if
     end if
-    if(size(v,1)==nFacet)then
+    if(bindfacet)then
       if(allocated(rstFacetTens))then
         allocate(temp(size(rstFacetTens)+1))
         temp(1:size(rstFacetTens))=rstFacetTens(:)
@@ -396,7 +439,7 @@ contains
         rstFacetTens(1)%ptr=>v
       end if
     end if
-    if(size(v,1)==nBlock)then
+    if(bindblock)then
       if(allocated(rstBlockTens))then
         allocate(temp(size(rstBlockTens)+1))
         temp(1:size(rstBlockTens))=rstBlockTens(:)

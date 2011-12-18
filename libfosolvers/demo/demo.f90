@@ -37,10 +37,10 @@ program demo
   
   call readmsh('grid.msh',50,verbose=.true.)
   
-  allocate(v(nFacet))
+  allocate(v(nFacet+100))
   allocate(vp(nNode,DIMS))
-  call addWrite(v)
-  call addWrite(vp)
+  call addWrite(v(1:nFacet),binding=RST_BIND_FACET)
+  call addWrite(vp,binding=RST_BIND_NODE)
   do i=1,nFacet
     v(i)=norm2(Facet(i)%PC)
   end do
