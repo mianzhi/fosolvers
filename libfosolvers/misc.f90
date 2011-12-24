@@ -7,7 +7,7 @@ module moduleMiscDataStruct
   private
   
   ! constants
-  integer,parameter,private::DATA_NAME_LENGTH=5
+  integer,parameter,public::DATA_NAME_LENGTH=5
   integer,parameter,public::VAL_TYPE=1
   integer,parameter,public::TAB1D_TYPE=2
   

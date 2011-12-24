@@ -7,8 +7,6 @@ module moduleMtl
   use moduleMiscDataStruct
   private
   
-  ! constants
-  
   ! material data
   type(typeDataSet),public,allocatable,save::Mtl(:)
 

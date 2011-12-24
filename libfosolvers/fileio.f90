@@ -737,7 +737,7 @@ contains
     do while(readerr==0)
       ! skip the irrelevant lines
       do while(readerr==0)
-        read(fid,*,iostat=readerr),tempString
+        read(fid,'(a)',iostat=readerr),tempString
         if(tempString(1:1)=='$')then
           exit
         end if
@@ -746,9 +746,30 @@ contains
       if(readerr/=0)then
         exit
       end if
-      ! read node data
+      ! read material properties
       if(tempString(1:4)=='$Mtl'.or.tempString(1:4)=='$Mtl')then
-        !TODO: read
+        read(tempString(5:),*),m
+        do while(readerr==0)
+          read(fid,'(a)',iostat=readerr),tempString
+          if(tempString(1:4)=='$End')then
+            exit
+          else
+            call Mtl(m)%extend(1)
+          end if
+          read(tempString,*),Mtl(m)%ptrLast%DataName,l
+          select case(l)
+            case(VAL_TYPE)
+              call Mtl(m)%ptrLast%specify(l)
+              read(fid,*,iostat=readerr),Mtl(m)%ptrLast%Val
+            case(TAB1D_TYPE)
+              read(fid,*,iostat=readerr),k
+              call Mtl(m)%ptrLast%specify(l,k)
+              do i=1,k
+                read(fid,*,iostat=readerr),Mtl(m)%ptrLast%Tab1d(i,:)
+              end do
+            case default
+          end select
+        end do
         cycle
       end if
     end do
