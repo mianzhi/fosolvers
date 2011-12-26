@@ -33,6 +33,7 @@ module moduleFileIO
   public readMsh
   public writeRst
   public readMtl
+  public readCond
   
 contains
   
@@ -747,7 +748,7 @@ contains
         exit
       end if
       ! read material properties
-      if(tempString(1:4)=='$Mtl'.or.tempString(1:4)=='$Mtl')then
+      if(tempString(1:4)=='$Mtl')then
         read(tempString(5:),*),m
         do while(readerr==0)
           read(fid,'(a)',iostat=readerr),tempString
@@ -773,6 +774,171 @@ contains
         cycle
       end if
     end do
+  end subroutine
+  
+  !---------------------
+  ! read condition file
+  !---------------------
+  subroutine readCond(fname,fid)
+    use moduleCond
+    use moduleGrid
+    character(*),intent(in)::fname
+    integer,intent(in)::fid
+    integer readerr
+    character(DEFAULT_STRING_LEN) tempString
+    type(typeDataItem)::sample
+    logical,allocatable::maskNode(:)
+    
+    open(fid,file=fname,status='old')
+    readerr=0
+    
+    allocate(CondNode(nNode))
+    allocate(CondFacet(nFacet))
+    allocate(CondBlock(nBlock))
+    
+    allocate(maskNode(nNode))
+    
+    do while(readerr==0)
+      ! skip the irrelevant lines
+      do while(readerr==0)
+        read(fid,'(a)',iostat=readerr),tempString
+        if(tempString(1:1)=='$')then
+          exit
+        end if
+      end do
+      ! check if finished
+      if(readerr/=0)then
+        exit
+      end if
+      ! read node conditions
+      if(tempString(1:9)=='$CondNode')then
+        do while(readerr==0)
+          read(fid,'(a)',iostat=readerr),tempString
+          if(tempString(1:4)=='$End')then
+            exit
+          else if(tempString(1:1)=='%')then
+            read(tempString(2:),*),m ! geometric entity
+            do while(readerr==0)
+              read(fid,'(a)',iostat=readerr),tempString
+              if(tempString(1:4)=='%End')then
+                exit
+              end if
+              ! read into sample
+              read(tempString,*),sample%DataName,l
+              select case(l)
+                case(VAL_TYPE)
+                  call sample%specify(l)
+                  read(fid,*,iostat=readerr),sample%Val
+                case(TAB1D_TYPE)
+                  read(fid,*,iostat=readerr),k
+                  call sample%specify(l,k)
+                  do i=1,k
+                    read(fid,*,iostat=readerr),sample%Tab1d(i,:)
+                  end do
+                case default
+              end select
+              ! push into nodes
+              maskNode(:)=.false.
+              forall(i=1:nPoint,Point(i)%GeoEnti==m)
+                maskNode(Point(i)%NodeInd)=.true.
+              end forall
+              forall(i=1:nLine,Line(i)%GeoEnti==m)
+                maskNode(Line(i)%NodeInd(:))=.true.
+              end forall
+              forall(i=1:nFacet,Facet(i)%GeoEnti==m)
+                maskNode(Facet(i)%NodeInd(:))=.true.
+              end forall
+              forall(i=1:nBlock,Block(i)%GeoEnti==m)
+                maskNode(Block(i)%NodeInd(:))=.true.
+              end forall
+              do i=1,nNode
+                if(maskNode(i))then
+                  call condNode(i)%push(sample)
+                end if
+              end do
+            end do
+          end if
+        end do
+        cycle
+      end if
+      ! read facet conditions
+      if(tempString(1:10)=='$CondFacet')then
+        do while(readerr==0)
+          read(fid,'(a)',iostat=readerr),tempString
+          if(tempString(1:4)=='$End')then
+            exit
+          else if(tempString(1:1)=='%')then
+            read(tempString(2:),*),m ! geometric entity
+            do while(readerr==0)
+              read(fid,'(a)',iostat=readerr),tempString
+              if(tempString(1:4)=='%End')then
+                exit
+              end if
+              ! read into sample
+              read(tempString,*),sample%DataName,l
+              select case(l)
+                case(VAL_TYPE)
+                  call sample%specify(l)
+                  read(fid,*,iostat=readerr),sample%Val
+                case(TAB1D_TYPE)
+                  read(fid,*,iostat=readerr),k
+                  call sample%specify(l,k)
+                  do i=1,k
+                    read(fid,*,iostat=readerr),sample%Tab1d(i,:)
+                  end do
+                case default
+              end select
+              ! push into facets
+              do i=1,nFacet
+                if(Facet(i)%GeoEnti==m)then
+                  call condFacet(i)%push(sample)
+                end if
+              end do
+            end do
+          end if
+        end do
+        cycle
+      end if
+      ! read block conditions
+      if(tempString(1:10)=='$CondBlock')then
+        do while(readerr==0)
+          read(fid,'(a)',iostat=readerr),tempString
+          if(tempString(1:4)=='$End')then
+            exit
+          else if(tempString(1:1)=='%')then
+            read(tempString(2:),*),m ! geometric entity
+            do while(readerr==0)
+              read(fid,'(a)',iostat=readerr),tempString
+              if(tempString(1:4)=='%End')then
+                exit
+              end if
+              ! read into sample
+              read(tempString,*),sample%DataName,l
+              select case(l)
+                case(VAL_TYPE)
+                  call sample%specify(l)
+                  read(fid,*,iostat=readerr),sample%Val
+                case(TAB1D_TYPE)
+                  read(fid,*,iostat=readerr),k
+                  call sample%specify(l,k)
+                  do i=1,k
+                    read(fid,*,iostat=readerr),sample%Tab1d(i,:)
+                  end do
+                case default
+              end select
+              ! push into blocks
+              do i=1,nBlock
+                if(Block(i)%GeoEnti==m)then
+                  call condBlock(i)%push(sample)
+                end if
+              end do
+            end do
+          end if
+        end do
+        cycle
+      end if
+    end do
+    deallocate(maskNode)
   end subroutine
   
 end module

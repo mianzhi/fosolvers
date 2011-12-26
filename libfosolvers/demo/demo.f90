@@ -4,15 +4,21 @@ program demo
   use moduleGrid
   use moduleFileIO
   use moduleMtl
+  use moduleCond
   
-  call readMtl('materials.mtl',51)
-  write(*,*),size(Mtl),size(Mtl(1)%DataItem)
-  write(*,*),Mtl(1)%lookup('Denst')
-  write(*,*),Mtl(1)%lookup('SpcHt',475d0)
-  write(*,*),Mtl(1)%lookup('ThrmCd',5d2)
-  write(*,*),Mtl(1)%lookup('YounM')
-  write(*,*),Mtl(1)%lookup('PoisR')
-  write(*,*),Mtl(1)%lookup('Stren')
+  call readMsh('grid.msh',50,verbose=.true.)
+  call readCond('conditions.cod',52)
+  write(*,*),condNode(512)%lookup('vname'),condNode(512)%lookup('tname',5d-1)
+  write(*,*),condFacet(322)%lookup('fffc1'),condFacet(322)%lookup('fffc2',0.6d0)
+  
+!  call readMtl('materials.mtl',51)
+!  write(*,*),size(Mtl),size(Mtl(1)%DataItem)
+!  write(*,*),Mtl(1)%lookup('Denst')
+!  write(*,*),Mtl(1)%lookup('SpcHt',475d0)
+!  write(*,*),Mtl(1)%lookup('ThrmCd',5d2)
+!  write(*,*),Mtl(1)%lookup('YounM')
+!  write(*,*),Mtl(1)%lookup('PoisR')
+!  write(*,*),Mtl(1)%lookup('Stren')
   
 !  type(typeDataSet)::v
 !  type(typeDataItem)::ve
