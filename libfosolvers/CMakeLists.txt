@@ -1,6 +1,7 @@
 SET(libfosolvers_src
   cond.f90
   fileio.f90
+  fvm.f90
   grid.f90
   misc.f90
   mtl.f90

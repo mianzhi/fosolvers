@@ -5,11 +5,12 @@ program demo
   use moduleFileIO
   use moduleMtl
   use moduleCond
+  use moduleFVM
   
-  call readMsh('grid.msh',50,verbose=.true.)
-  call readCond('conditions.cod',52)
-  write(*,*),condNode(512)%lookup('vname'),condNode(512)%lookup('tname',5d-1)
-  write(*,*),condFacet(322)%lookup('fffc1'),condFacet(322)%lookup('fffc2',0.6d0)
+!  call readMsh('grid.msh',50,verbose=.true.)
+!  call readCond('conditions.cod',52)
+!  write(*,*),condNode(512)%lookup('vname'),condNode(512)%lookup('tname',5d-1)
+!  write(*,*),condFacet(322)%lookup('fffc1'),condFacet(322)%lookup('fffc2',0.6d0)
   
 !  call readMtl('materials.mtl',51)
 !  write(*,*),size(Mtl),size(Mtl(1)%DataItem)
@@ -48,20 +49,26 @@ program demo
 !  write(*,*),v%lookup('name2')
 !  write(*,*),v%lookup('name4',3d0)
   
-!  double precision,target,allocatable::v(:),vp(:,:)
-!  
-!  call readMsh('grid.msh',50,verbose=.true.)
-!  
-!  allocate(v(nFacet+100))
-!  allocate(vp(nNode,DIMS))
-!  call addWrite(v(1:nFacet),binding=RST_BIND_FACET)
-!  call addWrite(vp,binding=RST_BIND_NODE)
-!  do i=1,nFacet
-!    v(i)=norm2(Facet(i)%PC)
-!  end do
-!  do i=1,nNode
-!    vp(i,:)=Node(i)%Pos(:)
-!  end do
-!  
-!  call writeRst('rst.msh',55)
+  double precision,target,allocatable::v(:),vv(:,:),vvv(:,:,:)
+  
+  call readMsh('grid.msh',50,verbose=.true.)
+  
+  allocate(v(nBlock))
+  allocate(vv(nBlock,DIMS))
+  allocate(vvv(nBlock,DIMS,DIMS))
+  call addWrite(v,binding=BIND_BLOCK)
+  call addWrite(vv,binding=BIND_BLOCK)
+  call addWrite(vvv,binding=BIND_BLOCK)
+  
+  do i=1,nBlock
+    v(i)=sin(3d0*Block(i)%PC(1))+cos(4d0*Block(i)%PC(2))+sin(5d0*Block(i)%PC(3))
+  end do
+  do i=1,nBlock
+    vv(i,:)=findGrad(i,v,binding=BIND_BLOCK)
+  end do
+  do i=1,nBlock
+    vvv(i,:,:)=findGrad(i,vv,binding=BIND_BLOCK)
+  end do
+  
+  call writeRst('rst.msh',55)
 end program
