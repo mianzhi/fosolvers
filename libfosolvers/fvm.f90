@@ -6,6 +6,9 @@
 module moduleFVM
   private
   
+  ! constants
+  integer,parameter::MIN_NEIB=10
+  
   ! generic find gradient
   interface findGrad
     module procedure::findGradScal
@@ -53,6 +56,29 @@ contains
     
     select case(finalBinding)
       case(BIND_NODE) ! v is the node-bind data
+        ! construct the neighbour list
+        do i=1,size(Node(k)%BlockInd)
+          do j=1,Block(Node(k)%BlockInd(i))%NodeNum
+            if(Block(Node(k)%BlockInd(i))%NodeInd(j)/=k)then
+              call extendArray(listNeib,1)
+              nEq=nEq+1
+              listNeib(nEq)=Block(Node(k)%BlockInd(i))%NodeInd(j)
+            end if
+          end do
+        end do
+        ! weighted least-squares gradient evaluation
+        allocate(dx(nEq,DIMS))
+        allocate(dv(max(nEq,DIMS),m))
+        allocate(s(min(nEq,DIMS)))
+        forall(i=1:nEq)
+          dx(i,:)=Node(listNeib(i))%Pos(:)-Node(k)%Pos(:)
+          dv(i,:)=v(listNeib(i),:)-v(k,:)
+          dv(i,:)=dv(i,:)/dot_product(dx(i,:),dx(i,:))
+          dx(i,:)=dx(i,:)/dot_product(dx(i,:),dx(i,:))
+        end forall
+        call DGELSD(nEq,DIMS,m,dx,nEq,dv,max(nEq,DIMS),s,-1d0,rank,work,lwork,iwork,er)
+        findGradVect(:,:)=transpose(dv(1:DIMS,:))
+        
       case(BIND_BLOCK) ! v is the block-bind data
         ! construct the neighbour list
         do i=1,Block(k)%SurfNum
@@ -62,7 +88,7 @@ contains
             listNeib(nEq)=Block(k)%Neib(i)
           end if
         end do
-        if(nEq<DIMS)then ! include more data
+        do while(nEq<MIN_NEIB) ! include more data
           do i=1,nEq
             do j=1,Block(listNeib(i))%SurfNum
               if(Block(listNeib(i))%Neib(j)>0.and.Block(listNeib(i))%Neib(j)/=k&
@@ -73,7 +99,7 @@ contains
               end if
             end do
           end do
-        end if
+        end do
         ! weighted least-squares gradient evaluation
         allocate(dx(nEq,DIMS))
         allocate(dv(max(nEq,DIMS),m))
@@ -106,6 +132,7 @@ contains
           end do
           findGradVect(i,:)=minval(listAlpha)*findGradVect(i,:)
         end do
+        
       case default
     end select
     ! clean up

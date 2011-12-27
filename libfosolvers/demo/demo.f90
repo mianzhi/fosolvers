@@ -53,21 +53,21 @@ program demo
   
   call readMsh('grid.msh',50,verbose=.true.)
   
-  allocate(v(nBlock))
-  allocate(vv(nBlock,DIMS))
-  allocate(vvv(nBlock,DIMS,DIMS))
-  call addWrite(v,binding=BIND_BLOCK)
-  call addWrite(vv,binding=BIND_BLOCK)
-  call addWrite(vvv,binding=BIND_BLOCK)
+  allocate(v(nNode))
+  allocate(vv(nNode,DIMS))
+  allocate(vvv(nNode,DIMS,DIMS))
+  call addWrite(v,binding=BIND_NODE)
+  call addWrite(vv,binding=BIND_NODE)
+  call addWrite(vvv,binding=BIND_NODE)
   
-  do i=1,nBlock
-    v(i)=sin(3d0*Block(i)%PC(1))+cos(4d0*Block(i)%PC(2))+sin(5d0*Block(i)%PC(3))
+  do i=1,nNode
+    v(i)=sin(3d0*Node(i)%Pos(1))+cos(4d0*Node(i)%Pos(2))+sin(5d0*Node(i)%Pos(3))
   end do
-  do i=1,nBlock
-    vv(i,:)=findGrad(i,v,binding=BIND_BLOCK)
+  do i=1,nNode
+    vv(i,:)=findGrad(i,v,binding=BIND_Node)
   end do
-  do i=1,nBlock
-    vvv(i,:,:)=findGrad(i,vv,binding=BIND_BLOCK)
+  do i=1,nNode
+    vvv(i,:,:)=findGrad(i,vv,binding=BIND_Node)
   end do
   
   call writeRst('rst.msh',55)
