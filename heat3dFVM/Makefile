@@ -3,7 +3,7 @@ libpath=../libfosolvers/
 libs=-lfosolvers -llapack
 target=heat3dFVM
 
-FC=gfortran
+FC=mpif90
 FFLAGS=-Wall -fopenmp -O2 -mtune=native -I$(libpath) -L$(libpath)
 
 %.o:%.f90
