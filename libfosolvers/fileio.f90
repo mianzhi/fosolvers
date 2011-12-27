@@ -8,11 +8,7 @@ module moduleFileIO
   private
   
   ! some constants
-  integer,parameter,public::DEFAULT_STRING_LEN=200
-  
-  integer,parameter,public::RST_BIND_NODE=1
-  integer,parameter,public::RST_BIND_FACET=2
-  integer,parameter,public::RST_BIND_BLOCK=3
+  integer,parameter,public::DEFAULT_STRING_LEN=400
   
   ! output control related variables
   integer,public,save::nWrite=0
@@ -273,11 +269,11 @@ contains
     bindblock=.false.
     if(present(binding))then
       select case(binding)
-        case(RST_BIND_NODE)
+        case(BIND_NODE)
           bindnode=.true.
-        case(RST_BIND_FACET)
+        case(BIND_FACET)
           bindfacet=.true.
-        case(RST_BIND_BLOCK)
+        case(BIND_BLOCK)
           bindblock=.true.
         case default
       end select
@@ -339,11 +335,11 @@ contains
     bindblock=.false.
     if(present(binding))then
       select case(binding)
-        case(RST_BIND_NODE)
+        case(BIND_NODE)
           bindnode=.true.
-        case(RST_BIND_FACET)
+        case(BIND_FACET)
           bindfacet=.true.
-        case(RST_BIND_BLOCK)
+        case(BIND_BLOCK)
           bindblock=.true.
         case default
       end select
@@ -405,11 +401,11 @@ contains
     bindblock=.false.
     if(present(binding))then
       select case(binding)
-        case(RST_BIND_NODE)
+        case(BIND_NODE)
           bindnode=.true.
-        case(RST_BIND_FACET)
+        case(BIND_FACET)
           bindfacet=.true.
-        case(RST_BIND_BLOCK)
+        case(BIND_BLOCK)
           bindblock=.true.
         case default
       end select

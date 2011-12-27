@@ -97,6 +97,10 @@ module moduleGrid
   
   integer,parameter,public::FACET_NEIB_BLOCK_NUM=2
   
+  integer,parameter,public::BIND_NODE=1
+  integer,parameter,public::BIND_FACET=2
+  integer,parameter,public::BIND_BLOCK=3
+  
   ! table of surface nodes for all kinds of block
   integer,public::TET_SURF_TAB(TET_SURF_NUM,TRI_NODE_NUM),HEX_SURF_TAB(HEX_SURF_NUM,QUAD_NODE_NUM)
   parameter(TET_SURF_TAB=reshape([1,1,1,2,3,2,4,3,2,4,3,4],[TET_SURF_NUM,TRI_NODE_NUM]))
@@ -533,7 +537,8 @@ contains
     do i=1,this%NodeNum
       if(allocated(Node(this%NodeInd(i))%BlockInd))then
         do j=1,size(Node(this%NodeInd(i))%BlockInd)
-          if(all(scanlist(:)/=Node(this%NodeInd(i))%BlockInd(j)))then
+          if(all(scanlist(:)/=Node(this%NodeInd(i))%BlockInd(j))&
+          &  .and.Node(this%NodeInd(i))%BlockInd(j)/=this%Ind)then
             call extendArray(scanlist,1)
             scanlist(size(scanlist))=Node(this%NodeInd(i))%BlockInd(j)
           end if
