@@ -84,8 +84,8 @@ contains
           dv(i,:)=dv(i,:)/dot_product(dx(i,:),dx(i,:))
           dx(i,:)=dx(i,:)/dot_product(dx(i,:),dx(i,:))
         end forall
-        call DGELSD(nEq,3,m,dx,nEq,dv,max(nEq,DIMS),s,-1d0,rank,work,lwork,iwork,er)
-        findGradVect(:,:)=transpose(dv(1:DIMS,1:m))
+        call DGELSD(nEq,DIMS,m,dx,nEq,dv,max(nEq,DIMS),s,-1d0,rank,work,lwork,iwork,er)
+        findGradVect(:,:)=transpose(dv(1:DIMS,:))
         ! regulate the gradient
         do i=1,m
           listAlpha(:)=1d0
