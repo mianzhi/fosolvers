@@ -7,7 +7,7 @@ module moduleFVM
   private
   
   ! constants
-  integer,parameter::MIN_NEIB=10
+  integer,parameter::GRAD_MIN_NEIB=5
   
   ! generic find gradient
   interface findGrad
@@ -88,7 +88,7 @@ contains
             listNeib(nEq)=Block(k)%Neib(i)
           end if
         end do
-        do while(nEq<MIN_NEIB) ! include more data
+        do while(nEq<GRAD_MIN_NEIB) ! include more data
           do i=1,nEq
             do j=1,Block(listNeib(i))%SurfNum
               if(Block(listNeib(i))%Neib(j)>0.and.Block(listNeib(i))%Neib(j)/=k&
