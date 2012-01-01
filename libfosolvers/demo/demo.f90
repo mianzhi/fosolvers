@@ -6,12 +6,26 @@ program demo
   use moduleMtl
   use moduleCond
   use moduleFVM
+  use moduleMP
   
+  ! test multi-processing
+  call initMPI()
+  
+  if(pidMPI==ROOT_PID)then
+    write(*,*),'this is master ',pidMPI
+  else
+    write(*,*),'this is slave ',pidMPI
+  end if
+  
+  call finalMPI()
+  
+!  ! test conditions  
 !  call readMsh('grid.msh',50,verbose=.true.)
 !  call readCond('conditions.cod',52)
 !  write(*,*),condNode(512)%lookup('vname'),condNode(512)%lookup('tname',5d-1)
 !  write(*,*),condFacet(322)%lookup('fffc1'),condFacet(322)%lookup('fffc2',0.6d0)
   
+!  ! test materials
 !  call readMtl('materials.mtl',51)
 !  write(*,*),size(Mtl),size(Mtl(1)%DataItem)
 !  write(*,*),Mtl(1)%lookup('Denst')
@@ -21,6 +35,7 @@ program demo
 !  write(*,*),Mtl(1)%lookup('PoisR')
 !  write(*,*),Mtl(1)%lookup('Stren')
   
+!  ! test dataset
 !  type(typeDataSet)::v
 !  type(typeDataItem)::ve
 !  
@@ -49,26 +64,27 @@ program demo
 !  write(*,*),v%lookup('name2')
 !  write(*,*),v%lookup('name4',3d0)
   
-  double precision,target,allocatable::v(:),vv(:,:),vvv(:,:,:)
-  
-  call readMsh('grid.msh',50,verbose=.true.)
-  
-  allocate(v(nNode))
-  allocate(vv(nNode,DIMS))
-  allocate(vvv(nNode,DIMS,DIMS))
-  call addWrite(v,binding=BIND_NODE)
-  call addWrite(vv,binding=BIND_NODE)
-  call addWrite(vvv,binding=BIND_NODE)
-  
-  do i=1,nNode
-    v(i)=sin(3d0*Node(i)%Pos(1))+cos(4d0*Node(i)%Pos(2))+sin(5d0*Node(i)%Pos(3))
-  end do
-  do i=1,nNode
-    vv(i,:)=findGrad(i,v,binding=BIND_Node)
-  end do
-  do i=1,nNode
-    vvv(i,:,:)=findGrad(i,vv,binding=BIND_Node)
-  end do
-  
-  call writeRst('rst.msh',55)
+!  ! test gradient and grid
+!  double precision,target,allocatable::v(:),vv(:,:),vvv(:,:,:)
+!  
+!  call readMsh('grid.msh',50,verbose=.true.)
+!  
+!  allocate(v(nNode))
+!  allocate(vv(nNode,DIMS))
+!  allocate(vvv(nNode,DIMS,DIMS))
+!  call addWrite(v,binding=BIND_NODE)
+!  call addWrite(vv,binding=BIND_NODE)
+!  call addWrite(vvv,binding=BIND_NODE)
+!  
+!  do i=1,nNode
+!    v(i)=sin(3d0*Node(i)%Pos(1))+cos(4d0*Node(i)%Pos(2))+sin(5d0*Node(i)%Pos(3))
+!  end do
+!  do i=1,nNode
+!    vv(i,:)=findGrad(i,v,binding=BIND_Node)
+!  end do
+!  do i=1,nNode
+!    vvv(i,:,:)=findGrad(i,vv,binding=BIND_Node)
+!  end do
+!  
+!  call writeRst('rst.msh',55)
 end program
