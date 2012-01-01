@@ -1,0 +1,26 @@
+$CondNode
+% 90
+vname 1
+222d0
+tname 2
+2
+0d0 1d0
+1d0 2d0
+%End 90
+$EndCondNode
+
+$CondFacet
+% 10
+fffc1 1
+444d0
+%End 10
+% 10
+fffc2 2
+2
+0d0 2d0
+1d0 4d0
+%End 10
+$EndCondFacet
+
+$CondBlock
+$EndCondBlock
