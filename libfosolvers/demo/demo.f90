@@ -9,12 +9,20 @@ program demo
   use moduleMP
   
   ! test multi-processing
+  integer,allocatable::a(:)
   call initMPI()
   
   if(pidMPI==ROOT_PID)then
     write(*,*),'this is master ',pidMPI
+    allocate(a(4))
+    a=[4,5,8,9]
+    call sendData(a,1,1)
   else
     write(*,*),'this is slave ',pidMPI
+    if(pidMPI==1)then
+      call recvData(a,0,1,realloc=.true.)
+      write(*,*),a
+    end if
   end if
   
   call finalMPI()
