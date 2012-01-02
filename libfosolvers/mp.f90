@@ -23,6 +23,7 @@ module moduleMP
     module procedure::sendDoubleVect
     module procedure::sendDataItemScal
     module procedure::sendDataItemVect
+    module procedure::sendDataSetScal
   end interface
   public::sendData
   
@@ -39,6 +40,7 @@ module moduleMP
     module procedure::recvDataItemScal
     module procedure::recvDataItemVect
     module procedure::recvDataItemVectRealloc
+    module procedure::recvDataSetScal
   end interface
   public::recvData
   
@@ -321,6 +323,40 @@ contains
       end do
     else
       call recvDataItemVect(obj,source,tag)
+    end if
+  end subroutine
+  
+  !----------------------------------------
+  ! send scaler object of type typeDataSet
+  !----------------------------------------
+  subroutine sendDataSetScal(obj,dest,tag)
+    use mpi
+    use moduleMiscDataStruct
+    type(typeDataSet),intent(in)::obj
+    integer,intent(in)::dest,tag
+    
+    if(associated(obj%DataItem))then
+      call MPI_send(.true.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+      call sendDataItemVect(obj%DataItem,dest,tag)
+    else
+      call MPI_send(.false.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+    end if
+  end subroutine
+  
+  !-------------------------------------------
+  ! receive scaler object of type typeDataSet
+  !-------------------------------------------
+  subroutine recvDataSetScal(obj,source,tag)
+    use mpi
+    use moduleMiscDataStruct
+    type(typeDataSet),intent(inout)::obj
+    integer,intent(in)::source,tag
+    logical isAllocated
+    
+    call MPI_recv(isAllocated,1,MPI_logical,source,tag,MPI_comm_world,statMPI,errMPI)
+    if(isAllocated)then
+      call recvDataItemVectRealloc(obj%DataItem,source,tag,realloc=.true.)
+      obj%ptrLast=>obj%DataItem(size(obj%DataItem))
     end if
   end subroutine
   

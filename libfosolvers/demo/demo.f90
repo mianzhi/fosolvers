@@ -26,11 +26,11 @@ program demo
     v%ptrLast%DataName='name2'
     v%ptrLast%Val=250d0
     write(*,*),v%lookup('name1',2.5d0),v%lookup('name2'),'from master'
-    call sendData(v%DataItem,1,1)
+    call sendData(v,1,1)
   else
     write(*,*),'this is slave ',pidMPI
     if(pidMPI==1)then
-      call recvData(v%DataItem,0,1,realloc=.true.)
+      call recvData(v,0,1)
       write(*,*),v%lookup('name1',2.5d0),v%lookup('name2'),'from slave ',pidMPI
     end if
   end if
