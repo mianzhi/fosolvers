@@ -24,6 +24,7 @@ module moduleMP
     module procedure::sendDataItemScal
     module procedure::sendDataItemVect
     module procedure::sendDataSetScal
+    module procedure::sendDataSetVect
   end interface
   public::sendData
   
@@ -41,6 +42,8 @@ module moduleMP
     module procedure::recvDataItemVect
     module procedure::recvDataItemVectRealloc
     module procedure::recvDataSetScal
+    module procedure::recvDataSetVect
+    module procedure::recvDataSetVectRealloc
   end interface
   public::recvData
   
@@ -357,6 +360,61 @@ contains
     if(isAllocated)then
       call recvDataItemVectRealloc(obj%DataItem,source,tag,realloc=.true.)
       obj%ptrLast=>obj%DataItem(size(obj%DataItem))
+    end if
+  end subroutine
+  
+  !----------------------------------------
+  ! send vector object of type typeDataSet
+  !----------------------------------------
+  subroutine sendDataSetVect(obj,dest,tag)
+    use mpi
+    use moduleMiscDataStruct
+    type(typeDataSet),intent(in)::obj(:)
+    integer,intent(in)::dest,tag
+    
+    n=size(obj)
+    call MPI_send(n,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    do i=1,n
+      call sendDataSetScal(obj(i),dest,tag)
+    end do
+  end subroutine
+  
+  !-------------------------------------------
+  ! receive vector object of type typeDataSet
+  !-------------------------------------------
+  subroutine recvDataSetVect(obj,source,tag)
+    use mpi
+    use moduleMiscDataStruct
+    type(typeDataSet),intent(inout)::obj(:)
+    integer,intent(in)::source,tag
+    
+    call MPI_recv(n,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    do i=1,n
+      call recvDataSetScal(obj(i),source,tag)
+    end do
+  end subroutine
+  
+  !----------------------------------------------------------
+  ! receive vector object of type typeDataSet and reallocate
+  !----------------------------------------------------------
+  subroutine recvDataSetVectRealloc(obj,source,tag,realloc)
+    use mpi
+    use moduleMiscDataStruct
+    type(typeDataSet),allocatable,intent(inout)::obj(:)
+    integer,intent(in)::source,tag
+    logical,intent(in)::realloc
+    
+    if(realloc)then
+      call MPI_recv(n,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+      if(allocated(obj))then
+        deallocate(obj)
+      end if
+      allocate(obj(n))
+      do i=1,n
+        call recvDataSetScal(obj(i),source,tag)
+      end do
+    else
+      call recvDataSetVect(obj,source,tag)
     end if
   end subroutine
   

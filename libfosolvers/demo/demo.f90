@@ -10,28 +10,29 @@ program demo
   use moduleMiscDataStruct
   
   ! test multi-processing and data set
-  type(typeDataSet)::v
+  type(typeDataSet),allocatable::v(:)
   
   call initMPI()
   
   if(pidMPI==ROOT_PID)then
     write(*,*),'this is master ',pidMPI
-    call v%extend(1)
-    call v%ptrLast%specify(TAB1D_TYPE,5)
-    v%ptrLast%DataName='name1'
-    v%ptrLast%Tab1d(:,1)=[1d0,2d0,3d0,4d0,5d0]
-    v%ptrLast%Tab1d(:,2)=[1d1,2d1,3d1,4d1,5d1]
-    call v%extend(1)
-    call v%ptrLast%specify(VAL_TYPE)
-    v%ptrLast%DataName='name2'
-    v%ptrLast%Val=250d0
-    write(*,*),v%lookup('name1',2.5d0),v%lookup('name2'),'from master'
+    allocate(v(3))
+    call v(1)%extend(1)
+    call v(1)%ptrLast%specify(TAB1D_TYPE,5)
+    v(1)%ptrLast%DataName='name1'
+    v(1)%ptrLast%Tab1d(:,1)=[1d0,2d0,3d0,4d0,5d0]
+    v(1)%ptrLast%Tab1d(:,2)=[1d1,2d1,3d1,4d1,5d1]
+    call v(2)%extend(1)
+    call v(2)%ptrLast%specify(VAL_TYPE)
+    v(2)%ptrLast%DataName='name2'
+    v(2)%ptrLast%Val=250d0
+    write(*,*),v(1)%lookup('name1',2.5d0),v(2)%lookup('name2'),'from master'
     call sendData(v,1,1)
   else
     write(*,*),'this is slave ',pidMPI
     if(pidMPI==1)then
-      call recvData(v,0,1)
-      write(*,*),v%lookup('name1',2.5d0),v%lookup('name2'),'from slave ',pidMPI
+      call recvData(v,0,1,realloc=.true.)
+      write(*,*),v(1)%lookup('name1',2.5d0),v(2)%lookup('name2'),'from slave ',pidMPI
     end if
   end if
   
