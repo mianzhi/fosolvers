@@ -32,6 +32,10 @@ module moduleMP1
     module procedure::sendPointVect
     module procedure::sendLineScal
     module procedure::sendLineVect
+    module procedure::sendFacetScal
+    module procedure::sendFacetVect
+    module procedure::sendBlockScal
+    module procedure::sendBlockVect
   end interface
   public::sendData
   
@@ -62,6 +66,12 @@ module moduleMP1
     module procedure::recvLineScal
     module procedure::recvLineVect
     module procedure::recvLineVectRealloc
+    module procedure::recvFacetScal
+    module procedure::recvFacetVect
+    module procedure::recvFacetVectRealloc
+    module procedure::recvBlockScal
+    module procedure::recvBlockVect
+    module procedure::recvBlockVectRealloc
   end interface
   public::recvData
   
@@ -779,9 +789,9 @@ contains
     end do
   end subroutine
   
-  !--------------------------------------------------------
+  !-------------------------------------------------------
   ! receive vector object of type typeLine and reallocate
-  !--------------------------------------------------------
+  !-------------------------------------------------------
   subroutine recvLineVectRealloc(obj,source,tag,realloc)
     use mpi
     use moduleGrid
@@ -800,6 +810,277 @@ contains
       end do
     else
       call recvLineVect(obj,source,tag)
+    end if
+  end subroutine
+  
+  !--------------------------------------
+  ! send scaler object of type typeFacet
+  !--------------------------------------
+  subroutine sendFacetScal(obj,dest,tag)
+    use mpi
+    use moduleGrid
+    type(typeFacet),intent(in)::obj
+    integer,intent(in)::dest,tag
+    
+    call MPI_send(obj%Ind,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    call MPI_send(obj%ShapeType,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    call MPI_send(obj%NodeNum,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    if(allocated(obj%NodeInd))then
+      call MPI_send(.true.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+      call sendIntegerVect(obj%NodeInd,dest,tag)
+    else
+      call MPI_send(.false.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+    end if
+    call MPI_send(obj%GeoEnti,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    call sendIntegerVect(obj%NeibBlock,dest,tag)
+    call sendDoubleVect(obj%PC,dest,tag)
+    call MPI_send(obj%Area,1,MPI_double_precision,dest,tag,MPI_comm_world,errMPI)
+    call sendDoubleVect(obj%Norm,dest,tag)
+  end subroutine
+  
+  !-----------------------------------------
+  ! receive scaler object of type typeFacet
+  !-----------------------------------------
+  subroutine recvFacetScal(obj,source,tag)
+    use mpi
+    use moduleGrid
+    type(typeFacet),intent(inout)::obj
+    integer,intent(in)::source,tag
+    integer buffInteger
+    double precision buffDouble
+    logical isAllocated
+    
+    call MPI_recv(buffInteger,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    obj%Ind=buffInteger
+    call MPI_recv(buffInteger,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    obj%ShapeType=buffInteger
+    call MPI_recv(buffInteger,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    obj%NodeNum=buffInteger
+    call MPI_recv(isAllocated,1,MPI_logical,source,tag,MPI_comm_world,statMPI,errMPI)
+    if(isAllocated)then
+      call recvIntegerVectRealloc(obj%NodeInd,source,tag,realloc=.true.)
+    end if
+    call MPI_recv(buffInteger,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    obj%GeoEnti=buffInteger
+    call recvIntegerVect(obj%NeibBlock,source,tag)
+    call recvDoubleVect(obj%PC,source,tag)
+    call MPI_recv(buffDouble,1,MPI_double_precision,source,tag,MPI_comm_world,statMPI,errMPI)
+    obj%Area=buffDouble
+    call recvDoubleVect(obj%Norm,source,tag)
+  end subroutine
+  
+  !--------------------------------------
+  ! send vector object of type typeFacet
+  !--------------------------------------
+  subroutine sendFacetVect(obj,dest,tag)
+    use mpi
+    use moduleGrid
+    type(typeFacet),intent(in)::obj(:)
+    integer,intent(in)::dest,tag
+    
+    n=size(obj)
+    call MPI_send(n,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    do i=1,n
+      call sendFacetScal(obj(i),dest,tag)
+    end do
+  end subroutine
+  
+  !-----------------------------------------
+  ! receive vector object of type typeFacet
+  !-----------------------------------------
+  subroutine recvFacetVect(obj,source,tag)
+    use mpi
+    use moduleGrid
+    type(typeFacet),intent(inout)::obj(:)
+    integer,intent(in)::source,tag
+    
+    call MPI_recv(n,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    do i=1,n
+      call recvFacetScal(obj(i),source,tag)
+    end do
+  end subroutine
+  
+  !--------------------------------------------------------
+  ! receive vector object of type typeFacet and reallocate
+  !--------------------------------------------------------
+  subroutine recvFacetVectRealloc(obj,source,tag,realloc)
+    use mpi
+    use moduleGrid
+    type(typeFacet),allocatable,intent(inout)::obj(:)
+    integer,intent(in)::source,tag
+    logical,intent(in)::realloc
+    
+    if(realloc)then
+      call MPI_recv(n,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+      if(allocated(obj))then
+        deallocate(obj)
+      end if
+      allocate(obj(n))
+      do i=1,n
+        call recvFacetScal(obj(i),source,tag)
+      end do
+    else
+      call recvFacetVect(obj,source,tag)
+    end if
+  end subroutine
+  
+  !--------------------------------------
+  ! send scaler object of type typeBlock
+  !--------------------------------------
+  subroutine sendBlockScal(obj,dest,tag)
+    use mpi
+    use moduleGrid
+    type(typeBlock),intent(in)::obj
+    integer,intent(in)::dest,tag
+    
+    call MPI_send(obj%Ind,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    call MPI_send(obj%ShapeType,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    call MPI_send(obj%NodeNum,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    call MPI_send(obj%SurfNum,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    if(allocated(obj%NodeInd))then
+      call MPI_send(.true.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+      call sendIntegerVect(obj%NodeInd,dest,tag)
+    else
+      call MPI_send(.false.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+    end if
+    call MPI_send(obj%GeoEnti,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    if(allocated(obj%Prt))then
+      call MPI_send(.true.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+      call sendIntegerVect(obj%Prt,dest,tag)
+    else
+      call MPI_send(.false.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+    end if
+    if(allocated(obj%Neib))then
+      call MPI_send(.true.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+      call sendIntegerVect(obj%Neib,dest,tag)
+    else
+      call MPI_send(.false.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+    end if
+    call sendDoubleVect(obj%PC,dest,tag)
+    call MPI_send(obj%Vol,1,MPI_double_precision,dest,tag,MPI_comm_world,errMPI)
+    if(allocated(obj%SurfPC))then
+      call MPI_send(.true.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+      call sendDoubleMat(obj%SurfPC,dest,tag)
+    else
+      call MPI_send(.false.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+    end if
+    if(allocated(obj%SurfArea))then
+      call MPI_send(.true.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+      call sendDoubleVect(obj%SurfArea,dest,tag)
+    else
+      call MPI_send(.false.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+    end if
+    if(allocated(obj%SurfNorm))then
+      call MPI_send(.true.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+      call sendDoubleMat(obj%SurfNorm,dest,tag)
+    else
+      call MPI_send(.false.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+    end if
+  end subroutine
+  
+  !-----------------------------------------
+  ! receive scaler object of type typeBlock
+  !-----------------------------------------
+  subroutine recvBlockScal(obj,source,tag)
+    use mpi
+    use moduleGrid
+    type(typeBlock),intent(inout)::obj
+    integer,intent(in)::source,tag
+    integer buffInteger
+    double precision buffDouble
+    logical isAllocated
+    
+    call MPI_recv(buffInteger,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    obj%Ind=buffInteger
+    call MPI_recv(buffInteger,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    obj%ShapeType=buffInteger
+    call MPI_recv(buffInteger,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    obj%NodeNum=buffInteger
+    call MPI_recv(buffInteger,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    obj%SurfNum=buffInteger
+    call MPI_recv(isAllocated,1,MPI_logical,source,tag,MPI_comm_world,statMPI,errMPI)
+    if(isAllocated)then
+      call recvIntegerVectRealloc(obj%NodeInd,source,tag,realloc=.true.)
+    end if
+    call MPI_recv(buffInteger,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    obj%GeoEnti=buffInteger
+    call MPI_recv(isAllocated,1,MPI_logical,source,tag,MPI_comm_world,statMPI,errMPI)
+    if(isAllocated)then
+      call recvIntegerVectRealloc(obj%Prt,source,tag,realloc=.true.)
+    end if
+    call MPI_recv(isAllocated,1,MPI_logical,source,tag,MPI_comm_world,statMPI,errMPI)
+    if(isAllocated)then
+      call recvIntegerVectRealloc(obj%Neib,source,tag,realloc=.true.)
+    end if
+    call recvDoubleVect(obj%PC,source,tag)
+    call MPI_recv(buffDouble,1,MPI_double_precision,source,tag,MPI_comm_world,statMPI,errMPI)
+    obj%Vol=buffDouble
+    call MPI_recv(isAllocated,1,MPI_logical,source,tag,MPI_comm_world,statMPI,errMPI)
+    if(isAllocated)then
+      call recvDoubleMatRealloc(obj%SurfPC,source,tag,realloc=.true.)
+    end if
+    call MPI_recv(isAllocated,1,MPI_logical,source,tag,MPI_comm_world,statMPI,errMPI)
+    if(isAllocated)then
+      call recvDoubleVectRealloc(obj%SurfArea,source,tag,realloc=.true.)
+    end if
+    call MPI_recv(isAllocated,1,MPI_logical,source,tag,MPI_comm_world,statMPI,errMPI)
+    if(isAllocated)then
+      call recvDoubleMatRealloc(obj%SurfNorm,source,tag,realloc=.true.)
+    end if
+  end subroutine
+  
+  !--------------------------------------
+  ! send vector object of type typeBlock
+  !--------------------------------------
+  subroutine sendBlockVect(obj,dest,tag)
+    use mpi
+    use moduleGrid
+    type(typeBlock),intent(in)::obj(:)
+    integer,intent(in)::dest,tag
+    
+    n=size(obj)
+    call MPI_send(n,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    do i=1,n
+      call sendBlockScal(obj(i),dest,tag)
+    end do
+  end subroutine
+  
+  !-----------------------------------------
+  ! receive vector object of type typeBlock
+  !-----------------------------------------
+  subroutine recvBlockVect(obj,source,tag)
+    use mpi
+    use moduleGrid
+    type(typeBlock),intent(inout)::obj(:)
+    integer,intent(in)::source,tag
+    
+    call MPI_recv(n,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    do i=1,n
+      call recvBlockScal(obj(i),source,tag)
+    end do
+  end subroutine
+  
+  !--------------------------------------------------------
+  ! receive vector object of type typeBlock and reallocate
+  !--------------------------------------------------------
+  subroutine recvBlockVectRealloc(obj,source,tag,realloc)
+    use mpi
+    use moduleGrid
+    type(typeBlock),allocatable,intent(inout)::obj(:)
+    integer,intent(in)::source,tag
+    logical,intent(in)::realloc
+    
+    if(realloc)then
+      call MPI_recv(n,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+      if(allocated(obj))then
+        deallocate(obj)
+      end if
+      allocate(obj(n))
+      do i=1,n
+        call recvBlockScal(obj(i),source,tag)
+      end do
+    else
+      call recvBlockVect(obj,source,tag)
     end if
   end subroutine
   
