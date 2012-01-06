@@ -20,12 +20,15 @@ program demo
     call sendData(CondFacet,1,1)
     call sendData(CondBlock,1,1)
     call sendData(Mtl,1,1)
+    call sendData(Point,1,1)
+    write(*,*),Point(10)%Ind,Point(10)%NodeInd,Point(10)%GeoEnti,Point(10)%Pos,'from master'
   else
     if(pidMPI==1)then
       call recvData(CondNode,0,1,realloc=.true.)
       call recvData(CondFacet,0,1,realloc=.true.)
       call recvData(CondBlock,0,1,realloc=.true.)
       call recvData(Mtl,0,1,realloc=.true.)
+      call recvData(Point,0,1,realloc=.true.)
       write(*,*),condNode(512)%lookup('vname'),condNode(512)%lookup('tname',5d-1)
       write(*,*),condFacet(322)%lookup('fffc1'),condFacet(322)%lookup('fffc2',0.6d0)
       write(*,*),size(Mtl),size(Mtl(1)%DataItem)
@@ -35,6 +38,7 @@ program demo
       write(*,*),Mtl(1)%lookup('YounM')
       write(*,*),Mtl(1)%lookup('PoisR')
       write(*,*),Mtl(1)%lookup('Stren')
+      write(*,*),Point(10)%Ind,Point(10)%NodeInd,Point(10)%GeoEnti,Point(10)%Pos
     end if
   end if
   

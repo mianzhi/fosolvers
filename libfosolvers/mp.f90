@@ -21,16 +21,21 @@ module moduleMP
     module procedure::sendIntegerVect
     module procedure::sendDoubleScal
     module procedure::sendDoubleVect
+    module procedure::sendDoubleMat
     module procedure::sendDataItemScal
     module procedure::sendDataItemVect
     module procedure::sendDataSetScal
     module procedure::sendDataSetVect
+    module procedure::sendNodeScal
+    module procedure::sendNodeVect
+    module procedure::sendPointScal
+    module procedure::sendPointVect
   end interface
   public::sendData
   
-  !---------------------
-  ! recive generic data
-  !---------------------
+  !----------------------
+  ! receive generic data
+  !----------------------
   interface recvData
     module procedure::recvIntegerScal
     module procedure::recvIntegerVect
@@ -38,12 +43,20 @@ module moduleMP
     module procedure::recvDoubleScal
     module procedure::recvDoubleVect
     module procedure::recvDoubleVectRealloc
+    module procedure::recvDoubleMat
+    module procedure::recvDoubleMatRealloc
     module procedure::recvDataItemScal
     module procedure::recvDataItemVect
     module procedure::recvDataItemVectRealloc
     module procedure::recvDataSetScal
     module procedure::recvDataSetVect
     module procedure::recvDataSetVectRealloc
+    module procedure::recvNodeScal
+    module procedure::recvNodeVect
+    module procedure::recvNodeVectRealloc
+    module procedure::recvPointScal
+    module procedure::recvPointVect
+    module procedure::recvPointVectRealloc
   end interface
   public::recvData
   
@@ -106,7 +119,9 @@ contains
     
     n=size(obj)
     call MPI_send(n,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
-    call MPI_send(obj,n,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    if(n>0)then
+      call MPI_send(obj,n,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    end if
   end subroutine
   
   !---------------------------------------
@@ -118,7 +133,9 @@ contains
     integer,intent(in)::source,tag
     
     call MPI_recv(n,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
-    call MPI_recv(obj,n,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    if(n>0)then
+      call MPI_recv(obj,n,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    end if
   end subroutine
   
   !------------------------------------------------------
@@ -136,7 +153,9 @@ contains
         deallocate(obj)
       end if
       allocate(obj(n))
-      call MPI_recv(obj,n,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+      if(n>0)then
+        call MPI_recv(obj,n,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+      end if
     else
       call recvIntegerVect(obj,source,tag)
     end if
@@ -174,7 +193,9 @@ contains
     
     n=size(obj)
     call MPI_send(n,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
-    call MPI_send(obj,n,MPI_double_precision,dest,tag,MPI_comm_world,errMPI)
+    if(n>0)then
+      call MPI_send(obj,n,MPI_double_precision,dest,tag,MPI_comm_world,errMPI)
+    end if
   end subroutine
   
   !------------------------------------------------
@@ -186,7 +207,9 @@ contains
     integer,intent(in)::source,tag
     
     call MPI_recv(n,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
-    call MPI_recv(obj,n,MPI_double_precision,source,tag,MPI_comm_world,statMPI,errMPI)
+    if(n>0)then
+      call MPI_recv(obj,n,MPI_double_precision,source,tag,MPI_comm_world,statMPI,errMPI)
+    end if
   end subroutine
   
   !---------------------------------------------------------------
@@ -204,9 +227,81 @@ contains
         deallocate(obj)
       end if
       allocate(obj(n))
-      call MPI_recv(obj,n,MPI_double_precision,source,tag,MPI_comm_world,statMPI,errMPI)
+      if(n>0)then
+        call MPI_recv(obj,n,MPI_double_precision,source,tag,MPI_comm_world,statMPI,errMPI)
+      end if
     else
       call recvDoubleVect(obj,source,tag)
+    end if
+  end subroutine
+  
+  !---------------------------------------------
+  ! send matrix object of type double precision
+  !---------------------------------------------
+  subroutine sendDoubleMat(obj,dest,tag)
+    use mpi
+    double precision,intent(in)::obj(:,:)
+    integer,intent(in)::dest,tag
+    
+    m=size(obj,1)
+    n=size(obj,2)
+    call MPI_send(m,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    call MPI_send(n,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    if(m>0.and.n>0)then
+      do i=1,m
+        call MPI_send(obj(i,:),n,MPI_double_precision,dest,tag,MPI_comm_world,errMPI)
+      end do
+    end if
+  end subroutine
+  
+  !------------------------------------------------
+  ! receive matrix object of type double precision
+  !------------------------------------------------
+  subroutine recvDoubleMat(obj,source,tag)
+    use mpi
+    double precision,intent(inout)::obj(:,:)
+    integer,intent(in)::source,tag
+    double precision,allocatable::buffDouble(:)
+    
+    call MPI_recv(m,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    call MPI_recv(n,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    if(m>0.and.n>0)then
+      allocate(buffDouble(n))
+      do i=1,m
+        call MPI_recv(buffDouble,n,MPI_double_precision,source,tag,MPI_comm_world,statMPI,errMPI)
+        obj(i,:)=buffDouble(:)
+      end do
+      deallocate(buffDouble)
+    end if
+  end subroutine
+  
+  !---------------------------------------------------------------
+  ! receive matrix object of type double precision and reallocate
+  !---------------------------------------------------------------
+  subroutine recvDoubleMatRealloc(obj,source,tag,realloc)
+    use mpi
+    double precision,allocatable,intent(inout)::obj(:,:)
+    integer,intent(in)::source,tag
+    logical,intent(in)::realloc
+    double precision,allocatable::buffDouble(:)
+    
+    if(realloc)then
+      call MPI_recv(m,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+      call MPI_recv(n,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+      if(allocated(obj))then
+        deallocate(obj)
+      end if
+      allocate(obj(m,n))
+      if(m>0.and.n>0)then
+        allocate(buffDouble(n))
+        do i=1,m
+          call MPI_recv(buffDouble,n,MPI_double_precision,source,tag,MPI_comm_world,statMPI,errMPI)
+          obj(i,:)=buffDouble(:)
+        end do
+        deallocate(buffDouble)
+      end if
+    else
+      call recvDoubleMat(obj,source,tag)
     end if
   end subroutine
   
@@ -415,6 +510,199 @@ contains
       end do
     else
       call recvDataSetVect(obj,source,tag)
+    end if
+  end subroutine
+  
+  !-------------------------------------
+  ! send scaler object of type typeNode
+  !-------------------------------------
+  subroutine sendNodeScal(obj,dest,tag)
+    use mpi
+    use moduleGrid
+    type(typeNode),intent(in)::obj
+    integer,intent(in)::dest,tag
+    
+    call MPI_send(obj%Ind,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    call sendDoubleVect(obj%Pos,dest,tag)
+    if(allocated(obj%FacetInd))then
+      call MPI_send(.true.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+      call sendIntegerVect(obj%FacetInd,dest,tag)
+    else
+      call MPI_send(.false.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+    end if
+    if(allocated(obj%BlockInd))then
+      call MPI_send(.true.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+      call sendIntegerVect(obj%BlockInd,dest,tag)
+    else
+      call MPI_send(.false.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+    end if
+  end subroutine
+  
+  !----------------------------------------
+  ! receive scaler object of type typeNode
+  !----------------------------------------
+  subroutine recvNodeScal(obj,source,tag)
+    use mpi
+    use moduleGrid
+    type(typeNode),intent(inout)::obj
+    integer,intent(in)::source,tag
+    integer buffInteger
+    logical isAllocated
+    
+    call MPI_recv(buffInteger,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    obj%Ind=buffInteger
+    call recvDoubleVect(obj%Pos,source,tag)
+    call MPI_recv(isAllocated,1,MPI_logical,source,tag,MPI_comm_world,statMPI,errMPI)
+    if(isAllocated)then
+      call recvIntegerVectRealloc(obj%FacetInd,source,tag,realloc=.true.)
+    end if
+    call MPI_recv(isAllocated,1,MPI_logical,source,tag,MPI_comm_world,statMPI,errMPI)
+    if(isAllocated)then
+      call recvIntegerVectRealloc(obj%BlockInd,source,tag,realloc=.true.)
+    end if
+  end subroutine
+  
+  !-------------------------------------
+  ! send vector object of type typeNode
+  !-------------------------------------
+  subroutine sendNodeVect(obj,dest,tag)
+    use mpi
+    use moduleGrid
+    type(typeNode),intent(in)::obj(:)
+    integer,intent(in)::dest,tag
+    
+    n=size(obj)
+    call MPI_send(n,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    do i=1,n
+      call sendNodeScal(obj(i),dest,tag)
+    end do
+  end subroutine
+  
+  !----------------------------------------
+  ! receive vector object of type typeNode
+  !----------------------------------------
+  subroutine recvNodeVect(obj,source,tag)
+    use mpi
+    use moduleGrid
+    type(typeNode),intent(inout)::obj(:)
+    integer,intent(in)::source,tag
+    
+    call MPI_recv(n,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    do i=1,n
+      call recvNodeScal(obj(i),source,tag)
+    end do
+  end subroutine
+  
+  !-------------------------------------------------------
+  ! receive vector object of type typeNode and reallocate
+  !-------------------------------------------------------
+  subroutine recvNodeVectRealloc(obj,source,tag,realloc)
+    use mpi
+    use moduleGrid
+    type(typeNode),allocatable,intent(inout)::obj(:)
+    integer,intent(in)::source,tag
+    logical,intent(in)::realloc
+    
+    if(realloc)then
+      call MPI_recv(n,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+      if(allocated(obj))then
+        deallocate(obj)
+      end if
+      allocate(obj(n))
+      do i=1,n
+        call recvNodeScal(obj(i),source,tag)
+      end do
+    else
+      call recvNodeVect(obj,source,tag)
+    end if
+  end subroutine
+  
+  !--------------------------------------
+  ! send scaler object of type typePoint
+  !--------------------------------------
+  subroutine sendPointScal(obj,dest,tag)
+    use mpi
+    use moduleGrid
+    type(typePoint),intent(in)::obj
+    integer,intent(in)::dest,tag
+    
+    call MPI_send(obj%Ind,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    call MPI_send(obj%NodeInd,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    call MPI_send(obj%GeoEnti,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    call sendDoubleVect(obj%Pos,dest,tag)
+  end subroutine
+  
+  !-----------------------------------------
+  ! receive scaler object of type typePoint
+  !-----------------------------------------
+  subroutine recvPointScal(obj,source,tag)
+    use mpi
+    use moduleGrid
+    type(typePoint),intent(inout)::obj
+    integer,intent(in)::source,tag
+    integer buffInteger
+    
+    call MPI_recv(buffInteger,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    obj%Ind=buffInteger
+    call MPI_recv(buffInteger,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    obj%NodeInd=buffInteger
+    call MPI_recv(buffInteger,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    obj%GeoEnti=buffInteger
+    call recvDoubleVect(obj%Pos,source,tag)
+  end subroutine
+  
+  !--------------------------------------
+  ! send vector object of type typePoint
+  !--------------------------------------
+  subroutine sendPointVect(obj,dest,tag)
+    use mpi
+    use moduleGrid
+    type(typePoint),intent(in)::obj(:)
+    integer,intent(in)::dest,tag
+    
+    n=size(obj)
+    call MPI_send(n,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    do i=1,n
+      call sendPointScal(obj(i),dest,tag)
+    end do
+  end subroutine
+  
+  !-----------------------------------------
+  ! receive vector object of type typePoint
+  !-----------------------------------------
+  subroutine recvPointVect(obj,source,tag)
+    use mpi
+    use moduleGrid
+    type(typePoint),intent(inout)::obj(:)
+    integer,intent(in)::source,tag
+    
+    call MPI_recv(n,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    do i=1,n
+      call recvPointScal(obj(i),source,tag)
+    end do
+  end subroutine
+  
+  !--------------------------------------------------------
+  ! receive vector object of type typePoint and reallocate
+  !--------------------------------------------------------
+  subroutine recvPointVectRealloc(obj,source,tag,realloc)
+    use mpi
+    use moduleGrid
+    type(typePoint),allocatable,intent(inout)::obj(:)
+    integer,intent(in)::source,tag
+    logical,intent(in)::realloc
+    
+    if(realloc)then
+      call MPI_recv(n,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+      if(allocated(obj))then
+        deallocate(obj)
+      end if
+      allocate(obj(n))
+      do i=1,n
+        call recvPointScal(obj(i),source,tag)
+      end do
+    else
+      call recvPointVect(obj,source,tag)
     end if
   end subroutine
   
