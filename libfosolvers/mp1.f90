@@ -1,8 +1,8 @@
 !----------------------------------------------------------------------------- best with 100 columns
 
-!****************************
-! MPI related data (level 1)
-!****************************
+!*****************************************
+! multi-processing related data (level 1)
+!*****************************************
 module moduleMP1
   private
   
@@ -30,6 +30,8 @@ module moduleMP1
     module procedure::sendNodeVect
     module procedure::sendPointScal
     module procedure::sendPointVect
+    module procedure::sendLineScal
+    module procedure::sendLineVect
   end interface
   public::sendData
   
@@ -57,6 +59,9 @@ module moduleMP1
     module procedure::recvPointScal
     module procedure::recvPointVect
     module procedure::recvPointVectRealloc
+    module procedure::recvLineScal
+    module procedure::recvLineVect
+    module procedure::recvLineVectRealloc
   end interface
   public::recvData
   
@@ -703,6 +708,98 @@ contains
       end do
     else
       call recvPointVect(obj,source,tag)
+    end if
+  end subroutine
+  
+  !-------------------------------------
+  ! send scaler object of type typeLine
+  !-------------------------------------
+  subroutine sendLineScal(obj,dest,tag)
+    use mpi
+    use moduleGrid
+    type(typeLine),intent(in)::obj
+    integer,intent(in)::dest,tag
+    
+    call MPI_send(obj%Ind,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    call sendIntegerVect(obj%NodeInd,dest,tag)
+    call MPI_send(obj%GeoEnti,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    call sendDoubleVect(obj%PC,dest,tag)
+    call MPI_send(obj%Length,1,MPI_double_precision,dest,tag,MPI_comm_world,errMPI)
+  end subroutine
+  
+  !-----------------------------------------
+  ! receive scaler object of type typeLine
+  !-----------------------------------------
+  subroutine recvLineScal(obj,source,tag)
+    use mpi
+    use moduleGrid
+    type(typeLine),intent(inout)::obj
+    integer,intent(in)::source,tag
+    integer buffInteger
+    double precision buffDouble
+    
+    call MPI_recv(buffInteger,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    obj%Ind=buffInteger
+    call recvIntegerVect(obj%NodeInd,source,tag)
+    call MPI_recv(buffInteger,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    obj%GeoEnti=buffInteger
+    call recvDoubleVect(obj%PC,source,tag)
+    call MPI_recv(buffDouble,1,MPI_double_precision,source,tag,MPI_comm_world,statMPI,errMPI)
+    obj%Length=buffDouble
+  end subroutine
+  
+  !--------------------------------------
+  ! send vector object of type typeLine
+  !--------------------------------------
+  subroutine sendLineVect(obj,dest,tag)
+    use mpi
+    use moduleGrid
+    type(typeLine),intent(in)::obj(:)
+    integer,intent(in)::dest,tag
+    
+    n=size(obj)
+    call MPI_send(n,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    do i=1,n
+      call sendLineScal(obj(i),dest,tag)
+    end do
+  end subroutine
+  
+  !-----------------------------------------
+  ! receive vector object of type typeLine
+  !-----------------------------------------
+  subroutine recvLineVect(obj,source,tag)
+    use mpi
+    use moduleGrid
+    type(typeLine),intent(inout)::obj(:)
+    integer,intent(in)::source,tag
+    
+    call MPI_recv(n,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    do i=1,n
+      call recvLineScal(obj(i),source,tag)
+    end do
+  end subroutine
+  
+  !--------------------------------------------------------
+  ! receive vector object of type typeLine and reallocate
+  !--------------------------------------------------------
+  subroutine recvLineVectRealloc(obj,source,tag,realloc)
+    use mpi
+    use moduleGrid
+    type(typeLine),allocatable,intent(inout)::obj(:)
+    integer,intent(in)::source,tag
+    logical,intent(in)::realloc
+    
+    if(realloc)then
+      call MPI_recv(n,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+      if(allocated(obj))then
+        deallocate(obj)
+      end if
+      allocate(obj(n))
+      do i=1,n
+        call recvLineScal(obj(i),source,tag)
+      end do
+    else
+      call recvLineVect(obj,source,tag)
     end if
   end subroutine
   
