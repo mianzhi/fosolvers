@@ -4,7 +4,7 @@ SET(libfosolvers_src
   fvm.f90
   grid.f90
   misc.f90
-  mp.f90
+  mp1.f90
   mtl.f90
   simpgeo.f90
   time.f90

@@ -1,9 +1,9 @@
 !----------------------------------------------------------------------------- best with 100 columns
 
-!******************
-! MPI related data
-!******************
-module moduleMP
+!****************************
+! MPI related data (level 1)
+!****************************
+module moduleMP1
   private
   
   ! constants

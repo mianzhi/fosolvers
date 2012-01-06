@@ -6,7 +6,7 @@ program demo
   use moduleMtl
   use moduleCond
   use moduleFVM
-  use moduleMP
+  use moduleMP1
   use moduleMiscDataStruct
   
   ! test multi-processing, material and conditions
