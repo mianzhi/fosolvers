@@ -6,6 +6,7 @@ SET(libfosolvers_src
   misc.f90
   mp.f90
   mtl.f90
+  simpgeo.f90
   time.f90
   utility.f90
 )

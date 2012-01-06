@@ -9,50 +9,36 @@ program demo
   use moduleMP
   use moduleMiscDataStruct
   
-  ! test multi-processing and data set
-  type(typeDataSet),allocatable::v(:)
-  
+  ! test multi-processing, material and conditions
   call initMPI()
   
   if(pidMPI==ROOT_PID)then
-    write(*,*),'this is master ',pidMPI
-    allocate(v(3))
-    call v(1)%extend(1)
-    call v(1)%ptrLast%specify(TAB1D_TYPE,5)
-    v(1)%ptrLast%DataName='name1'
-    v(1)%ptrLast%Tab1d(:,1)=[1d0,2d0,3d0,4d0,5d0]
-    v(1)%ptrLast%Tab1d(:,2)=[1d1,2d1,3d1,4d1,5d1]
-    call v(2)%extend(1)
-    call v(2)%ptrLast%specify(VAL_TYPE)
-    v(2)%ptrLast%DataName='name2'
-    v(2)%ptrLast%Val=250d0
-    write(*,*),v(1)%lookup('name1',2.5d0),v(2)%lookup('name2'),'from master'
-    call sendData(v,1,1)
+    call readMsh('grid.msh',50,verbose=.true.)
+    call readCond('conditions.cod',52)
+    call readMtl('materials.mtl',51)
+    call sendData(CondNode,1,1)
+    call sendData(CondFacet,1,1)
+    call sendData(CondBlock,1,1)
+    call sendData(Mtl,1,1)
   else
-    write(*,*),'this is slave ',pidMPI
     if(pidMPI==1)then
-      call recvData(v,0,1,realloc=.true.)
-      write(*,*),v(1)%lookup('name1',2.5d0),v(2)%lookup('name2'),'from slave ',pidMPI
+      call recvData(CondNode,0,1,realloc=.true.)
+      call recvData(CondFacet,0,1,realloc=.true.)
+      call recvData(CondBlock,0,1,realloc=.true.)
+      call recvData(Mtl,0,1,realloc=.true.)
+      write(*,*),condNode(512)%lookup('vname'),condNode(512)%lookup('tname',5d-1)
+      write(*,*),condFacet(322)%lookup('fffc1'),condFacet(322)%lookup('fffc2',0.6d0)
+      write(*,*),size(Mtl),size(Mtl(1)%DataItem)
+      write(*,*),Mtl(1)%lookup('Denst')
+      write(*,*),Mtl(1)%lookup('SpcHt',475d0)
+      write(*,*),Mtl(1)%lookup('ThrmCd',5d2)
+      write(*,*),Mtl(1)%lookup('YounM')
+      write(*,*),Mtl(1)%lookup('PoisR')
+      write(*,*),Mtl(1)%lookup('Stren')
     end if
   end if
   
   call finalMPI()
-  
-!  ! test conditions  
-!  call readMsh('grid.msh',50,verbose=.true.)
-!  call readCond('conditions.cod',52)
-!  write(*,*),condNode(512)%lookup('vname'),condNode(512)%lookup('tname',5d-1)
-!  write(*,*),condFacet(322)%lookup('fffc1'),condFacet(322)%lookup('fffc2',0.6d0)
-  
-!  ! test materials
-!  call readMtl('materials.mtl',51)
-!  write(*,*),size(Mtl),size(Mtl(1)%DataItem)
-!  write(*,*),Mtl(1)%lookup('Denst')
-!  write(*,*),Mtl(1)%lookup('SpcHt',475d0)
-!  write(*,*),Mtl(1)%lookup('ThrmCd',5d2)
-!  write(*,*),Mtl(1)%lookup('YounM')
-!  write(*,*),Mtl(1)%lookup('PoisR')
-!  write(*,*),Mtl(1)%lookup('Stren')
   
 !  ! test dataset
 !  type(typeDataSet)::v
