@@ -335,13 +335,12 @@ contains
       case(VAL_TYPE)
         call MPI_send(obj%Val,1,MPI_double_precision,dest,tag,MPI_comm_world,errMPI)
       case(TAB1D_TYPE)
-        n=size(obj%Tab1d,1)
-        call MPI_send(n,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
-        do i=1,n
-          do j=1,2
-            call MPI_send(obj%Tab1d(i,j),1,MPI_double_precision,dest,tag,MPI_comm_world,errMPI)
-          end do
-        end do
+        if(allocated(obj%Tab1d))then
+          call MPI_send(.true.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+          call sendDoubleMat(obj%Tab1d,dest,tag)
+        else
+          call MPI_send(.false.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+        end if
       case default
     end select
   end subroutine
@@ -357,6 +356,7 @@ contains
     character(DATA_NAME_LENGTH) buffName
     integer buffInteger
     double precision buffDouble
+    logical isAllocated
     
     call MPI_recv(buffName,DATA_NAME_LENGTH,MPI_character,&
     &             source,tag,MPI_comm_world,statMPI,errMPI)
@@ -368,18 +368,10 @@ contains
         call MPI_recv(buffDouble,1,MPI_double_precision,source,tag,MPI_comm_world,statMPI,errMPI)
         obj%Val=buffDouble
       case(TAB1D_TYPE)
-        call MPI_recv(n,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
-        if(allocated(obj%Tab1d))then
-          deallocate(obj%Tab1d)
+        call MPI_recv(isAllocated,1,MPI_logical,source,tag,MPI_comm_world,statMPI,errMPI)
+        if(isAllocated)then
+          call recvDoubleMatRealloc(obj%Tab1d,source,tag,realloc=.true.)
         end if
-        allocate(obj%Tab1d(n,2))
-        do i=1,n
-          do j=1,2
-            call MPI_recv(buffDouble,1,MPI_double_precision,&
-            &             source,tag,MPI_comm_world,statMPI,errMPI)
-            obj%Tab1d(i,j)=buffDouble
-          end do
-        end do
       case default
     end select
   end subroutine

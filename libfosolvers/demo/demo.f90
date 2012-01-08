@@ -20,19 +20,12 @@ program demo
     call sendData(CondFacet,1,1)
     call sendData(CondBlock,1,1)
     call sendData(Mtl,1,1)
-    call sendData(Block,1,1)
-    write(*,*),Block(10)%Ind,Block(10)%ShapeType,Block(10)%NodeNum,Block(10)%SurfNum,Block(10)%NodeInd,&
-    &          Block(10)%GeoEnti,Block(10)%Prt,Block(10)%Neib,Block(10)%PC,Block(10)%Vol,&
-    &          Block(10)%SurfPC(1,:),Block(10)%SurfPC(2,:),Block(10)%SurfPC(3,:),Block(10)%SurfPC(4,:),&
-    &          Block(10)%SurfArea(:),&
-    &          Block(10)%SurfNorm(1,:),Block(10)%SurfNorm(2,:),Block(10)%SurfNorm(3,:),Block(10)%SurfNorm(4,:),'from master'
   else
     if(pidMPI==1)then
       call recvData(CondNode,0,1,realloc=.true.)
       call recvData(CondFacet,0,1,realloc=.true.)
       call recvData(CondBlock,0,1,realloc=.true.)
       call recvData(Mtl,0,1,realloc=.true.)
-      call recvData(Block,0,1,realloc=.true.)
       write(*,*),condNode(512)%lookup('vname'),condNode(512)%lookup('tname',5d-1)
       write(*,*),condFacet(322)%lookup('fffc1'),condFacet(322)%lookup('fffc2',0.6d0)
       write(*,*),size(Mtl),size(Mtl(1)%DataItem)
@@ -42,11 +35,6 @@ program demo
       write(*,*),Mtl(1)%lookup('YounM')
       write(*,*),Mtl(1)%lookup('PoisR')
       write(*,*),Mtl(1)%lookup('Stren')
-      write(*,*),Block(10)%Ind,Block(10)%ShapeType,Block(10)%NodeNum,Block(10)%SurfNum,Block(10)%NodeInd,&
-      &          Block(10)%GeoEnti,Block(10)%Prt,Block(10)%Neib,Block(10)%PC,Block(10)%Vol,&
-      &          Block(10)%SurfPC(1,:),Block(10)%SurfPC(2,:),Block(10)%SurfPC(3,:),Block(10)%SurfPC(4,:),&
-      &          Block(10)%SurfArea(:),&
-      &          Block(10)%SurfNorm(1,:),Block(10)%SurfNorm(2,:),Block(10)%SurfNorm(3,:),Block(10)%SurfNorm(4,:)
     end if
   end if
   
