@@ -12,12 +12,15 @@ module moduleFileIO
   
   ! output control related variables
   integer,public,save::nWrite=0
+  
   ! data to be output
   type(typePtrScalArray),allocatable,public,save::rstNodeScal(:),rstFacetScal(:),rstBlockScal(:)
   type(typePtrVectArray),allocatable,public,save::rstNodeVect(:),rstFacetVect(:),rstBlockVect(:)
   type(typePtrTensArray),allocatable,public,save::rstNodeTens(:),rstFacetTens(:),rstBlockTens(:)
   
+  !------------------------
   ! generic add write list
+  !------------------------
   interface addWrite
     module procedure::addWriteScal
     module procedure::addWriteVect

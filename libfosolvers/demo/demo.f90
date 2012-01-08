@@ -2,11 +2,13 @@
 
 program demo
   use moduleGrid
+  use moduleTime
   use moduleFileIO
   use moduleMtl
   use moduleCond
   use moduleFVM
   use moduleMP1
+  use moduleMP2
   use moduleMiscDataStruct
   
   ! test multi-processing, material and conditions
@@ -20,6 +22,7 @@ program demo
     call sendData(CondFacet,1,1)
     call sendData(CondBlock,1,1)
     call sendData(Mtl,1,1)
+    call distriPrt(2,1)
   else
     if(pidMPI==1)then
       call recvData(CondNode,0,1,realloc=.true.)
@@ -69,7 +72,7 @@ program demo
 !  write(*,*),v%lookup('name2')
 !  write(*,*),v%lookup('name4',3d0)
   
-!  ! test gradient and grid
+!  ! test gradient and grid and result
 !  double precision,target,allocatable::v(:),vv(:,:),vvv(:,:,:)
 !  
 !  call readMsh('grid.msh',50,verbose=.true.)
