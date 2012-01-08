@@ -695,6 +695,10 @@ contains
     if(nBlock>0)then
       nPrt=maxval([(maxval(Block(i)%Prt(:)),i=1,nBlock)])
     end if
+    forall(i=1:DIMS)
+      BoundBox(1,i)=minval([(Node(j)%Pos(i),j=1,nNode)])
+      BoundBox(2,i)=maxval([(Node(j)%Pos(i),j=1,nNode)])
+    end forall
   end subroutine
   
 end module
