@@ -347,6 +347,12 @@ contains
     allocate(buffCondBlock(nBlockPrt))
     buffCondBlock(:)=condBlock(buffMapBlock(:))
     
+    ! correct indices
+    
+    ! send date
+    call sendData(nNodePrt,p,p)
+    call sendData(buffNode,p,p)
+    
     ! clean ups
     deallocate(buffNode,buffMapNode)
     deallocate(buffPoint,buffMapPoint)
@@ -365,7 +371,9 @@ contains
     use moduleTime
     use moduleMP1
     
-    ! receive nodes
+    ! receive data
+    call recvData(nNode,ROOT_PID,pidMPI)
+    call recvData(Node,ROOT_PID,pidMPI,realloc=.true.)
   end subroutine
   
 end module
