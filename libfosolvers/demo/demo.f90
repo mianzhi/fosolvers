@@ -35,7 +35,7 @@ program demo
 !      write(*,*),size(Mtl),size(Mtl(1)%DataItem)
 !      write(*,*),Mtl(1)%lookup('Denst')
 !      write(*,*),Mtl(1)%lookup('SpcHt',475d0)
-!      write(*,*),Mtl(1)%lookup('ThrmCd',5d2)
+!      write(*,*),Mtl(1)%lookup('ThrCd',5d2)
 !      write(*,*),Mtl(1)%lookup('YounM')
 !      write(*,*),Mtl(1)%lookup('PoisR')
 !      write(*,*),Mtl(1)%lookup('Stren')
