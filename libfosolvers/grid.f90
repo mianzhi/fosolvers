@@ -84,11 +84,14 @@ module moduleGrid
   !----------
   type,public::typeLine
     integer Ind
-    integer NodeInd(LINE_NODE_NUM)
+    integer ShapeType
+    integer NodeNum
+    integer,allocatable::NodeInd(:)
     integer GeoEnti
     double precision PC(DIMS)
     double precision Length
   contains
+    procedure,public::specify=>specifyLine
     procedure,public::updatePC=>updateLinePC
     procedure,public::updateLength=>updateLineLength
   end type
@@ -248,13 +251,36 @@ contains
     this%Pos(:)=Node(this%NodeInd)%Pos(:)
   end subroutine
   
+  !------------------------------
+  ! specify a shape to this line
+  !------------------------------
+  elemental subroutine specifyLine(this,shapetype)
+    use moduleUtility
+    class(typeLine),intent(inout)::this
+    integer,intent(in)::shapetype
+    integer::nodenum
+    
+    nodenum=0
+    select case(shapetype)
+      case(LINE_TYPE)
+        nodenum=LINE_NODE_NUM
+      case default
+    end select
+    this%ShapeType=shapetype
+    this%NodeNum=nodenum
+    if(allocated(this%NodeInd))then
+      deallocate(this%NodeInd)
+    end if
+    allocate(this%NodeInd(nodenum))
+  end subroutine
+  
   !-----------------------------------------
   ! update the centre position of this line
   !-----------------------------------------
   elemental subroutine updateLinePC(this)
     class(typeLine),intent(inout)::this
     
-    this%PC(:)=[(sum(Node(this%NodeInd(:))%Pos(i)),i=1,DIMS)]/dble(LINE_NODE_NUM)
+    this%PC(:)=[(sum(Node(this%NodeInd(:))%Pos(i)),i=1,DIMS)]/dble(this%NodeNum)
   end subroutine
   
   !--------------------------------
@@ -263,7 +289,11 @@ contains
   elemental subroutine updateLineLength(this)
     class(typeLine),intent(inout)::this
     
-    this%Length=norm2(Node(this%NodeInd(1))%Pos(:)-Node(this%NodeInd(2))%Pos(:))
+    select case(this%ShapeType)
+      case(LINE_TYPE)
+        this%Length=norm2(Node(this%NodeInd(1))%Pos(:)-Node(this%NodeInd(2))%Pos(:))
+      case default
+    end select
   end subroutine
   
   !-------------------------------

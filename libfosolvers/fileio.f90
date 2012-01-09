@@ -139,6 +139,7 @@ contains
               end if
             case(LINE_TYPE) ! line
               nLine=nLine+1
+              call Line(nLine)%specify(LINE_TYPE)
               Line(nLine)%NodeInd(:)=tempIntVect1(3+nt+1:3+nt+np)
               if(nt>=2)then
                 Line(nLine)%GeoEnti=tempIntVect1(5)
@@ -509,7 +510,7 @@ contains
         write(fid,'(a)'),trim(tempString)
       end do
       do i=1,nLine
-        write(tempString,*),nBlock+nPoint+i,LINE_TYPE,2,0,Line(i)%GeoEnti,Line(i)%NodeInd(:)
+        write(tempString,*),nBlock+nPoint+i,Line(i)%ShapeType,2,0,Line(i)%GeoEnti,Line(i)%NodeInd(:)
         tempString=adjustl(tempString)
         write(fid,'(a)'),trim(tempString)
       end do
