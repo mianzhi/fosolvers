@@ -94,6 +94,7 @@ module moduleGrid
     procedure,public::specify=>specifyLine
     procedure,public::updatePC=>updateLinePC
     procedure,public::updateLength=>updateLineLength
+    !TODO:final::cleanLine
   end type
   type(typeLine),public,allocatable,save::Line(:)
   integer,public,save::nLine
@@ -294,6 +295,17 @@ contains
         this%Length=norm2(Node(this%NodeInd(1))%Pos(:)-Node(this%NodeInd(2))%Pos(:))
       case default
     end select
+  end subroutine
+  
+  !------------------------
+  ! destructor of typeLine
+  !------------------------
+  elemental subroutine cleanLine(this)
+    type(typeLine),intent(inout)::this
+    
+    if(allocated(this%NodeInd))then
+      deallocate(this%NodeInd)
+    end if
   end subroutine
   
   !-------------------------------
