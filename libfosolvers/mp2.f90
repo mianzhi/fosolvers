@@ -248,8 +248,8 @@ contains
     ! copy blocks first (only blocks carry partition information)
     if(.not.allocated(mapBlock))then
       allocate(mapBlock(nBlock))
-      mapBlock(:)=0
     end if
+    mapBlock(:)=0
     nBlockPrt=count([(any(Block(i)%Prt(:)==k),i=1,nBlock)])
     allocate(buffBlock(nBlockPrt))
     allocate(buffMapBlock(nBlockPrt))
@@ -283,16 +283,77 @@ contains
     end forall
     buffNode(:)=Node(buffMapNode(:))
     ! copy points
+    if(.not.allocated(mapPoint))then
+      allocate(mapPoint(nPoint))
+    end if
+    mapPoint(:)=0
+    nPointPrt=0
+    do i=1,nPoint
+      if(any(buffMapNode(:)==Point(i)%NodeInd))then
+        nPointPrt=nPointPrt+1
+        mapPoint(i)=nPointPrt
+      end if
+    end do
+    allocate(buffPoint(nPointPrt))
+    allocate(buffMapPoint(nPointPrt))
+    forall(i=1:nPoint,mapPoint(i)>0)
+      buffMapPoint(mapPoint(i))=i
+    end forall
+    buffPoint(:)=Point(buffMapPoint(:))
     ! copy lines
+    if(.not.allocated(mapLine))then
+      allocate(mapLine(nLine))
+    end if
+    mapLine(:)=0
+    nLinePrt=0
+    do i=1,nLine
+      if(all([(any(buffMapNode(:)==Line(i)%NodeInd(j)),j=1,LINE_NODE_NUM)]))then
+        nLinePrt=nLinePrt+1
+        mapLine(i)=nLinePrt
+      end if
+    end do
+    allocate(buffLine(nLinePrt))
+    allocate(buffMapLine(nLinePrt))
+    forall(i=1:nLine,mapLine(i)>0)
+      buffMapLine(mapLine(i))=i
+    end forall
+    buffLine(:)=Line(buffMapLine(:))
     ! copy facets
+    if(.not.allocated(mapFacet))then
+      allocate(mapFacet(nFacet))
+    end if
+    mapFacet(:)=0
+    nFacetPrt=0
+    do i=1,nFacet
+      if(all([(any(buffMapNode(:)==Facet(i)%NodeInd(j)),j=1,Facet(i)%NodeNum)]))then
+        nFacetPrt=nFacetPrt+1
+        mapFacet(i)=nFacetPrt
+      end if
+    end do
+    allocate(buffFacet(nFacetPrt))
+    allocate(buffMapFacet(nFacetPrt))
+    forall(i=1:nFacet,mapFacet(i)>0)
+      buffMapFacet(mapFacet(i))=i
+    end forall
+    buffFacet(:)=Facet(buffMapFacet(:))
     
     ! copy node conditions
+    allocate(buffCondNode(nNodePrt))
+    buffCondNode(:)=condNode(buffMapNode(:))
     ! copy facet conditions
+    allocate(buffCondFacet(nFacetPrt))
+    buffCondFacet(:)=condFacet(buffMapFacet(:))
     ! copy block conditions
+    allocate(buffCondBlock(nBlockPrt))
+    buffCondBlock(:)=condBlock(buffMapBlock(:))
     
     ! clean ups
-    deallocate(buffBlock,buffMapBlock)
     deallocate(buffNode,buffMapNode)
+    deallocate(buffPoint,buffMapPoint)
+    deallocate(buffLine,buffMapLine)
+    deallocate(buffFacet,buffMapFacet)
+    deallocate(buffBlock,buffMapBlock)
+    deallocate(buffCondNode,buffCondFacet,buffCondBlock)
   end subroutine
   
   !-------------------
