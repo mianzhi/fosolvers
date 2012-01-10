@@ -318,17 +318,22 @@ contains
       buffMapLine(mapLine(i))=i
     end forall
     buffLine(:)=Line(buffMapLine(:))
-    ! copy facets
+    ! copy facets (depend on blocks instead of nodes)
     if(.not.allocated(mapFacet))then
       allocate(mapFacet(nFacet))
     end if
     mapFacet(:)=0
     nFacetPrt=0
     do i=1,nFacet
-      if(all([(any(buffMapNode(:)==Facet(i)%NodeInd(j)),j=1,Facet(i)%NodeNum)]))then
-        nFacetPrt=nFacetPrt+1
-        mapFacet(i)=nFacetPrt
-      end if
+      do j=1,FACET_NEIB_BLOCK_NUM
+        if(Facet(i)%NeibBlock(j)>0)then
+          if(mapBlock(Facet(i)%NeibBlock(j))>0)then
+            nFacetPrt=nFacetPrt+1
+            mapFacet(i)=nFacetPrt
+            exit
+          end if
+        end if
+      end do
     end do
     allocate(buffFacet(nFacetPrt))
     allocate(buffMapFacet(nFacetPrt))
@@ -348,10 +353,62 @@ contains
     buffCondBlock(:)=condBlock(buffMapBlock(:))
     
     ! correct indices
+    do i=1,nNodePrt
+      buffNode(i)%Ind=i
+      if(allocated(buffNode(i)%FacetInd))then
+        buffNode(i)%FacetInd(:)=mapFacet(buffNode(i)%FacetInd)
+      end if
+      if(allocated(buffNode(i)%BlockInd))then
+        buffNode(i)%BlockInd(:)=mapBlock(buffNode(i)%BlockInd)
+      end if
+    end do
+    forall(i=1:nPointPrt)
+      buffPoint(i)%Ind=i
+      buffPoint(i)%NodeInd=mapNode(buffPoint(i)%NodeInd)
+    end forall
+    forall(i=1:nLinePrt)
+      buffLine(i)%Ind=i
+      buffLine(i)%NodeInd(:)=mapNode(buffLine(i)%NodeInd(:))
+    end forall
+    forall(i=1:nFacetPrt)
+      buffFacet(i)%Ind=i
+      buffFacet(i)%NodeInd(:)=mapNode(buffFacet(i)%NodeInd(:))
+    end forall
+    do i=1,nFacetPrt
+      forall(j=1:FACET_NEIB_BLOCK_NUM,buffFacet(i)%NeibBlock(j)/=0)
+        buffFacet(i)%NeibBlock(j)=mapBlock(buffFacet(i)%NeibBlock(j))
+      end forall
+    end do
+    forall(i=1:nBlockPrt)
+      buffBlock(i)%Ind=i
+      buffBlock(i)%NodeInd(:)=mapNode(buffBlock(i)%NodeInd(:))
+    end forall
+    do i=1,nBlockPrt
+      if(allocated(buffBlock(i)%Neib))then
+        do j=1,buffBlock(i)%SurfNum
+          if(buffBlock(i)%Neib(j)>0)then
+            buffBlock(i)%Neib(j)=mapBlock(buffBlock(i)%Neib(j))
+          else if(buffBlock(i)%Neib(j)<0)then
+            buffBlock(i)%Neib(j)=-mapFacet(-buffBlock(i)%Neib(j))
+          end if
+        end do
+      end if
+    end do
     
     ! send date
     call sendData(nNodePrt,p,p)
     call sendData(buffNode,p,p)
+    call sendData(nPointPrt,p,p)
+    call sendData(buffPoint,p,p)
+    call sendData(nLinePrt,p,p)
+    call sendData(buffLine,p,p)
+    call sendData(nFacetPrt,p,p)
+    call sendData(buffFacet,p,p)
+    call sendData(nBlockPrt,p,p)
+    call sendData(buffBlock,p,p)
+    call sendData(buffCondNode,p,p)
+    call sendData(buffCondFacet,p,p)
+    call sendData(buffCondBlock,p,p)
     
     ! clean ups
     deallocate(buffNode,buffMapNode)
@@ -374,6 +431,17 @@ contains
     ! receive data
     call recvData(nNode,ROOT_PID,pidMPI)
     call recvData(Node,ROOT_PID,pidMPI,realloc=.true.)
+    call recvData(nPoint,ROOT_PID,pidMPI)
+    call recvData(Point,ROOT_PID,pidMPI,realloc=.true.)
+    call recvData(nLine,ROOT_PID,pidMPI)
+    call recvData(Line,ROOT_PID,pidMPI,realloc=.true.)
+    call recvData(nFacet,ROOT_PID,pidMPI)
+    call recvData(Facet,ROOT_PID,pidMPI,realloc=.true.)
+    call recvData(nBlock,ROOT_PID,pidMPI)
+    call recvData(Block,ROOT_PID,pidMPI,realloc=.true.)
+    call recvData(condNode,ROOT_PID,pidMPI,realloc=.true.)
+    call recvData(condFacet,ROOT_PID,pidMPI,realloc=.true.)
+    call recvData(condBlock,ROOT_PID,pidMPI,realloc=.true.)
   end subroutine
   
 end module
