@@ -723,6 +723,8 @@ contains
     integer,intent(in)::dest,tag
     
     call MPI_send(obj%Ind,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    call MPI_send(obj%ShapeType,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    call MPI_send(obj%NodeNum,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
     call sendIntegerVect(obj%NodeInd,dest,tag)
     call MPI_send(obj%GeoEnti,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
     call sendDoubleVect(obj%PC,dest,tag)
@@ -742,7 +744,11 @@ contains
     
     call MPI_recv(buffInteger,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
     obj%Ind=buffInteger
-    call recvIntegerVect(obj%NodeInd,source,tag)
+    call MPI_recv(buffInteger,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    obj%ShapeType=buffInteger
+    call MPI_recv(buffInteger,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    obj%NodeNum=buffInteger
+    call recvIntegerVectRealloc(obj%NodeInd,source,tag,realloc=.true.)
     call MPI_recv(buffInteger,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
     obj%GeoEnti=buffInteger
     call recvDoubleVect(obj%PC,source,tag)
