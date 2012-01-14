@@ -30,7 +30,6 @@ contains
     character(*),intent(in)::string
     
     write(*,'(/,a,a)'),'WARNING: ',string
-    stop
   end subroutine
   
   !----------------------------------------
