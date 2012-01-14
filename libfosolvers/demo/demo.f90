@@ -11,7 +11,7 @@ program demo
   use moduleMP2
   use moduleMiscDataStruct
   
-  double precision,allocatable::v(:)
+  double precision,allocatable::v(:,:,:)
   
   ! test multi-processing, material and conditions
   call initMPI()
@@ -21,9 +21,11 @@ program demo
     call readCond('conditions.cod',52)
     call readMtl('materials.mtl',51)
     
-    allocate(v(nNode))
+    allocate(v(nNode,DIMS,DIMS))
     forall(i=1:nNode)
-      v(i)=Node(i)%Pos(1)
+      v(i,:,1)=Node(i)%Pos(:)
+      v(i,:,2)=Node(i)%Pos(:)
+      v(i,:,3)=Node(i)%Pos(:)
     end forall
     
     call sendData(Mtl,1,1)
