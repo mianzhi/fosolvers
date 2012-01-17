@@ -11,7 +11,7 @@ program demo
   use moduleMP2
   use moduleMiscDataStruct
   
-  double precision,allocatable::v(:,:,:)
+  double precision,allocatable::v(:)
   
   ! test multi-processing, material and conditions
   call initMPI()
@@ -21,21 +21,26 @@ program demo
     call readCond('conditions.cod',52)
     call readMtl('materials.mtl',51)
     
-    allocate(v(nNode,DIMS,DIMS))
+    allocate(v(nNode))
     forall(i=1:nNode)
-      v(i,:,1)=Node(i)%Pos(:)
-      v(i,:,2)=Node(i)%Pos(:)
-      v(i,:,3)=Node(i)%Pos(:)
+      v(i)=Node(i)%Pos(1)
     end forall
     
     call sendData(Mtl,1,1)
     call sendPrt(2,1)
     call sendPrt(2,1,v,binding=BIND_NODE)
+    
+    call gathPrtData(m,n)
+    
+    call addWrite(v,binding=BIND_NODE)
+    call writeRst('rst.msh',55)
   else
     if(pidMPI==1)then
       call recvData(Mtl,0,1,realloc=.true.)
       call recvPrt()
       call recvPrt(v)
+      
+      v(:)=1d0
       
       write(*,*),condNode(5)%lookup('vname'),condNode(5)%lookup('tname',5d-1)
       write(*,*),condFacet(32)%lookup('fffc1'),condFacet(32)%lookup('fffc2',0.6d0)
@@ -47,8 +52,7 @@ program demo
       write(*,*),Mtl(1)%lookup('PoisR')
       write(*,*),Mtl(1)%lookup('Stren')
       
-      call addWrite(v,binding=BIND_NODE)
-      call writeRst('rst.msh',55)
+      call retnPrtData()
     end if
   end if
   

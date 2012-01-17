@@ -16,9 +16,10 @@ module moduleMP2
   ! index map
   integer,allocatable,public,save::mapNode(:),mapPoint(:),mapLine(:),mapFacet(:),mapBlock(:)
   
-  ! procedures
-  !public sendPrt
-  !public recvPrt
+  ! data list to be communicated
+  type(typePtrScalArray),allocatable,public,save::commNodeScal(:),commFacetScal(:),commBlockScal(:)
+  type(typePtrVectArray),allocatable,public,save::commNodeVect(:),commFacetVect(:),commBlockVect(:)
+  type(typePtrTensArray),allocatable,public,save::commNodeTens(:),commFacetTens(:),commBlockTens(:)
   
   !------------------------
   ! generic send partition
@@ -42,7 +43,161 @@ module moduleMP2
   end interface
   public recvPrt
   
+  ! other procedures
+  public retnPrtData
+  public gathPrtData
+  
 contains
+  
+  !---------------------------------------
+  ! add scaler data to communication list
+  !---------------------------------------
+  subroutine addCommScal(v,binding)
+    use moduleGrid
+    double precision,target,intent(in)::v(:)
+    integer,intent(in)::binding
+    type(typePtrScalArray),allocatable::temp(:)
+    
+    select case(binding)
+      case(BIND_NODE)
+        if(allocated(commNodeScal))then
+          if(.not.any([(associated(commNodeScal(i)%ptr,v),i=1,size(commNodeScal))]))then
+            allocate(temp(size(commNodeScal)+1))
+            temp(1:size(commNodeScal))=commNodeScal(:)
+            temp(size(temp))%ptr=>v
+            call move_alloc(temp,commNodeScal)
+          end if
+        else
+          allocate(commNodeScal(1))
+          commNodeScal(1)%ptr=>v
+        end if
+      case(BIND_FACET)
+        if(allocated(commFacetScal))then
+          if(.not.any([(associated(commFacetScal(i)%ptr,v),i=1,size(commFacetScal))]))then
+            allocate(temp(size(commFacetScal)+1))
+            temp(1:size(commFacetScal))=commFacetScal(:)
+            temp(size(temp))%ptr=>v
+            call move_alloc(temp,commFacetScal)
+          end if
+        else
+          allocate(commFacetScal(1))
+          commFacetScal(1)%ptr=>v
+        end if
+      case(BIND_BLOCK)
+        if(allocated(commBlockScal))then
+          if(.not.any([(associated(commBlockScal(i)%ptr,v),i=1,size(commBlockScal))]))then
+            allocate(temp(size(commBlockScal)+1))
+            temp(1:size(commBlockScal))=commBlockScal(:)
+            temp(size(temp))%ptr=>v
+            call move_alloc(temp,commBlockScal)
+          end if
+        else
+          allocate(commBlockScal(1))
+          commBlockScal(1)%ptr=>v
+        end if
+      case default
+    end select
+  end subroutine
+  
+  !---------------------------------------
+  ! add vector data to communication list
+  !---------------------------------------
+  subroutine addCommVect(v,binding)
+    use moduleGrid
+    double precision,target,intent(in)::v(:,:)
+    integer,intent(in)::binding
+    type(typePtrVectArray),allocatable::temp(:)
+    
+    select case(binding)
+      case(BIND_NODE)
+        if(allocated(commNodeVect))then
+          if(.not.any([(associated(commNodeVect(i)%ptr,v),i=1,size(commNodeVect))]))then
+            allocate(temp(size(commNodeVect)+1))
+            temp(1:size(commNodeVect))=commNodeVect(:)
+            temp(size(temp))%ptr=>v
+            call move_alloc(temp,commNodeVect)
+          end if
+        else
+          allocate(commNodeVect(1))
+          commNodeVect(1)%ptr=>v
+        end if
+      case(BIND_FACET)
+        if(allocated(commFacetVect))then
+          if(.not.any([(associated(commFacetVect(i)%ptr,v),i=1,size(commFacetVect))]))then
+            allocate(temp(size(commFacetVect)+1))
+            temp(1:size(commFacetVect))=commFacetVect(:)
+            temp(size(temp))%ptr=>v
+            call move_alloc(temp,commFacetVect)
+          end if
+        else
+          allocate(commFacetVect(1))
+          commFacetVect(1)%ptr=>v
+        end if
+      case(BIND_BLOCK)
+        if(allocated(commBlockVect))then
+          if(.not.any([(associated(commBlockVect(i)%ptr,v),i=1,size(commBlockVect))]))then
+            allocate(temp(size(commBlockVect)+1))
+            temp(1:size(commBlockVect))=commBlockVect(:)
+            temp(size(temp))%ptr=>v
+            call move_alloc(temp,commBlockVect)
+          end if
+        else
+          allocate(commBlockVect(1))
+          commBlockVect(1)%ptr=>v
+        end if
+      case default
+    end select
+  end subroutine
+  
+  !---------------------------------------
+  ! add tensor data to communication list
+  !---------------------------------------
+  subroutine addCommTens(v,binding)
+    use moduleGrid
+    double precision,target,intent(in)::v(:,:,:)
+    integer,intent(in)::binding
+    type(typePtrTensArray),allocatable::temp(:)
+    
+    select case(binding)
+      case(BIND_NODE)
+        if(allocated(commNodeTens))then
+          if(.not.any([(associated(commNodeTens(i)%ptr,v),i=1,size(commNodeTens))]))then
+            allocate(temp(size(commNodeTens)+1))
+            temp(1:size(commNodeTens))=commNodeTens(:)
+            temp(size(temp))%ptr=>v
+            call move_alloc(temp,commNodeTens)
+          end if
+        else
+          allocate(commNodeTens(1))
+          commNodeTens(1)%ptr=>v
+        end if
+      case(BIND_FACET)
+        if(allocated(commFacetTens))then
+          if(.not.any([(associated(commFacetTens(i)%ptr,v),i=1,size(commFacetTens))]))then
+            allocate(temp(size(commFacetTens)+1))
+            temp(1:size(commFacetTens))=commFacetTens(:)
+            temp(size(temp))%ptr=>v
+            call move_alloc(temp,commFacetTens)
+          end if
+        else
+          allocate(commFacetTens(1))
+          commFacetTens(1)%ptr=>v
+        end if
+      case(BIND_BLOCK)
+        if(allocated(commBlockTens))then
+          if(.not.any([(associated(commBlockTens(i)%ptr,v),i=1,size(commBlockTens))]))then
+            allocate(temp(size(commBlockTens)+1))
+            temp(1:size(commBlockTens))=commBlockTens(:)
+            temp(size(temp))%ptr=>v
+            call move_alloc(temp,commBlockTens)
+          end if
+        else
+          allocate(commBlockTens(1))
+          commBlockTens(1)%ptr=>v
+        end if
+      case default
+    end select
+  end subroutine
   
   !------------------------------------------------------
   ! send grid and conditions of partition k to process p
@@ -238,14 +393,19 @@ contains
       ! send grid and conditions
       call sendData(nNodePrt,p,p)
       call sendData(buffNode,p,p)
+      call sendData(buffMapNode,p,p)
       call sendData(nPointPrt,p,p)
       call sendData(buffPoint,p,p)
+      call sendData(buffMapPoint,p,p)
       call sendData(nLinePrt,p,p)
       call sendData(buffLine,p,p)
+      call sendData(buffMapLine,p,p)
       call sendData(nFacetPrt,p,p)
       call sendData(buffFacet,p,p)
+      call sendData(buffMapFacet,p,p)
       call sendData(nBlockPrt,p,p)
       call sendData(buffBlock,p,p)
+      call sendData(buffMapBlock,p,p)
       call sendData(buffCondNode,p,p)
       call sendData(buffCondFacet,p,p)
       call sendData(buffCondBlock,p,p)
@@ -287,6 +447,8 @@ contains
         call sendData(scalV(buffMapBlock(:)),p,p)
       case default
     end select
+    call sendData(binding,p,p)
+    call addCommScal(scalV,binding=binding)
   end subroutine
   
   !-------------------------------------------------------------------------
@@ -310,6 +472,8 @@ contains
         call sendData(vectV(buffMapBlock(:),:),p,p)
       case default
     end select
+    call sendData(binding,p,p)
+    call addCommVect(vectV,binding=binding)
   end subroutine
   
   !-------------------------------------------------------------------------
@@ -342,6 +506,8 @@ contains
         end do
       case default
     end select
+    call sendData(binding,p,p)
+    call addCommTens(tensV,binding=binding)
   end subroutine
   
   !--------------------------------------------
@@ -359,14 +525,19 @@ contains
     if(needRecv)then ! need to receive grid and conditions
       call recvData(nNode,ROOT_PID,pidMPI)
       call recvData(Node,ROOT_PID,pidMPI,realloc=.true.)
+      call recvData(mapNode,ROOT_PID,pidMPI,realloc=.true.)
       call recvData(nPoint,ROOT_PID,pidMPI)
       call recvData(Point,ROOT_PID,pidMPI,realloc=.true.)
+      call recvData(mapPoint,ROOT_PID,pidMPI,realloc=.true.)
       call recvData(nLine,ROOT_PID,pidMPI)
       call recvData(Line,ROOT_PID,pidMPI,realloc=.true.)
+      call recvData(mapLine,ROOT_PID,pidMPI,realloc=.true.)
       call recvData(nFacet,ROOT_PID,pidMPI)
       call recvData(Facet,ROOT_PID,pidMPI,realloc=.true.)
+      call recvData(mapFacet,ROOT_PID,pidMPI,realloc=.true.)
       call recvData(nBlock,ROOT_PID,pidMPI)
       call recvData(Block,ROOT_PID,pidMPI,realloc=.true.)
+      call recvData(mapBlock,ROOT_PID,pidMPI,realloc=.true.)
       call recvData(condNode,ROOT_PID,pidMPI,realloc=.true.)
       call recvData(condFacet,ROOT_PID,pidMPI,realloc=.true.)
       call recvData(condBlock,ROOT_PID,pidMPI,realloc=.true.)
@@ -382,6 +553,8 @@ contains
     
     call recvPrtGridCondOnly()
     call recvData(scalV,ROOT_PID,pidMPI,realloc=.true.)
+    call recvData(k,ROOT_PID,pidMPI)
+    call addCommScal(scalV,binding=k)
   end subroutine
   
   !---------------------------------------------------------
@@ -393,6 +566,8 @@ contains
     
     call recvPrtGridCondOnly()
     call recvData(vectV,ROOT_PID,pidMPI,realloc=.true.)
+    call recvData(k,ROOT_PID,pidMPI)
+    call addCommVect(vectV,binding=k)
   end subroutine
   
   !---------------------------------------------------------
@@ -412,6 +587,69 @@ contains
     do i=1,DIMS
       call recvData(tensV(:,:,i),ROOT_PID,pidMPI)
     end do
+    call recvData(k,ROOT_PID,pidMPI)
+    call addCommTens(tensV,binding=k)
+  end subroutine
+  
+  !-------------------------------------
+  ! return data bind with the partition
+  !-------------------------------------
+  subroutine retnPrtData()
+    use moduleMP1
+    use moduleMP2buffMap
+    use moduleGrid
+    use mpi
+    
+    call sendData(mapNode,ROOT_PID,pidMPI)
+    call sendData(mapFacet,ROOT_PID,pidMPI)
+    call sendData(mapBlock,ROOT_PID,pidMPI)
+    
+    if(allocated(commNodeScal))then
+      call MPI_send(.true.,1,MPI_logical,ROOT_PID,pidMPI,MPI_comm_world,errMPI)
+      call sendData(size(commNodeScal),ROOT_PID,pidMPI)
+      do i=1,size(commNodeScal)
+        call sendData(commNodeScal(i)%ptr,ROOT_PID,pidMPI)
+      end do
+    else
+      call MPI_send(.false.,1,MPI_logical,ROOT_PID,pidMPI,MPI_comm_world,errMPI)
+    end if
+  end subroutine
+  
+  !----------------------------------------------------------------------------
+  ! try to gather data from any process, received partition prt from process p
+  !----------------------------------------------------------------------------
+  subroutine gathPrtData(prt,p)
+    use moduleMP1
+    use moduleGrid
+    use mpi
+    
+    integer,intent(out)::prt,p
+    integer,allocatable::tempMapNode(:),tempMapFacet(:),tempMapBlock(:)
+    double precision,allocatable::buffVect(:),buffMat(:,:)
+    logical isAllocated
+    
+    call recvData(tempMapNode,MPI_any_source,MPI_any_tag,realloc=.true.)
+    p=statMPI(MPI_source)
+    call recvData(tempMapFacet,p,p,realloc=.true.)
+    call recvData(tempMapBlock,p,p,realloc=.true.)
+    prt=maxval(Block(tempMapBlock(1))%Prt(:))
+    
+    call MPI_recv(isAllocated,1,MPI_logical,p,p,MPI_comm_world,statMPI,errMPI)
+    if(isAllocated)then
+      call recvData(n,p,p)
+      do i=1,n
+        call recvData(buffVect,p,p,realloc=.true.)
+        commNodeScal(i)%ptr(tempMapNode(:))=buffVect(:)
+      end do
+    end if
+    
+    deallocate(tempMapNode,tempMapFacet,tempMapBlock)
+    if(allocated(buffVect))then
+      deallocate(buffVect)
+    end if
+    if(allocated(buffMat))then
+      deallocate(buffMat)
+    end if
   end subroutine
   
 end module
