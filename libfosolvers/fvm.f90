@@ -16,6 +16,9 @@ module moduleFVM
   end interface
   public findGrad
   
+  ! block surface interpolation
+  public itplBCD
+  
 contains
   
   !------------------------------------------------------------
@@ -168,6 +171,28 @@ contains
       vrst=findGradVect(k,vv)
     end if
     findGradScal(:)=vrst(1,:)
+  end function
+  
+  !---------------------------------------------------------------------------------------------
+  ! interpolate block value v to n_th surface of m_th block using block-centre-direction scheme
+  !---------------------------------------------------------------------------------------------
+  function itplBCD(m,n,v)
+    use moduleGrid
+    use moduleUtility
+    integer,intent(in)::m,n
+    double precision,intent(in)::v(:)
+    double precision itplBCD
+    double precision PF(DIMS),PS(DIMS),alpha
+    
+    itplBCD=0d0
+    if(Block(m)%Neib(n)>0)then
+      PF(:)=Block(Block(m)%Neib(n))%PC(:)-Block(m)%PC(:)
+      PS(:)=Block(m)%SurfPC(n,:)-Block(m)%PC(:)
+      alpha=dot_product(PS,PF)/dot_product(PF,PF)
+      itplBCD=(1d0-alpha)*v(m)+alpha*v(Block(m)%Neib(n))
+    else
+      call showError('invalid inner surface number.')
+    end if
   end function
   
 end module

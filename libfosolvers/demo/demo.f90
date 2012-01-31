@@ -11,7 +11,7 @@ program demo
   use moduleMP2
   use moduleMiscDataStruct
   
-  double precision,allocatable::v(:)
+  double precision,allocatable::v(:),v2(:),a
   
   ! test multi-processing, material and conditions
   call initMPI()
@@ -34,6 +34,18 @@ program demo
     
     call addWrite(v,binding=BIND_NODE)
     call writeRst('rst.msh',55)
+    
+    allocate(v2(nBlock))
+    v2(:)=Block(:)%PC(1)+10d0
+    do i=1,nBlock
+      do j=1,Block(i)%SurfNum
+        if(Block(i)%Neib(j)>0)then
+          a=itplBCD(i,j,v2)
+          write(*,*),i,j,a
+        end if
+      end do
+    end do
+    
   else
     if(pidMPI==1)then
       call recvData(Mtl,0,1,realloc=.true.)
