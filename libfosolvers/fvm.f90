@@ -16,8 +16,13 @@ module moduleFVM
   end interface
   public findGrad
   
-  ! block surface interpolation
+  ! block surface interpolation (inner surface)
   public itplBCD
+  public itplCBCD
+  
+  ! block surface interpolation (boundary surface)
+  public itplBS
+  public itplBSAP
   
 contains
   
@@ -192,6 +197,98 @@ contains
       itplBCD=(1d0-alpha)*v(m)+alpha*v(Block(m)%Neib(n))
     else
       call showError('invalid inner surface number.')
+    end if
+  end function
+  
+  !---------------------------------------------------------
+  ! interpolate block value v to n_th surface of m_th block
+  ! using corrected block-centre-direction scheme
+  !---------------------------------------------------------
+  function itplCBCD(m,n,v,grad)
+    use moduleGrid
+    use moduleUtility
+    integer,intent(in)::m,n
+    double precision,intent(in)::v(:)
+    double precision,intent(in),optional::grad(:,:)
+    double precision itplCBCD
+    double precision gradP(DIMS),Saux(DIMS),alpha,dPS,dSF
+    
+    itplCBCD=0d0
+    if(Block(m)%Neib(n)>0)then
+      if(present(grad))then
+        gradP(:)=grad(m,:)
+      else
+        gradP=findGradScal(m,v,binding=BIND_BLOCK)
+      end if
+      dPS=norm2(Block(m)%SurfPC(n,:)-Block(m)%PC(:))
+      dSF=norm2(Block(Block(m)%Neib(n))%PC(:)-Block(m)%SurfPC(n,:))
+      alpha=dPS/(dPS+dSF)
+      Saux(:)=Block(m)%PC(:)+alpha*(Block(Block(m)%Neib(n))%PC(:)-Block(m)%PC(:))
+      itplCBCD=(1d0-alpha)*v(m)+alpha*v(Block(m)%Neib(n))&
+      &       +dot_product(gradP(:),Block(m)%SurfPC(n,:)-Saux(:))
+    else
+      call showError('invalid inner surface number.')
+    end if
+  end function
+  
+  !----------------------------------------------------------------------------
+  ! interpolate block value v to n_th surface (boundary surface) of m_th block
+  !----------------------------------------------------------------------------
+  function itplBS(m,n,v,ghostVal,grad)
+    use moduleGrid
+    use moduleUtility
+    integer,intent(in)::m,n
+    double precision,intent(in)::v(:)
+    double precision,intent(in),optional::ghostVal
+    double precision,intent(in),optional::grad(:,:)
+    double precision itplBS
+    double precision gradP(DIMS)
+    
+    itplBS=0d0
+    if(Block(m)%Neib(n)<0)then
+      if(present(ghostVal))then
+        itplBS=(v(m)+ghostVal)/2d0
+      else
+        if(present(grad))then
+          gradP(:)=grad(m,:)
+        else
+          gradP=findGradScal(m,v,binding=BIND_BLOCK)
+        end if
+        itplBS=v(m)+dot_product(gradP(:),Block(m)%PC(:)-Block(m)%SurfPC(n,:))
+      end if
+    else
+      call showError('invalid boundary surface number.')
+    end if
+  end function
+  
+  !----------------------------------------------------------------------------
+  ! interpolate block value v to n_th surface (boundary surface) of m_th block
+  ! using auxiliary-point scheme
+  !----------------------------------------------------------------------------
+  function itplBSAP(m,n,v,ghostVal,grad)
+    use moduleGrid
+    use moduleUtility
+    integer,intent(in)::m,n
+    double precision,intent(in)::v(:)
+    double precision,intent(in)::ghostVal
+    double precision,intent(in),optional::grad(:,:)
+    double precision itplBSAP
+    double precision gradP(DIMS),distA(DIMS)
+    
+    itplBSAP=0d0
+    if(Block(m)%Neib(n)<0)then
+      if(present(grad))then
+        gradP(:)=grad(m,:)
+      else
+        gradP=findGradScal(m,v,binding=BIND_BLOCK)
+      end if
+      distA(:)=Block(m)%SurfPC(n,:)&
+      &       -Block(m)%SurfNorm(n,:)&
+      &        *dot_product(Block(m)%SurfNorm(n,:),Block(m)%SurfPC(n,:)-Block(m)%PC(:))&
+      &       -Block(m)%PC(:)
+      itplBSAP=(v(m)+dot_product(gradP,distA(:))+ghostVal)/2d0
+    else
+      call showError('invalid boundary surface number.')
     end if
   end function
   

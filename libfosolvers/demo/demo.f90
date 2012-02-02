@@ -40,9 +40,11 @@ program demo
     do i=1,nBlock
       do j=1,Block(i)%SurfNum
         if(Block(i)%Neib(j)>0)then
-          a=itplBCD(i,j,v2)
-          write(*,*),i,j,a
+          a=itplCBCD(i,j,v2)
+        else
+          a=itplBSAP(i,j,v2,100d0)
         end if
+        write(*,*),i,j,a
       end do
     end do
     
