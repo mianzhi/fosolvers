@@ -450,7 +450,6 @@ contains
   !--------------------------------------------------------------------------
   function diffuseORTHScal(m,n,v)
     use moduleGrid
-    use moduleUtility
     integer,intent(in)::m,n
     double precision,intent(in)::v(:)
     double precision diffuseORTHScal
@@ -502,7 +501,6 @@ contains
   !---------------------------------------------------------------------------------------------
   function diffuseBSORTHScal(m,n,v,ghostVal)
     use moduleGrid
-    use moduleUtility
     integer,intent(in)::m,n
     double precision,intent(in)::v(:)
     double precision,intent(in)::ghostVal
