@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------------- best with 100 columns
 
 !***********************
-! finite voluem schemes
+! finite volume schemes
 !***********************
 module moduleFVM
   private
@@ -28,7 +28,7 @@ module moduleFVM
   end interface
   public itplCBCD
   
-  ! block surface interpolation (boundary surface)
+  ! generic block surface interpolation (boundary surface)
   interface itplBS
     module procedure::itplBSScal
     module procedure::itplBSVect
@@ -39,6 +39,20 @@ module moduleFVM
     module procedure::itplBSAPVect
   end interface
   public itplBSAP
+  
+  ! generic diffusion flux evaluation (inner surface)
+  interface diffuseORTH
+    module procedure::diffuseORTHScal
+    module procedure::diffuseORTHVect
+  end interface
+  public diffuseORTH
+  
+  ! generic diffusion flux evaluation (boundary surface)
+  interface diffuseBSORTH
+    module procedure::diffuseBSORTHScal
+    module procedure::diffuseBSORTHVect
+  end interface
+  public diffuseBSORTH
   
 contains
   
@@ -394,6 +408,111 @@ contains
       vrst=itplBSAPVect(m,n,vv,vghostVal)
     end if
     itplBSAPScal=vrst(1)
+  end function
+  
+  !--------------------------------------------------------------------------
+  ! evaluate the diffusion flux into the m_th block through its n_th surface
+  ! driven by vector v using orthogonal scheme
+  !
+  !  / /
+  !  | | __      ^
+  !  | | \/[v] * n dA
+  !  | |
+  !  / /
+  !  Surf n of Block m
+  !--------------------------------------------------------------------------
+  function diffuseORTHVect(m,n,v)
+    use moduleGrid
+    use moduleUtility
+    integer,intent(in)::m,n
+    double precision,intent(in)::v(:,:)
+    double precision diffuseORTHVect(size(v,2))
+    
+    diffuseORTHVect(:)=0d0
+    if(Block(m)%Neib(n)>0)then
+      diffuseORTHVect(:)=(v(Block(m)%Neib(n),:)-v(m,:))*Block(m)%SurfArea(n)&
+      &                  /norm2(Block(Block(m)%Neib(n))%PC(:)-Block(m)%PC(:))
+    else
+      call showError('invalid inner surface number.')
+    end if
+  end function
+  
+  !--------------------------------------------------------------------------
+  ! evaluate the diffusion flux into the m_th block through its n_th surface
+  ! driven by scalar v using orthogonal scheme
+  !
+  !  / /
+  !  | | __    ^
+  !  | | \/v * n dA
+  !  | |
+  !  / /
+  !  Surf n of Block m
+  !--------------------------------------------------------------------------
+  function diffuseORTHScal(m,n,v)
+    use moduleGrid
+    use moduleUtility
+    integer,intent(in)::m,n
+    double precision,intent(in)::v(:)
+    double precision diffuseORTHScal
+    double precision vv(size(v),1),vrst(1)
+    
+    vv(:,1)=v(:)
+    vrst=diffuseORTHVect(m,n,vv)
+    diffuseORTHScal=vrst(1)
+  end function
+  
+  !---------------------------------------------------------------------------------------------
+  ! evaluate the diffusion flux into the m_th block through its n_th surface (boundary surface)
+  ! driven by vector v using orthogonal scheme
+  !
+  !  / /
+  !  | | __      ^
+  !  | | \/[v] * n dA
+  !  | |
+  !  / /
+  !  Surf n of Block m
+  !---------------------------------------------------------------------------------------------
+  function diffuseBSORTHVect(m,n,v,ghostVal)
+    use moduleGrid
+    use moduleUtility
+    integer,intent(in)::m,n
+    double precision,intent(in)::v(:,:)
+    double precision,intent(in)::ghostVal(size(v,2))
+    double precision diffuseBSORTHVect(size(v,2))
+    
+    diffuseBSORTHVect(:)=0d0
+    if(Block(m)%Neib(n)<0)then
+      diffuseBSORTHVect(:)=(ghostVal(:)-v(m,:))*Block(m)%SurfArea(n)/2d0&
+      &                    /norm2(Block(m)%SurfPC(n,:)-Block(m)%PC(:))
+    else
+      call showError('invalid boundary surface number.')
+    end if
+  end function
+  
+  !---------------------------------------------------------------------------------------------
+  ! evaluate the diffusion flux into the m_th block through its n_th surface (boundary surface)
+  ! driven by scalar v using orthogonal scheme
+  !
+  !  / /
+  !  | | __    ^
+  !  | | \/v * n dA
+  !  | |
+  !  / /
+  !  Surf n of Block m
+  !---------------------------------------------------------------------------------------------
+  function diffuseBSORTHScal(m,n,v,ghostVal)
+    use moduleGrid
+    use moduleUtility
+    integer,intent(in)::m,n
+    double precision,intent(in)::v(:)
+    double precision,intent(in)::ghostVal
+    double precision diffuseBSORTHScal
+    double precision vv(size(v),1),vghostVal(1),vrst(1)
+    
+    vv(:,1)=v(:)
+    vghostVal(1)=ghostVal
+    vrst=diffuseBSORTHVect(m,n,vv,vghostVal)
+    diffuseBSORTHScal=vrst(1)
   end function
   
 end module

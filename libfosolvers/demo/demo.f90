@@ -36,13 +36,13 @@ program demo
     call writeRst('rst.msh',55)
     
     allocate(v2(nBlock))
-    v2(:)=Block(:)%PC(1)+10d0
+    v2(:)=Block(:)%PC(1)+Block(:)%PC(2)+10d0
     do i=1,nBlock
       do j=1,Block(i)%SurfNum
         if(Block(i)%Neib(j)>0)then
-          a=itplCBCD(i,j,v2)
+          a=diffuseORTH(i,j,v2)
         else
-          a=itplBSAP(i,j,v2,100d0)
+          a=diffuseBSORTH(i,j,v2,100d0)
         end if
         write(*,*),i,j,a
       end do
