@@ -10,8 +10,10 @@ program demo
   use moduleMP1
   use moduleMP2
   use moduleMiscDataStruct
+  use moduleUtility
   
-  double precision,allocatable::v(:),v2(:),a
+  double precision,allocatable::v(:)
+  character(20) str
   
   ! test multi-processing, material and conditions
   call initMPI()
@@ -21,32 +23,34 @@ program demo
     call readCond('conditions.cod',52)
     call readMtl('materials.mtl',51)
     
-    allocate(v(nNode))
-    forall(i=1:nNode)
-      v(i)=Node(i)%Pos(1)
+    allocate(v(nBlock))
+    forall(i=1:nBlock)
+      v(i)=norm2(Block(i)%PC(:))
     end forall
     
     call sendData(Mtl,1,1)
     call sendPrt(2,1)
-    call sendPrt(2,1,v,binding=BIND_NODE)
+    call sendPrt(2,1,v,binding=BIND_BLOCK)
     
     call gathPrtData(m,n)
     
-    call addWrite(v,binding=BIND_NODE)
-    call writeRst('rst.msh',55)
-    
-    allocate(v2(nBlock))
-    v2(:)=Block(:)%PC(1)+Block(:)%PC(2)+10d0
-    do i=1,nBlock
-      do j=1,Block(i)%SurfNum
-        if(Block(i)%Neib(j)>0)then
-          a=diffuseSD(i,j,v2)
-        else
-          a=diffuseBSORTH(i,j,v2,100d0)
-        end if
-        write(*,*),i,j,a
+    do l=1,10
+      write(str,*),l
+      call showNoAdv(str)
+      do i=1,nBlock
+        do j=1,Block(i)%SurfNum
+          if(Block(i)%Neib(j)>0)then
+            v(i)=v(i)+2d0*diffuseSD(i,j,v)
+          else
+            v(i)=v(i)+2d0*diffuseBSORTH(i,j,v,2d0*(1d0-norm2(Block(i)%PC(:)))-v(i))
+          end if
+        end do
       end do
     end do
+    
+    write(*,*),''
+    call addWrite(v,binding=BIND_BLOCK)
+    call writeRst('rst.msh',55)
     
   else
     if(pidMPI==1)then
