@@ -19,6 +19,7 @@ module moduleMP1
   interface sendData
     module procedure::sendIntegerScal
     module procedure::sendIntegerVect
+    module procedure::sendIntegerMat
     module procedure::sendDoubleScal
     module procedure::sendDoubleVect
     module procedure::sendDoubleMat
@@ -46,6 +47,8 @@ module moduleMP1
     module procedure::recvIntegerScal
     module procedure::recvIntegerVect
     module procedure::recvIntegerVectRealloc
+    module procedure::recvIntegerMat
+    module procedure::recvIntegerMatRealloc
     module procedure::recvDoubleScal
     module procedure::recvDoubleVect
     module procedure::recvDoubleVectRealloc
@@ -173,6 +176,76 @@ contains
       end if
     else
       call recvIntegerVect(obj,source,tag)
+    end if
+  end subroutine
+  
+  !------------------------------------
+  ! send matrix object of type integer
+  !------------------------------------
+  subroutine sendIntegerMat(obj,dest,tag)
+    use mpi
+    integer,intent(in)::obj(:,:)
+    integer,intent(in)::dest,tag
+    
+    m=size(obj,1)
+    n=size(obj,2)
+    call MPI_send(m,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    call MPI_send(n,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    if(m>0.and.n>0)then
+      do i=1,m
+        call MPI_send(obj(i,:),n,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+      end do
+    end if
+  end subroutine
+  
+  !---------------------------------------
+  ! receive matrix object of type integer
+  !---------------------------------------
+  subroutine recvIntegerMat(obj,source,tag)
+    use mpi
+    integer,intent(inout)::obj(:,:)
+    integer,intent(in)::source,tag
+    integer,allocatable::buffInteger(:)
+    
+    call MPI_recv(m,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    call MPI_recv(n,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    if(m>0.and.n>0)then
+      allocate(buffInteger(n))
+      do i=1,m
+        call MPI_recv(buffInteger,n,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+        obj(i,:)=buffInteger(:)
+      end do
+      deallocate(buffInteger)
+    end if
+  end subroutine
+  
+  !------------------------------------------------------
+  ! receive matrix object of type integer and reallocate
+  !------------------------------------------------------
+  subroutine recvIntegerMatRealloc(obj,source,tag,realloc)
+    use mpi
+    integer,allocatable,intent(inout)::obj(:,:)
+    integer,intent(in)::source,tag
+    logical,intent(in)::realloc
+    integer,allocatable::buffInteger(:)
+    
+    if(realloc)then
+      call MPI_recv(m,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+      call MPI_recv(n,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+      if(allocated(obj))then
+        deallocate(obj)
+      end if
+      allocate(obj(m,n))
+      if(m>0.and.n>0)then
+        allocate(buffInteger(n))
+        do i=1,m
+          call MPI_recv(buffInteger,n,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+          obj(i,:)=buffInteger(:)
+        end do
+        deallocate(buffInteger)
+      end if
+    else
+      call recvIntegerMat(obj,source,tag)
     end if
   end subroutine
   
@@ -956,6 +1029,12 @@ contains
     end if
     call sendDoubleVect(obj%PC,dest,tag)
     call MPI_send(obj%Vol,1,MPI_double_precision,dest,tag,MPI_comm_world,errMPI)
+    if(allocated(obj%SurfNodeInd))then
+      call MPI_send(.true.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+      call sendIntegerMat(obj%SurfNodeInd,dest,tag)
+    else
+      call MPI_send(.false.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+    end if
     if(allocated(obj%SurfPC))then
       call MPI_send(.true.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
       call sendDoubleMat(obj%SurfPC,dest,tag)
@@ -1013,6 +1092,10 @@ contains
     call recvDoubleVect(obj%PC,source,tag)
     call MPI_recv(buffDouble,1,MPI_double_precision,source,tag,MPI_comm_world,statMPI,errMPI)
     obj%Vol=buffDouble
+    call MPI_recv(isAllocated,1,MPI_logical,source,tag,MPI_comm_world,statMPI,errMPI)
+    if(isAllocated)then
+      call recvIntegerMatRealloc(obj%SurfNodeInd,source,tag,realloc=.true.)
+    end if
     call MPI_recv(isAllocated,1,MPI_logical,source,tag,MPI_comm_world,statMPI,errMPI)
     if(isAllocated)then
       call recvDoubleMatRealloc(obj%SurfPC,source,tag,realloc=.true.)

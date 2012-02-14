@@ -377,6 +377,9 @@ contains
       forall(i=1:nBlockPrt)
         buffBlock(i)%Ind=i
         buffBlock(i)%NodeInd(:)=mapNode(buffBlock(i)%NodeInd(:))
+        forall(j=1:buffBlock(i)%SurfNum)
+          buffBlock(i)%SurfNodeInd(j,:)=mapNode(buffBlock(i)%SurfNodeInd(j,:))
+        end forall
       end forall
       do i=1,nBlockPrt
         if(allocated(buffBlock(i)%Neib))then

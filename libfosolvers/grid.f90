@@ -137,6 +137,7 @@ module moduleGrid
     integer,allocatable::Neib(:)
     double precision PC(DIMS)
     double precision Vol
+    integer,allocatable::SurfNodeInd(:,:)
     double precision,allocatable::SurfPC(:,:)
     double precision,allocatable::SurfArea(:)
     double precision,allocatable::SurfNorm(:,:)
@@ -145,6 +146,7 @@ module moduleGrid
     procedure,public::updatePC=>updateBlockPC
     procedure,public::updateVol=>updateBlockVol
     procedure,public::updateNeib=>updateBlockNeib
+    procedure,public::updateSurfNodeInd=>updateBlockSurfNodeInd
     procedure,public::updateSurfPC=>updateBlockSurfPC
     procedure,public::updateSurfArea=>updateBlockSurfArea
     procedure,public::updateSurfNorm=>updateBlockSurfNorm
@@ -419,17 +421,20 @@ contains
     use moduleUtility
     class(typeBlock),intent(inout)::this
     integer,intent(in)::shapetype
-    integer::nodenum,surfnum
+    integer::nodenum,surfnum,surfnodenum
     
     nodenum=0
     surfnum=0
+    surfnodenum=0
     select case(shapetype)
       case(TET_TYPE)
         nodenum=TET_NODE_NUM
         surfnum=TET_SURF_NUM
+        surfnodenum=TRI_NODE_NUM
       case(HEX_TYPE)
         nodenum=HEX_NODE_NUM
         surfnum=HEX_SURF_NUM
+        surfnodenum=QUAD_NODE_NUM
       case default
     end select
     this%ShapeType=shapetype
@@ -443,6 +448,10 @@ contains
       deallocate(this%Neib)
     end if
     allocate(this%Neib(surfnum))
+    if(allocated(this%SurfNodeInd))then
+      deallocate(this%SurfNodeInd)
+    end if
+    allocate(this%SurfNodeInd(surfnum,surfnodenum))
     if(allocated(this%SurfPC))then
       deallocate(this%SurfPC)
     end if
@@ -589,6 +598,25 @@ contains
     deallocate(mask)
   end subroutine
   
+  !-----------------------------------------------------
+  ! update the node index of the surfaces of this block
+  !-----------------------------------------------------
+  elemental subroutine updateBlockSurfNodeInd(this)
+    class(typeBlock),intent(inout)::this
+    
+    select case(this%ShapeType)
+      case(TET_TYPE)
+        forall(i=1:this%SurfNum)
+          this%SurfNodeInd(i,:)=this%NodeInd(TET_SURF_TAB(i,:))
+        end forall
+      case(HEX_TYPE)
+        forall(i=1:this%SurfNum)
+          this%SurfNodeInd(i,:)=this%NodeInd(HEX_SURF_TAB(i,:))
+        end forall
+      case default
+    end select
+  end subroutine
+  
   !----------------------------------------------------------
   ! update the centre position of the surfaces of this block
   !----------------------------------------------------------
@@ -600,14 +628,14 @@ contains
       case(TET_TYPE)
         call tempFacet%specify(TRI_TYPE)
         do i=1,this%SurfNum
-          tempFacet%NodeInd(:)=this%NodeInd(TET_SURF_TAB(i,:))
+          tempFacet%NodeInd(:)=this%SurfNodeInd(i,:)
           call tempFacet%updatePC
           this%SurfPC(i,:)=tempFacet%PC(:)
         end do
       case(HEX_TYPE)
         call tempFacet%specify(QUAD_TYPE)
         do i=1,this%SurfNum
-          tempFacet%NodeInd(:)=this%NodeInd(HEX_SURF_TAB(i,:))
+          tempFacet%NodeInd(:)=this%SurfNodeInd(i,:)
           call tempFacet%updatePC
           this%SurfPC(i,:)=tempFacet%PC(:)
         end do
@@ -626,14 +654,14 @@ contains
       case(TET_TYPE)
         call tempFacet%specify(TRI_TYPE)
         do i=1,this%SurfNum
-          tempFacet%NodeInd(:)=this%NodeInd(TET_SURF_TAB(i,:))
+          tempFacet%NodeInd(:)=this%SurfNodeInd(i,:)
           call tempFacet%updateArea
           this%SurfArea(i)=tempFacet%Area
         end do
       case(HEX_TYPE)
         call tempFacet%specify(QUAD_TYPE)
         do i=1,this%SurfNum
-          tempFacet%NodeInd(:)=this%NodeInd(HEX_SURF_TAB(i,:))
+          tempFacet%NodeInd(:)=this%SurfNodeInd(i,:)
           call tempFacet%updateArea
           this%SurfArea(i)=tempFacet%Area
         end do
@@ -652,14 +680,14 @@ contains
       case(TET_TYPE)
         call tempFacet%specify(TRI_TYPE)
         do i=1,this%SurfNum
-          tempFacet%NodeInd(:)=this%NodeInd(TET_SURF_TAB(i,:))
+          tempFacet%NodeInd(:)=this%SurfNodeInd(i,:)
           call tempFacet%updateNorm
           this%SurfNorm(i,:)=tempFacet%Norm(:)
         end do
       case(HEX_TYPE)
         call tempFacet%specify(QUAD_TYPE)
         do i=1,this%SurfNum
-          tempFacet%NodeInd(:)=this%NodeInd(HEX_SURF_TAB(i,:))
+          tempFacet%NodeInd(:)=this%SurfNodeInd(i,:)
           call tempFacet%updateNorm
           this%SurfNorm(i,:)=tempFacet%Norm(:)
         end do
@@ -681,6 +709,9 @@ contains
     end if
     if(allocated(this%Neib))then
       deallocate(this%Neib)
+    end if
+    if(allocated(this%SurfNodeInd))then
+      deallocate(this%SurfNodeInd)
     end if
     if(allocated(this%SurfPC))then
       deallocate(this%SurfPC)
@@ -728,6 +759,7 @@ contains
       call Block(i)%updatePC()
       call Block(i)%updateVol()
       call Block(i)%updateNeib()
+      call Block(i)%updateSurfNodeInd()
       call Block(i)%updateSurfPC()
       call Block(i)%updateSurfArea()
       call Block(i)%updateSurfNorm()
