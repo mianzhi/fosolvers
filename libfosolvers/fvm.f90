@@ -46,6 +46,11 @@ module moduleFVM
     module procedure::diffuseORTHVect
   end interface
   public diffuseORTH
+  interface diffuseSD
+    module procedure::diffuseSDScal
+    module procedure::diffuseSDVect
+  end interface
+  public diffuseSD
   
   ! generic diffusion flux evaluation (boundary surface)
   interface diffuseBSORTH
@@ -449,7 +454,6 @@ contains
   !  Surf n of Block m
   !--------------------------------------------------------------------------
   function diffuseORTHScal(m,n,v)
-    use moduleGrid
     integer,intent(in)::m,n
     double precision,intent(in)::v(:)
     double precision diffuseORTHScal
@@ -500,7 +504,6 @@ contains
   !  Surf n of Block m
   !---------------------------------------------------------------------------------------------
   function diffuseBSORTHScal(m,n,v,ghostVal)
-    use moduleGrid
     integer,intent(in)::m,n
     double precision,intent(in)::v(:)
     double precision,intent(in)::ghostVal
@@ -513,4 +516,83 @@ contains
     diffuseBSORTHScal=vrst(1)
   end function
   
+  !--------------------------------------------------------------------------
+  ! evaluate the diffusion flux into the m_th block through its n_th surface
+  ! driven by vector v using surface decomposition scheme
+  !
+  !  / /
+  !  | | __      ^
+  !  | | \/[v] * n dA
+  !  | |
+  !  / /
+  !  Surf n of Block m
+  !--------------------------------------------------------------------------
+  function diffuseSDVect(m,n,v,grad)
+    use moduleGrid
+    use moduleUtility
+    integer,intent(in)::m,n
+    double precision,intent(in)::v(:,:)
+    double precision,intent(in),optional::grad(size(v,1),size(v,2),DIMS)
+    double precision diffuseSDVect(size(v,2))
+    double precision gradField(size(v,1),size(v,2),DIMS),gradAvg(size(v,2),DIMS),&
+    &                dPF,sf(DIMS),tf(DIMS),rf(DIMS),Afs
+    
+    diffuseSDVect(:)=0d0
+    if(Block(m)%Neib(n)>0)then
+      if(present(grad))then
+        do i=1,size(v,2)
+          gradAvg(i,:)=itplBCDVect(m,n,grad(:,i,:))
+        end do
+      else
+        gradField(m,:,:)=findGradVect(m,v,binding=BIND_BLOCK)
+        gradField(Block(m)%Neib(n),:,:)=findGradVect(Block(m)%Neib(n),v,binding=BIND_BLOCK)
+        do i=1,size(v,2)
+          gradAvg(i,:)=itplBCDVect(m,n,gradField(:,i,:))
+        end do
+      end if
+      sf(:)=Block(Block(m)%Neib(n))%PC(:)-Block(m)%PC(:)
+      dPF=norm2(sf)
+      sf(:)=sf(:)/dPF
+      tf(:)=Node(Block(m)%SurfNodeInd(n,1))%Pos(:)-Node(Block(m)%SurfNodeInd(n,2))%Pos(:)
+      tf(:)=tf(:)/norm2(tf)
+      rf(1)=Block(m)%SurfNorm(n,2)*tf(3)-Block(m)%SurfNorm(n,3)*tf(2)
+      rf(2)=-Block(m)%SurfNorm(n,1)*tf(3)+Block(m)%SurfNorm(n,3)*tf(1)
+      rf(3)=Block(m)%SurfNorm(n,1)*tf(2)-Block(m)%SurfNorm(n,2)*tf(1)
+      Afs=Block(m)%SurfArea(n)/dot_product(sf,Block(m)%SurfNorm(n,:))
+      diffuseSDVect(:)=Afs*((v(Block(m)%Neib(n),:)-v(m,:))/dPF&
+      &                     -matmul(gradAvg,dot_product(sf,tf)*tf+dot_product(sf,rf)*rf))
+    else
+      call showError('invalid inner surface number.')
+    end if
+  end function
+  
+  !--------------------------------------------------------------------------
+  ! evaluate the diffusion flux into the m_th block through its n_th surface
+  ! driven by scalar v using surface decomposition scheme
+  !
+  !  / /
+  !  | | __    ^
+  !  | | \/v * n dA
+  !  | |
+  !  / /
+  !  Surf n of Block m
+  !--------------------------------------------------------------------------
+  function diffuseSDScal(m,n,v,grad)
+    use moduleGrid
+    integer,intent(in)::m,n
+    double precision,intent(in)::v(:)
+    double precision,intent(in),optional::grad(:,:)
+    double precision diffuseSDScal
+    double precision vv(size(v),1),vrst(1),vgrad(size(v),1,DIMS)
+    
+    vv(:,1)=v(:)
+    if(present(grad))then
+      vgrad(:,1,:)=grad(:,:)
+      vrst=diffuseSDVect(m,n,vv,grad=vgrad)
+    else
+      vrst=diffuseSDVect(m,n,vv)
+    end if
+    diffuseSDScal=vrst(1)
+  end function
+    
 end module

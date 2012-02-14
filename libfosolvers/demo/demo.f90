@@ -40,7 +40,7 @@ program demo
     do i=1,nBlock
       do j=1,Block(i)%SurfNum
         if(Block(i)%Neib(j)>0)then
-          a=diffuseORTH(i,j,v2)
+          a=diffuseSD(i,j,v2)
         else
           a=diffuseBSORTH(i,j,v2,100d0)
         end if
