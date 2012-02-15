@@ -42,7 +42,7 @@ program demo
           if(Block(i)%Neib(j)>0)then
             v(i)=v(i)+2d0*diffuseSD(i,j,v)
           else
-            v(i)=v(i)+2d0*diffuseBSORTH(i,j,v,2d0*(1d0-norm2(Block(i)%PC(:)))-v(i))
+            v(i)=v(i)+2d0*diffuseBSAP(i,j,v,2d0*(1d0-norm2(Block(i)%PC(:)))-v(i))
           end if
         end do
       end do

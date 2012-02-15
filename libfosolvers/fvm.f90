@@ -58,6 +58,11 @@ module moduleFVM
     module procedure::diffuseBSORTHVect
   end interface
   public diffuseBSORTH
+  interface diffuseBSAP
+    module procedure::diffuseBSAPScal
+    module procedure::diffuseBSAPVect
+  end interface
+  public diffuseBSAP
   
 contains
   
@@ -372,7 +377,7 @@ contains
     double precision,intent(in)::ghostVal(size(v,2))
     double precision,intent(in),optional::grad(:,:,:)
     double precision itplBSAPVect(size(v,2))
-    double precision gradP(size(v,2),DIMS),distA(DIMS)
+    double precision gradP(size(v,2),DIMS),dispA(DIMS)
     
     itplBSAPVect(:)=0d0
     if(Block(m)%Neib(n)<0)then
@@ -381,11 +386,11 @@ contains
       else
         gradP=findGradVect(m,v,binding=BIND_BLOCK)
       end if
-      distA(:)=Block(m)%SurfPC(n,:)&
+      dispA(:)=Block(m)%SurfPC(n,:)&
       &       -Block(m)%SurfNorm(n,:)&
       &        *dot_product(Block(m)%SurfNorm(n,:),Block(m)%SurfPC(n,:)-Block(m)%PC(:))&
       &       -Block(m)%PC(:)
-      itplBSAPVect(:)=(v(m,:)+matmul(gradP(:,:),distA(:))+ghostVal(:))/2d0
+      itplBSAPVect(:)=(v(m,:)+matmul(gradP(:,:),dispA(:))+ghostVal(:))/2d0
     else
       call showError('invalid boundary surface number.')
     end if
@@ -462,58 +467,6 @@ contains
     vv(:,1)=v(:)
     vrst=diffuseORTHVect(m,n,vv)
     diffuseORTHScal=vrst(1)
-  end function
-  
-  !---------------------------------------------------------------------------------------------
-  ! evaluate the diffusion flux into the m_th block through its n_th surface (boundary surface)
-  ! driven by vector v using orthogonal scheme
-  !
-  !  / /
-  !  | | __      ^
-  !  | | \/[v] * n dA
-  !  | |
-  !  / /
-  !  Surf n of Block m
-  !---------------------------------------------------------------------------------------------
-  function diffuseBSORTHVect(m,n,v,ghostVal)
-    use moduleGrid
-    use moduleUtility
-    integer,intent(in)::m,n
-    double precision,intent(in)::v(:,:)
-    double precision,intent(in)::ghostVal(size(v,2))
-    double precision diffuseBSORTHVect(size(v,2))
-    
-    diffuseBSORTHVect(:)=0d0
-    if(Block(m)%Neib(n)<0)then
-      diffuseBSORTHVect(:)=(ghostVal(:)-v(m,:))*Block(m)%SurfArea(n)/2d0&
-      &                    /norm2(Block(m)%SurfPC(n,:)-Block(m)%PC(:))
-    else
-      call showError('invalid boundary surface number.')
-    end if
-  end function
-  
-  !---------------------------------------------------------------------------------------------
-  ! evaluate the diffusion flux into the m_th block through its n_th surface (boundary surface)
-  ! driven by scalar v using orthogonal scheme
-  !
-  !  / /
-  !  | | __    ^
-  !  | | \/v * n dA
-  !  | |
-  !  / /
-  !  Surf n of Block m
-  !---------------------------------------------------------------------------------------------
-  function diffuseBSORTHScal(m,n,v,ghostVal)
-    integer,intent(in)::m,n
-    double precision,intent(in)::v(:)
-    double precision,intent(in)::ghostVal
-    double precision diffuseBSORTHScal
-    double precision vv(size(v),1),vghostVal(1),vrst(1)
-    
-    vv(:,1)=v(:)
-    vghostVal(1)=ghostVal
-    vrst=diffuseBSORTHVect(m,n,vv,vghostVal)
-    diffuseBSORTHScal=vrst(1)
   end function
   
   !--------------------------------------------------------------------------
@@ -594,5 +547,126 @@ contains
     end if
     diffuseSDScal=vrst(1)
   end function
+  
+  
+  !---------------------------------------------------------------------------------------------
+  ! evaluate the diffusion flux into the m_th block through its n_th surface (boundary surface)
+  ! driven by vector v using orthogonal scheme
+  !
+  !  / /
+  !  | | __      ^
+  !  | | \/[v] * n dA
+  !  | |
+  !  / /
+  !  Surf n of Block m
+  !---------------------------------------------------------------------------------------------
+  function diffuseBSORTHVect(m,n,v,ghostVal)
+    use moduleGrid
+    use moduleUtility
+    integer,intent(in)::m,n
+    double precision,intent(in)::v(:,:)
+    double precision,intent(in)::ghostVal(size(v,2))
+    double precision diffuseBSORTHVect(size(v,2))
     
+    diffuseBSORTHVect(:)=0d0
+    if(Block(m)%Neib(n)<0)then
+      diffuseBSORTHVect(:)=(ghostVal(:)-v(m,:))*Block(m)%SurfArea(n)/2d0&
+      &                    /norm2(Block(m)%SurfPC(n,:)-Block(m)%PC(:))
+    else
+      call showError('invalid boundary surface number.')
+    end if
+  end function
+  
+  !---------------------------------------------------------------------------------------------
+  ! evaluate the diffusion flux into the m_th block through its n_th surface (boundary surface)
+  ! driven by scalar v using orthogonal scheme
+  !
+  !  / /
+  !  | | __    ^
+  !  | | \/v * n dA
+  !  | |
+  !  / /
+  !  Surf n of Block m
+  !---------------------------------------------------------------------------------------------
+  function diffuseBSORTHScal(m,n,v,ghostVal)
+    integer,intent(in)::m,n
+    double precision,intent(in)::v(:)
+    double precision,intent(in)::ghostVal
+    double precision diffuseBSORTHScal
+    double precision vv(size(v),1),vghostVal(1),vrst(1)
+    
+    vv(:,1)=v(:)
+    vghostVal(1)=ghostVal
+    vrst=diffuseBSORTHVect(m,n,vv,vghostVal)
+    diffuseBSORTHScal=vrst(1)
+  end function
+  
+  !---------------------------------------------------------------------------------------------
+  ! evaluate the diffusion flux into the m_th block through its n_th surface (boundary surface)
+  ! driven by vector v using auxiliary point scheme
+  !
+  !  / /
+  !  | | __      ^
+  !  | | \/[v] * n dA
+  !  | |
+  !  / /
+  !  Surf n of Block m
+  !---------------------------------------------------------------------------------------------
+  function diffuseBSAPVect(m,n,v,ghostVal,grad)
+    use moduleGrid
+    use moduleUtility
+    integer,intent(in)::m,n
+    double precision,intent(in)::v(:,:)
+    double precision,intent(in)::ghostVal(size(v,2))
+    double precision,intent(in),optional::grad(size(v,1),size(v,2),DIMS)
+    double precision diffuseBSAPVect(size(v,2))
+    double precision gradP(size(v,2),DIMS),dispA(DIMS),dist
+    
+    diffuseBSAPVect(:)=0d0
+    if(Block(m)%Neib(n)<0)then
+      if(present(grad))then
+        gradP(:,:)=grad(m,:,:)
+      else
+        gradP=findGradVect(m,v,binding=BIND_BLOCK)
+      end if
+      dist=dot_product(Block(m)%SurfNorm(n,:),Block(m)%SurfPC(n,:)-Block(m)%PC(:))
+      dispA(:)=Block(m)%SurfPC(n,:)-Block(m)%SurfNorm(n,:)*dist-Block(m)%PC(:)
+      diffuseBSAPVect(:)=(ghostVal(:)-v(m,:)-matmul(gradP,dispA))*Block(m)%SurfArea(n)&
+      &                  /2d0/dist
+    else
+      call showError('invalid boundary surface number.')
+    end if
+  end function
+  
+  !---------------------------------------------------------------------------------------------
+  ! evaluate the diffusion flux into the m_th block through its n_th surface (boundary surface)
+  ! driven by scalar v using auxiliary point scheme
+  !
+  !  / /
+  !  | | __    ^
+  !  | | \/v * n dA
+  !  | |
+  !  / /
+  !  Surf n of Block m
+  !---------------------------------------------------------------------------------------------
+  function diffuseBSAPScal(m,n,v,ghostVal,grad)
+    use moduleGrid
+    integer,intent(in)::m,n
+    double precision,intent(in)::v(:)
+    double precision,intent(in)::ghostVal
+    double precision,intent(in),optional::grad(size(v),DIMS)
+    double precision diffuseBSAPScal
+    double precision vv(size(v),1),vrst(1),vghostVal(1),vgrad(size(v),1,DIMS)
+    
+    vv(:,1)=v(:)
+    vghostVal(1)=ghostVal
+    if(present(grad))then
+      vgrad(:,1,:)=grad(:,:)
+      vrst=diffuseBSAPVect(m,n,vv,vghostVal,grad=vgrad)
+    else
+      vrst=diffuseBSAPVect(m,n,vv,vghostVal)
+    end if
+    diffuseBSAPScal=vrst(1)
+  end function
+  
 end module
