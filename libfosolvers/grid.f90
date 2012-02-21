@@ -65,11 +65,11 @@ module moduleGrid
     double precision Pos(DIMS)
     integer,allocatable::FacetInd(:)
     integer,allocatable::BlockInd(:)
-    !integer,allocatable::NeibNode(:)
+    integer,allocatable::NeibNode(:)
   contains
     procedure,public::updateFacetInd=>updateNodeFacetInd
     procedure,public::updateBlockInd=>updateNodeBlockInd
-    !procedure,public::updateNeibNode=>updateNodeNeibNode
+    procedure,public::updateNeibNode=>updateNodeNeibNode
     !TODO: wait for gcc to implement
     !final::cleanNode
   end type
@@ -251,9 +251,25 @@ contains
   elemental subroutine updateNodeNeibNode(this)
     class(typeNode),intent(inout)::this
     
+    if(allocated(this%NeibNode))then
+      deallocate(this%NeibNode)
+    end if
+    allocate(this%NeibNode(0))
     if(allocated(this%BlockInd))then
       do i=1,size(this%BlockInd)
-        !TODO:implement
+        do j=1,Block(this%BlockInd(i))%EdgeNum
+          if(any(Block(this%BlockInd(i))%EdgeNodeInd(j,:)==this%Ind))then
+            if(Block(this%BlockInd(i))%EdgeNodeInd(j,1)==this%Ind)then
+              k=Block(this%BlockInd(i))%EdgeNodeInd(j,2)
+            else
+              k=Block(this%BlockInd(i))%EdgeNodeInd(j,1)
+            end if
+            if(all(this%NeibNode(:)/=k))then
+              call extendArray(this%NeibNode,1)
+              this%NeibNode(size(this%NeibNode))=k
+            end if
+          end if
+        end do
       end do
     end if
   end subroutine
@@ -824,6 +840,11 @@ contains
       call Block(i)%updateSurfPC()
       call Block(i)%updateSurfArea()
       call Block(i)%updateSurfNorm()
+    end do
+    !$omp end parallel do
+    !$omp parallel do
+    do i=1,nNode
+      call Node(i)%updateNeibNode()
     end do
     !$omp end parallel do
     nPrt=0

@@ -70,10 +70,8 @@ program demo
       write(*,*),Mtl(1)%lookup('PoisR')
       write(*,*),Mtl(1)%lookup('Stren')
       
-      do i=1,nBlock
-        do j=1,Block(i)%EdgeNum
-          write(*,*),i,j,'---',Block(i)%EdgeNodeInd(j,:)
-        end do
+      do i=1,nNode
+        write(*,*),i,'--',Node(i)%BlockInd(:)
       end do
       
       call retnPrtData()

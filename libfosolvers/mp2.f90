@@ -356,6 +356,9 @@ contains
         if(allocated(buffNode(i)%BlockInd))then
           buffNode(i)%BlockInd(:)=mapBlock(buffNode(i)%BlockInd)
         end if
+        if(allocated(buffNode(i)%NeibNode))then
+          buffNode(i)%NeibNode(:)=mapNode(buffNode(i)%NeibNode)
+        end if
       end do
       forall(i=1:nPointPrt)
         buffPoint(i)%Ind=i

@@ -616,6 +616,12 @@ contains
     else
       call MPI_send(.false.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
     end if
+    if(allocated(obj%NeibNode))then
+      call MPI_send(.true.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+      call sendIntegerVect(obj%NeibNode,dest,tag)
+    else
+      call MPI_send(.false.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+    end if
   end subroutine
   
   !----------------------------------------
@@ -639,6 +645,10 @@ contains
     call MPI_recv(isAllocated,1,MPI_logical,source,tag,MPI_comm_world,statMPI,errMPI)
     if(isAllocated)then
       call recvIntegerVectRealloc(obj%BlockInd,source,tag,realloc=.true.)
+    end if
+    call MPI_recv(isAllocated,1,MPI_logical,source,tag,MPI_comm_world,statMPI,errMPI)
+    if(isAllocated)then
+      call recvIntegerVectRealloc(obj%NeibNode,source,tag,realloc=.true.)
     end if
   end subroutine
   
