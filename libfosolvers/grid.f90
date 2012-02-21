@@ -28,6 +28,9 @@ module moduleGrid
   integer,parameter,public::TET_SURF_NUM=4
   integer,parameter,public::HEX_SURF_NUM=6
   
+  integer,parameter,public::TET_EDGE_NUM=6
+  integer,parameter,public::HEX_EDGE_NUM=12
+  
   integer,parameter,public::FACET_NEIB_BLOCK_NUM=2
   
   integer,parameter,public::BIND_NODE=1
@@ -39,6 +42,12 @@ module moduleGrid
   parameter(TET_SURF_TAB=reshape([1,1,1,2,3,2,4,3,2,4,3,4],[TET_SURF_NUM,TRI_NODE_NUM]))
   parameter(HEX_SURF_TAB=reshape([2,1,3,1,5,1,3,5,4,2,6,4,7,8,8,6,7,3,6,4,7,5,8,2],&
   &                              [HEX_SURF_NUM,QUAD_NODE_NUM]))
+  
+  ! table of edge nodes for all kinds of block
+  integer,public::TET_EDGE_TAB(TET_EDGE_NUM,LINE_NODE_NUM),HEX_EDGE_TAB(HEX_EDGE_NUM,LINE_NODE_NUM)
+  parameter(TET_EDGE_TAB=reshape([1,1,1,2,3,4,2,3,4,3,4,2],[TET_EDGE_NUM,LINE_NODE_NUM]))
+  parameter(HEX_EDGE_TAB=reshape([1,2,3,4,5,6,7,8,1,2,3,4,2,3,4,1,6,7,8,5,5,6,7,8],&
+  &                              [HEX_EDGE_NUM,LINE_NODE_NUM]))
   
   ! bounding box of the geometry
   double precision,public,save::BoundBox(2,DIMS)
@@ -56,9 +65,11 @@ module moduleGrid
     double precision Pos(DIMS)
     integer,allocatable::FacetInd(:)
     integer,allocatable::BlockInd(:)
+    !integer,allocatable::NeibNode(:)
   contains
     procedure,public::updateFacetInd=>updateNodeFacetInd
     procedure,public::updateBlockInd=>updateNodeBlockInd
+    !procedure,public::updateNeibNode=>updateNodeNeibNode
     !TODO: wait for gcc to implement
     !final::cleanNode
   end type
@@ -130,6 +141,7 @@ module moduleGrid
     integer Ind
     integer ShapeType
     integer NodeNum
+    integer EdgeNum
     integer SurfNum
     integer,allocatable::NodeInd(:)
     integer GeoEnti
@@ -137,6 +149,7 @@ module moduleGrid
     integer,allocatable::Neib(:)
     double precision PC(DIMS)
     double precision Vol
+    integer,allocatable::EdgeNodeInd(:,:)
     integer,allocatable::SurfNodeInd(:,:)
     double precision,allocatable::SurfPC(:,:)
     double precision,allocatable::SurfArea(:)
@@ -146,6 +159,7 @@ module moduleGrid
     procedure,public::updatePC=>updateBlockPC
     procedure,public::updateVol=>updateBlockVol
     procedure,public::updateNeib=>updateBlockNeib
+    procedure,public::updateEdgeNodeInd=>updateBlockEdgeNodeInd
     procedure,public::updateSurfNodeInd=>updateBlockSurfNodeInd
     procedure,public::updateSurfPC=>updateBlockSurfPC
     procedure,public::updateSurfArea=>updateBlockSurfArea
@@ -229,6 +243,19 @@ contains
         Node(Block(i)%NodeInd(j))%BlockInd(size(Node(Block(i)%NodeInd(j))%BlockInd))=i
       end do
     end do
+  end subroutine
+  
+  !------------------------------------------------------------------
+  ! update the index of neighbour nodes (the other end of the edges)
+  !------------------------------------------------------------------
+  elemental subroutine updateNodeNeibNode(this)
+    class(typeNode),intent(inout)::this
+    
+    if(allocated(this%BlockInd))then
+      do i=1,size(this%BlockInd)
+        !TODO:implement
+      end do
+    end if
   end subroutine
   
   !------------------------
@@ -421,24 +448,31 @@ contains
     use moduleUtility
     class(typeBlock),intent(inout)::this
     integer,intent(in)::shapetype
-    integer::nodenum,surfnum,surfnodenum
+    integer::nodenum,surfnum,surfnodenum,edgenum,edgenodenum
     
     nodenum=0
     surfnum=0
     surfnodenum=0
+    edgenum=0
+    edgenodenum=0
     select case(shapetype)
       case(TET_TYPE)
         nodenum=TET_NODE_NUM
         surfnum=TET_SURF_NUM
         surfnodenum=TRI_NODE_NUM
+        edgenum=TET_EDGE_NUM
+        edgenodenum=LINE_NODE_NUM
       case(HEX_TYPE)
         nodenum=HEX_NODE_NUM
         surfnum=HEX_SURF_NUM
         surfnodenum=QUAD_NODE_NUM
+        edgenum=HEX_EDGE_NUM
+        edgenodenum=LINE_NODE_NUM
       case default
     end select
     this%ShapeType=shapetype
     this%NodeNum=nodenum
+    this%EdgeNum=edgenum
     this%SurfNum=surfnum
     if(allocated(this%NodeInd))then
       deallocate(this%NodeInd)
@@ -448,6 +482,10 @@ contains
       deallocate(this%Neib)
     end if
     allocate(this%Neib(surfnum))
+    if(allocated(this%EdgeNodeInd))then
+      deallocate(this%EdgeNodeInd)
+    end if
+    allocate(this%EdgeNodeInd(edgenum,edgenodenum))
     if(allocated(this%SurfNodeInd))then
       deallocate(this%SurfNodeInd)
     end if
@@ -598,6 +636,25 @@ contains
     deallocate(mask)
   end subroutine
   
+  !--------------------------------------------------
+  ! update the node index of the edges of this block
+  !--------------------------------------------------
+  elemental subroutine updateBlockEdgeNodeInd(this)
+    class(typeBlock),intent(inout)::this
+    
+    select case(this%ShapeType)
+      case(TET_TYPE)
+        forall(i=1:this%EdgeNum)
+          this%EdgeNodeInd(i,:)=this%NodeInd(TET_EDGE_TAB(i,:))
+        end forall
+      case(HEX_TYPE)
+        forall(i=1:this%EdgeNum)
+          this%EdgeNodeInd(i,:)=this%NodeInd(HEX_EDGE_TAB(i,:))
+        end forall
+      case default
+    end select
+  end subroutine
+  
   !-----------------------------------------------------
   ! update the node index of the surfaces of this block
   !-----------------------------------------------------
@@ -710,6 +767,9 @@ contains
     if(allocated(this%Neib))then
       deallocate(this%Neib)
     end if
+    if(allocated(this%EdgeNodeInd))then
+      deallocate(this%EdgeNodeInd)
+    end if
     if(allocated(this%SurfNodeInd))then
       deallocate(this%SurfNodeInd)
     end if
@@ -759,6 +819,7 @@ contains
       call Block(i)%updatePC()
       call Block(i)%updateVol()
       call Block(i)%updateNeib()
+      call Block(i)%updateEdgeNodeInd()
       call Block(i)%updateSurfNodeInd()
       call Block(i)%updateSurfPC()
       call Block(i)%updateSurfArea()

@@ -1007,6 +1007,7 @@ contains
     call MPI_send(obj%Ind,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
     call MPI_send(obj%ShapeType,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
     call MPI_send(obj%NodeNum,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
+    call MPI_send(obj%EdgeNum,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
     call MPI_send(obj%SurfNum,1,MPI_integer,dest,tag,MPI_comm_world,errMPI)
     if(allocated(obj%NodeInd))then
       call MPI_send(.true.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
@@ -1029,6 +1030,12 @@ contains
     end if
     call sendDoubleVect(obj%PC,dest,tag)
     call MPI_send(obj%Vol,1,MPI_double_precision,dest,tag,MPI_comm_world,errMPI)
+    if(allocated(obj%EdgeNodeInd))then
+      call MPI_send(.true.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+      call sendIntegerMat(obj%EdgeNodeInd,dest,tag)
+    else
+      call MPI_send(.false.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
+    end if
     if(allocated(obj%SurfNodeInd))then
       call MPI_send(.true.,1,MPI_logical,dest,tag,MPI_comm_world,errMPI)
       call sendIntegerMat(obj%SurfNodeInd,dest,tag)
@@ -1074,6 +1081,8 @@ contains
     call MPI_recv(buffInteger,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
     obj%NodeNum=buffInteger
     call MPI_recv(buffInteger,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
+    obj%EdgeNum=buffInteger
+    call MPI_recv(buffInteger,1,MPI_integer,source,tag,MPI_comm_world,statMPI,errMPI)
     obj%SurfNum=buffInteger
     call MPI_recv(isAllocated,1,MPI_logical,source,tag,MPI_comm_world,statMPI,errMPI)
     if(isAllocated)then
@@ -1092,6 +1101,10 @@ contains
     call recvDoubleVect(obj%PC,source,tag)
     call MPI_recv(buffDouble,1,MPI_double_precision,source,tag,MPI_comm_world,statMPI,errMPI)
     obj%Vol=buffDouble
+    call MPI_recv(isAllocated,1,MPI_logical,source,tag,MPI_comm_world,statMPI,errMPI)
+    if(isAllocated)then
+      call recvIntegerMatRealloc(obj%EdgeNodeInd,source,tag,realloc=.true.)
+    end if
     call MPI_recv(isAllocated,1,MPI_logical,source,tag,MPI_comm_world,statMPI,errMPI)
     if(isAllocated)then
       call recvIntegerMatRealloc(obj%SurfNodeInd,source,tag,realloc=.true.)

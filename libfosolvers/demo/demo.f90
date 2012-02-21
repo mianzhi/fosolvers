@@ -34,19 +34,19 @@ program demo
     
     call gathPrtData(m,n)
     
-    do l=1,10
-      write(str,*),l
-      call showNoAdv(str)
-      do i=1,nBlock
-        do j=1,Block(i)%SurfNum
-          if(Block(i)%Neib(j)>0)then
-            v(i)=v(i)+2d0*diffuseSD(i,j,v)
-          else
-            v(i)=v(i)+2d0*diffuseBSAP(i,j,v,2d0*(1d0-norm2(Block(i)%PC(:)))-v(i))
-          end if
-        end do
-      end do
-    end do
+!    do l=1,10
+!      write(str,*),l
+!      call showNoAdv(str)
+!      do i=1,nBlock
+!        do j=1,Block(i)%SurfNum
+!          if(Block(i)%Neib(j)>0)then
+!            v(i)=v(i)+2d0*diffuseSD(i,j,v)
+!          else
+!            v(i)=v(i)+2d0*diffuseBSAP(i,j,v,2d0*(1d0-norm2(Block(i)%PC(:)))-v(i))
+!          end if
+!        end do
+!      end do
+!    end do
     
     write(*,*),''
     call addWrite(v,binding=BIND_BLOCK)
@@ -69,6 +69,12 @@ program demo
       write(*,*),Mtl(1)%lookup('YounM')
       write(*,*),Mtl(1)%lookup('PoisR')
       write(*,*),Mtl(1)%lookup('Stren')
+      
+      do i=1,nBlock
+        do j=1,Block(i)%EdgeNum
+          write(*,*),i,j,'---',Block(i)%EdgeNodeInd(j,:)
+        end do
+      end do
       
       call retnPrtData()
     end if
