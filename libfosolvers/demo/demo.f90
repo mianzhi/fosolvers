@@ -71,7 +71,9 @@ program demo
       write(*,*),Mtl(1)%lookup('Stren')
       
       do i=1,nNode
-        write(*,*),i,'--',Node(i)%BlockInd(:)
+        if(allocated(Node(i)%NeibNode))then
+          write(*,*),i,'--',Node(i)%NeibNode(:)
+        end if
       end do
       
       call retnPrtData()

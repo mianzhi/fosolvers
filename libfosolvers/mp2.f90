@@ -220,6 +220,7 @@ contains
     type(typeDataSet),allocatable::buffCondNode(:)
     type(typeDataSet),allocatable::buffCondFacet(:)
     type(typeDataSet),allocatable::buffCondBlock(:)
+    integer,allocatable::tempInteger(:)
     
     integer,save::lastk=-1,lastp=-1
     
@@ -352,12 +353,36 @@ contains
         buffNode(i)%Ind=i
         if(allocated(buffNode(i)%FacetInd))then
           buffNode(i)%FacetInd(:)=mapFacet(buffNode(i)%FacetInd)
+          call move_alloc(buffNode(i)%FacetInd,tempInteger)
+          do j=1,size(tempInteger)
+            if(tempInteger(j)>0)then
+              call extendArray(buffNode(i)%FacetInd,1)
+              buffNode(i)%FacetInd(size(buffNode(i)%FacetInd))=tempInteger(j)
+            end if
+          end do
+          deallocate(tempInteger)
         end if
         if(allocated(buffNode(i)%BlockInd))then
           buffNode(i)%BlockInd(:)=mapBlock(buffNode(i)%BlockInd)
+          call move_alloc(buffNode(i)%BlockInd,tempInteger)
+          do j=1,size(tempInteger)
+            if(tempInteger(j)>0)then
+              call extendArray(buffNode(i)%BlockInd,1)
+              buffNode(i)%BlockInd(size(buffNode(i)%BlockInd))=tempInteger(j)
+            end if
+          end do
+          deallocate(tempInteger)
         end if
         if(allocated(buffNode(i)%NeibNode))then
           buffNode(i)%NeibNode(:)=mapNode(buffNode(i)%NeibNode)
+          call move_alloc(buffNode(i)%NeibNode,tempInteger)
+          do j=1,size(tempInteger)
+            if(tempInteger(j)>0)then
+              call extendArray(buffNode(i)%NeibNode,1)
+              buffNode(i)%NeibNode(size(buffNode(i)%NeibNode))=tempInteger(j)
+            end if
+          end do
+          deallocate(tempInteger)
         end if
       end do
       forall(i=1:nPointPrt)
