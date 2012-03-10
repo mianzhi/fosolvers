@@ -64,6 +64,25 @@ module moduleFVM
   end interface
   public diffuseBSAP
   
+  ! flux limiters
+  interface
+    pure function modelLimiter(r)
+      double precision,intent(in)::r
+      double precision modelLimiter
+    end function
+  end interface
+  procedure(modelLimiter),pointer::vanLeer=>vanLeerLimiter
+  procedure(modelLimiter),pointer::minmod=>minmodLimiter
+  public vanLeer
+  public minmod
+  
+  ! generic convection flux evaluation (inner surface)
+  interface convectTVD
+    module procedure::convectTVDScal
+    module procedure::convectTVDVect
+  end interface
+  public convectTVD
+  
 contains
   
   !------------------------------------------------------------
@@ -293,7 +312,7 @@ contains
     use moduleGrid
     integer,intent(in)::m,n
     double precision,intent(in)::v(:)
-    double precision,intent(in),optional::grad(:,:)
+    double precision,intent(in),optional::grad(size(v),DIMS)
     double precision itplCBCDScal
     double precision vv(size(v),1),vrst(1),vgrad(size(v),1,DIMS)
     
@@ -316,7 +335,7 @@ contains
     integer,intent(in)::m,n
     double precision,intent(in)::v(:,:)
     double precision,intent(in),optional::ghostVal(size(v,2))
-    double precision,intent(in),optional::grad(:,:,:)
+    double precision,intent(in),optional::grad(size(v,1),size(v,2),DIMS)
     double precision itplBSVect(size(v,2))
     double precision gradP(size(v,2),DIMS)
     
@@ -345,7 +364,7 @@ contains
     integer,intent(in)::m,n
     double precision,intent(in)::v(:)
     double precision,intent(in),optional::ghostVal
-    double precision,intent(in),optional::grad(:,:)
+    double precision,intent(in),optional::grad(size(v),DIMS)
     double precision itplBSScal
     double precision vv(size(v),1),vrst(1),vghostVal(1),vgrad(size(v),1,DIMS)
     
@@ -375,7 +394,7 @@ contains
     integer,intent(in)::m,n
     double precision,intent(in)::v(:,:)
     double precision,intent(in)::ghostVal(size(v,2))
-    double precision,intent(in),optional::grad(:,:,:)
+    double precision,intent(in),optional::grad(size(v,1),size(v,2),DIMS)
     double precision itplBSAPVect(size(v,2))
     double precision gradP(size(v,2),DIMS),dispA(DIMS)
     
@@ -405,7 +424,7 @@ contains
     integer,intent(in)::m,n
     double precision,intent(in)::v(:)
     double precision,intent(in)::ghostVal
-    double precision,intent(in),optional::grad(:,:)
+    double precision,intent(in),optional::grad(size(v),DIMS)
     double precision itplBSAPScal
     double precision vv(size(v),1),vrst(1),vghostVal(1),vgrad(size(v),1,DIMS)
     
@@ -534,7 +553,7 @@ contains
     use moduleGrid
     integer,intent(in)::m,n
     double precision,intent(in)::v(:)
-    double precision,intent(in),optional::grad(:,:)
+    double precision,intent(in),optional::grad(size(v),DIMS)
     double precision diffuseSDScal
     double precision vv(size(v),1),vrst(1),vgrad(size(v),1,DIMS)
     
@@ -667,6 +686,116 @@ contains
       vrst=diffuseBSAPVect(m,n,vv,vghostVal)
     end if
     diffuseBSAPScal=vrst(1)
+  end function
+  
+  !-----------------------
+  ! van Leer flux limiter
+  !-----------------------
+  pure function vanLeerLimiter(r)
+    double precision,intent(in)::r
+    double precision vanLeerLimiter
+    
+    vanLeerLimiter=(r+abs(r))/(1d0+abs(r))
+  end function
+  
+  !---------------------
+  ! minmod flux limiter
+  !---------------------
+  pure function minmodLimiter(r)
+    double precision,intent(in)::r
+    double precision minmodLimiter
+    
+    minmodLimiter=max(0d0,min(r,1d0))
+  end function
+  
+  !-----------------------------------------------------------------------------------------
+  ! evaluate the convection flux of vector phi into the m_th block through its n_th surface
+  ! driven by velocity at surface u using TVD scheme with flux limiter limiter
+  !
+  !  / /
+  !  | |         _   ^
+  !  | | [phi] ( u * n ) dA
+  !  | |
+  !  / /
+  !  Surf n of Block m
+  !-----------------------------------------------------------------------------------------
+  function convectTVDVect(m,n,phi,u,grad,limiter)
+    use moduleGrid
+    integer,intent(in)::m,n
+    double precision,intent(in)::phi(:,:)
+    double precision,intent(in)::u(DIMS)
+    double precision,intent(in),optional::grad(size(phi,1),size(phi,2),DIMS)
+    procedure(modelLimiter),pointer,intent(in),optional::limiter
+    double precision convectTVDVect(size(phi,2))
+    double precision gradM(size(phi,2),DIMS),phiU(size(phi,2)),phiD(size(phi,2)),F,r(size(phi,2))
+    procedure(modelLimiter),pointer::lim
+    
+    if(present(grad))then
+      gradM(:,:)=grad(m,:,:)
+    else
+      gradM=findGradVect(m,phi,binding=BIND_BLOCK)
+    end if
+    if(present(limiter))then
+      lim=>limiter
+    else
+      lim=>vanLeerLimiter
+    end if
+    
+    F=dot_product(Block(m)%SurfNorm(n,:),u)*Block(m)%SurfArea(n)
+    if(F>0d0)then
+      phiU(:)=phi(m,:)
+      phiD(:)=phi(Block(m)%Neib(n),:)
+    else
+      phiU(:)=phi(Block(m)%Neib(n),:)
+      phiD(:)=phi(m,:)
+    end if
+    if(any(abs(phiD(:)-phiU(:))>tiny(1d0)))then
+      r(:)=2d0*matmul(gradM(:,:),Block(Block(n)%Neib(n))%PC(:)-Block(m)%PC(:))/(phiD(:)-phiU(:))-1d0
+    else
+      r(:)=0d0
+    end if
+    forall(i=1:size(phi,2))
+      convectTVDVect(i)=-F*(phiU(i)+lim(r(i))*(phiD(i)-phiU(i))/2d0)
+    end forall
+  end function
+  
+  !-----------------------------------------------------------------------------------------
+  ! evaluate the convection flux of scaler phi into the m_th block through its n_th surface
+  ! driven by velocity at surface u using TVD scheme with flux limiter limiter
+  !
+  !  / /
+  !  | |       _   ^
+  !  | | phi ( u * n ) dA
+  !  | |
+  !  / /
+  !  Surf n of Block m
+  !-----------------------------------------------------------------------------------------
+  function convectTVDScal(m,n,phi,u,grad,limiter)
+    use moduleGrid
+    integer,intent(in)::m,n
+    double precision,intent(in)::phi(:)
+    double precision,intent(in)::u(DIMS)
+    double precision,intent(in),optional::grad(size(phi),DIMS)
+    procedure(modelLimiter),pointer,intent(in),optional::limiter
+    double precision convectTVDScal
+    double precision vphi(size(phi),1),vgrad(size(phi),1,DIMS),vrst(1)
+    
+    vphi(:,1)=phi(:)
+    if(present(grad))then
+      vgrad(:,1,:)=grad(:,:)
+      if(present(limiter))then
+        vrst=convectTVDVect(m,n,vphi,u,grad=vgrad,limiter=limiter)
+      else
+        vrst=convectTVDVect(m,n,vphi,u,grad=vgrad)
+      end if
+    else
+      if(present(limiter))then
+        vrst=convectTVDVect(m,n,vphi,u,limiter=limiter)
+      else
+        vrst=convectTVDVect(m,n,vphi,u)
+      end if
+    end if
+    convectTVDScal=vrst(1)
   end function
   
 end module

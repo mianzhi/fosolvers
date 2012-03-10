@@ -12,7 +12,7 @@ program demo
   use moduleMiscDataStruct
   use moduleUtility
   
-  double precision,allocatable::v(:)
+  double precision,allocatable::v(:),vv(:)
   character(20) str
   
   ! test multi-processing, material and conditions
@@ -24,8 +24,9 @@ program demo
     call readMtl('materials.mtl',51)
     
     allocate(v(nBlock))
+    allocate(vv(nBlock))
     forall(i=1:nBlock)
-      v(i)=norm2(Block(i)%PC(:))
+      v(i)=-sign(1d0,Block(i)%PC(1)-0.5d0)+10d0
     end forall
     
     call sendData(Mtl,1,1)
@@ -34,23 +35,28 @@ program demo
     
     call gathPrtData(m,n)
     
-!    do l=1,10
-!      write(str,*),l
-!      call showNoAdv(str)
-!      do i=1,nBlock
-!        do j=1,Block(i)%SurfNum
-!          if(Block(i)%Neib(j)>0)then
-!            v(i)=v(i)+2d0*diffuseSD(i,j,v)
-!          else
-!            v(i)=v(i)+2d0*diffuseBSAP(i,j,v,2d0*(1d0-norm2(Block(i)%PC(:)))-v(i))
-!          end if
-!        end do
-!      end do
-!    end do
+    call addWrite(v,binding=BIND_BLOCK)
+    
+    do l=1,50
+      write(str,*),l
+      call showNoAdv(str)
+      vv=v
+      do i=1,nBlock
+        do j=1,Block(i)%SurfNum
+          if(Block(i)%Neib(j)>0)then
+            vv(i)=vv(i)+1d-3*convectTVD(i,j,v,[1d0,0d0,0d0],limiter=minmod)/Block(i)%Vol
+            vv(i)=vv(i)+5d-5*diffuseORTH(i,j,v)/Block(i)%Vol
+            !v(i)=v(i)+2d0*diffuseSD(i,j,v)
+          else
+            !v(i)=v(i)+2d0*diffuseBSAP(i,j,v,2d0*(1d0-norm2(Block(i)%PC(:)))-v(i))
+          end if
+        end do
+      end do
+      v=vv
+      call writeRst('rst.msh',55,span=.true.)
+    end do
     
     write(*,*),''
-    call addWrite(v,binding=BIND_BLOCK)
-    call writeRst('rst.msh',55)
     
   else
     if(pidMPI==1)then
@@ -69,12 +75,6 @@ program demo
       write(*,*),Mtl(1)%lookup('YounM')
       write(*,*),Mtl(1)%lookup('PoisR')
       write(*,*),Mtl(1)%lookup('Stren')
-      
-      do i=1,nNode
-        if(allocated(Node(i)%NeibNode))then
-          write(*,*),i,'--',Node(i)%NeibNode(:)
-        end if
-      end do
       
       call retnPrtData()
     end if
