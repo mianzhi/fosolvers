@@ -749,14 +749,15 @@ contains
       phiU(:)=phi(Block(m)%Neib(n),:)
       phiD(:)=phi(m,:)
     end if
-    if(any(abs(phiD(:)-phiU(:))>tiny(1d0)))then
-      r(:)=2d0*matmul(gradM(:,:),Block(Block(n)%Neib(n))%PC(:)-Block(m)%PC(:))/(phiD(:)-phiU(:))-1d0
-    else
-      r(:)=0d0
-    end if
-    forall(i=1:size(phi,2))
-      convectTVDVect(i)=-F*(phiU(i)+lim(r(i))*(phiD(i)-phiU(i))/2d0)
-    end forall
+    do i=1,size(phi,2)
+      if(abs(phiD(i)-phiU(i))>tiny(1d0))then
+        r(i)=2d0*dot_product(gradM(i,:),Block(Block(n)%Neib(n))%PC(:)-Block(m)%PC(:))&
+        &    /(phiD(i)-phiU(i))-1d0
+        convectTVDVect(i)=-F*(phiU(i)+lim(r(i))*(phiD(i)-phiU(i))/2d0)
+      else
+        convectTVDVect(i)=-F*phiU(i)
+      end if
+    end do
   end function
   
   !-----------------------------------------------------------------------------------------
