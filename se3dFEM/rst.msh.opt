@@ -1,7 +1,0 @@
-View[0].VectorType = 5;
-View[1].Visible = 0;
-View[2].Visible = 0;
-Plugin(Smooth).View=1;
-Plugin(Smooth).Run;
-Plugin(Smooth).View=2;
-Plugin(Smooth).Run;

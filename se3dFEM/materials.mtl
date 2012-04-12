@@ -1,8 +1,0 @@
-INSTRUCTION:
-
-$001_Steel#45
-210d9         [Pa] Young's modulus
-0.3d0         Poisson's ratio
-7.85d3        [kg/m^3] Density
-335d6         [Pa] Yield strength
-$End001

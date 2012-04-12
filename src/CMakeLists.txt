@@ -1,0 +1,2 @@
+ADD_SUBDIRECTORY(libfosolvers)
+ADD_SUBDIRECTORY(test)
