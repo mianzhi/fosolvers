@@ -35,6 +35,8 @@ module moduleBasicDataStruct
     generic,public::get=>getListDScalOne,getListDScalMulti
       procedure::getListDScalOne
       procedure::getListDScalMulti
+    procedure,public::addto=>addListDScaltoPack
+    procedure,public::recover=>recoverListDScalfromPack
     !FIXME:final::purgeListDScal
   end type
   
@@ -268,6 +270,35 @@ contains
     
     val(:)=this%dat(list(:))
   end function
+  
+  !> add this ListDScal to serialized data package sp
+  subroutine addListDScaltoPack(this,sp)
+    class(typeListDScal),intent(in)::this !< this ListDScal
+    type(typeSerialPack),intent(inout)::sp !< target package
+    
+    if(allocated(this%dat))then
+      call sp%iDat%push(this%length)
+      call sp%dDat%push(this%dat(1:this%length))
+    else
+      call sp%iDat%push(0)
+    end if
+  end subroutine
+  
+  !> recover this ListDScal from serialized data package sp
+  subroutine recoverListDScalfromPack(this,sp)
+    class(typeListDScal),intent(inout)::this !< this ListIScal
+    type(typeSerialPack),intent(inout)::sp !< source package
+    
+    call this%clear()
+    sp%iPtr=sp%iPtr+1
+    m=sp%iDat%get(sp%iPtr)
+    this%length=m
+    if(m>0)then
+      call this%extend(m)
+      call this%push(sp%dDat%get([(sp%dPtr+i,i=1,m)]))
+      sp%dPtr=sp%dPtr+m
+    end if
+  end subroutine
   
   !> destructor of ListDScal
   elemental subroutine purgeListDScal(this)

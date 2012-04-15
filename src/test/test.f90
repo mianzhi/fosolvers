@@ -51,22 +51,32 @@ subroutine testSerialPack()
   use moduleBasicDataStruct
   type(typeSerialPack)::sp
   type(typeListIScal)::list(3)
+  type(typeListDScal)::dlist
   
   call sp%clear()
   call list(1)%push([3,4,5])
   call list(1)%addto(sp)
   call list(2)%addto(sp)
   call list(1)%addto(sp)
+  call dlist%push([6d0,7d0])
+  call dlist%addto(sp)
   call sp%resetPtr()
   call list(3)%recover(sp)
   call list(1)%recover(sp)
   call list(2)%recover(sp)
+  call dlist%recover(sp)
   if(all(list(3)%get([(i,i=1,list(3)%length)])==[3,4,5]).and.&
   &  list(1)%length==0.and.&
   &  all(list(2)%get([(i,i=1,list(2)%length)])==[3,4,5]))then
     call showPass('SerialPack store ListIScal')
   else
     call showFail('SerialPack store ListIScal')
+  end if
+  
+  if(all(dlist%get([1,2])-[6d0,7d0]<TOLERANCE))then
+    call showPass('SerialPack store ListDScal')
+  else
+    call showFail('SerialPack store ListDScal')
   end if
   
   call sp%clear()
