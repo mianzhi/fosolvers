@@ -78,9 +78,7 @@ contains
     class(typeListIScal),intent(inout)::this
     
     this%len=0
-    if(allocated(this%dat))then
-      deallocate(this%dat)
-    end if
+    if(allocated(this%dat)) deallocate(this%dat)
   end subroutine
   
   !> extend this ListIScal by doubling size of dat or add n spaces
@@ -100,9 +98,7 @@ contains
     else
       allocate(newDat(max(1,(m*2))))
     end if
-    if(m>0)then
-      newDat(1:m)=this%dat(:)
-    end if
+    if(m>0) newDat(1:m)=this%dat(:)
     call move_alloc(newDat,this%dat)
   end subroutine
   
@@ -196,9 +192,7 @@ contains
   elemental subroutine purgeListIScal(this)
     type(typeListIScal),intent(inout)::this !< this ListIScal
     
-    if(allocated(this%dat))then
-      deallocate(this%dat)
-    end if
+    if(allocated(this%dat)) deallocate(this%dat)
   end subroutine
   
   !> clear this ListDScal
@@ -206,9 +200,7 @@ contains
     class(typeListDScal),intent(inout)::this !< this ListDScal
     
     this%len=0
-    if(allocated(this%dat))then
-      deallocate(this%dat)
-    end if
+    if(allocated(this%dat)) deallocate(this%dat)
   end subroutine
   
   !> extend this ListDScal by doubling size of dat or add n spaces
@@ -228,9 +220,7 @@ contains
     else
       allocate(newDat(max(1,(m*2))))
     end if
-    if(m>0)then
-      newDat(1:m)=this%dat(:)
-    end if
+    if(m>0) newDat(1:m)=this%dat(:)
     call move_alloc(newDat,this%dat)
   end subroutine
   
@@ -324,9 +314,7 @@ contains
   elemental subroutine purgeListDScal(this)
     type(typeListDScal),intent(inout)::this !< this ListDScal
     
-    if(allocated(this%dat))then
-      deallocate(this%dat)
-    end if
+    if(allocated(this%dat)) deallocate(this%dat)
   end subroutine
   
   !> clear this ListDVect
@@ -335,9 +323,7 @@ contains
     
     this%dim=0
     this%len=0
-    if(allocated(this%dat))then
-      deallocate(this%dat)
-    end if
+    if(allocated(this%dat)) deallocate(this%dat)
   end subroutine
   
   !> specify the vectors in this ListDVect to be n dimensional
@@ -365,9 +351,7 @@ contains
     else
       allocate(newDat(this%dim,max(1,(m*2))))
     end if
-    if(m>0)then
-      newDat(:,1:m)=this%dat(:,:)
-    end if
+    if(m>0) newDat(:,1:m)=this%dat(:,:)
     call move_alloc(newDat,this%dat)
   end subroutine
   
