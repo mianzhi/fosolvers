@@ -9,7 +9,7 @@ module moduleGrid
   integer,parameter,public::DIMS=3 !< dimensions
   
   integer,parameter,public::POINT_TYPE=15 !< point type code
-  integer,parameter,public::LINE_TYPE=1  !< line type code
+  integer,parameter,public::LINE_TYPE=1 !< line type code
   integer,parameter,public::TRI_TYPE=2 !< tri type code
   integer,parameter,public::QUAD_TYPE=3 !< quad type code
   integer,parameter,public::TET_TYPE=4 !< tet type code
@@ -25,7 +25,11 @@ module moduleGrid
   !> grid data and procedures
   type,public::typeGrid
     ! basic grid data
-    integer nNode,nPoint,nLine,nFacet,nBlock
+    integer nNode !< number of nodes
+    integer nPoint !< number of points
+    integer nLine !< number of Lines
+    integer nFacet !< number of facets
+    integer nBlock !< number of blocks
     type(typeListIScal)::PhyEntiList !< list of physical entities
     type(typeListIScal)::PrtList !< list of partitions
     double precision,allocatable::NodePos(:,:) !< node position
@@ -130,10 +134,14 @@ contains
       ! skip the irrelevant lines
       do while(ierr==0)
         read(id,*,iostat=ierr),tempStr
-        if(tempStr(1:1)=='$') exit
+        if(tempStr(1:1)=='$')then
+          exit
+        end if
       end do
       ! check if finished
-      if(ierr/=0) exit
+      if(ierr/=0)then
+        exit
+      end if
       ! read node data
       if(tempStr(1:6)=='$Nodes')then
         read(id,*,iostat=ierr),this%nNode
