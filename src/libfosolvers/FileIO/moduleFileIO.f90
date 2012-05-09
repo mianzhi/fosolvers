@@ -21,7 +21,7 @@ contains
     integer ierr
     integer,parameter::DFLT_STR_LEN=400
     character(DFLT_STR_LEN)::tempStr
-    integer nEle,shapetype,nt,np,tempIVect(DFLT_STR_LEN/2)
+    integer nEle,shapetype,nt,np,tempIVect(DFLT_STR_LEN/2),jP,jL,jF,jB
     type(typeEle),allocatable::tempEle(:)
     
     call grid%init()
@@ -51,10 +51,11 @@ contains
       end if
       ! read elements
       if(tempStr(1:9)=='$Elements')then
+        ! construct tempEle first
         read(id,*,iostat=ierr),nEle
         allocate(tempEle(nEle))
         do i=1,nEle
-          read(id,*,iostat=ierr),tempStr
+          read(id,'(a)',iostat=ierr),tempStr
           read(tempStr,*),j,shapetype,nt
           tempEle(i)%Shp=shapetype ! save Shp
           select case(shapetype)
@@ -95,6 +96,32 @@ contains
             call pushArr(tempEle(i)%Dmn,0)
           end if
         end do
+        ! copy data from tempEle to grid
+        allocate(grid%Point(grid%nPoint))
+        allocate(grid%Line(grid%nLine))
+        allocate(grid%Facet(grid%nFacet))
+        allocate(grid%Block(grid%nBlock))
+        jP=0
+        jL=0
+        jF=0
+        jB=0
+        do i=1,nEle
+          select case(tempEle(i)%Shp)
+          case(POINT_TYPE)
+            jP=jP+1
+            grid%Point(jP)=tempEle(i)
+          case(LINE_TYPE)
+            jL=jL+1
+            grid%Line(jL)=tempEle(i)
+          case(TRI_TYPE,QUAD_TYPE)
+            jF=jF+1
+            grid%Facet(jF)=tempEle(i)
+          case(TET_TYPE,HEX_TYPE)
+            jB=jB+1
+            grid%Block(jB)=tempEle(i)
+          end select
+        end do
+        deallocate(tempEle)
         cycle
       end if
     end do
