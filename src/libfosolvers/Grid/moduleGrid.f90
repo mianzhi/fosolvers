@@ -3,6 +3,7 @@
 !> grid
 module moduleGrid
   use moduleBasicDataStruct
+  use moduleSimpleGeometry
   private
   
   ! constants
@@ -53,10 +54,13 @@ module moduleGrid
     integer,allocatable::lDmn(:) !< list of physical domains
     integer nPrt !< number of partitions
     integer,allocatable::lPrt(:) !< list of partitions
+    ! auxiliary grid data
   contains
+    ! basic grid procedures
     procedure,public::init=>initGrid
     procedure,public::clear=>clearGrid
     !FIXME:final::purgeGrid
+    ! auxiliary grid procedures
   end type
   
 contains
