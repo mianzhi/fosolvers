@@ -122,6 +122,7 @@ contains
           end select
         end do
         deallocate(tempEle)
+        ! process physical domain and partition TODO
         cycle
       end if
     end do
