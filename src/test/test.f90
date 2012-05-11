@@ -12,9 +12,8 @@ subroutine testReadGMSH()
   open(12,file='bin/grid.msh',status='old')
   call readGMSH(12,grid)
   
-  write(*,*),grid%nNode,grid%nPoint,grid%nLine,grid%nFacet,grid%nBlock
+  call grid%updateBlockPos()
   do i=1,grid%nBlock
-    write(*,*),i,grid%Block(i)%Shp,grid%Block(i)%Ent,grid%Block(i)%nNode,grid%Block(i)%Dmn(:),grid%Block(i)%Prt(:)
-    write(*,*),grid%Block(i)%iNode(:)
+    write(*,*),i,grid%BlockPos(:,i)
   end do
 end subroutine

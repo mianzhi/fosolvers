@@ -55,12 +55,24 @@ module moduleGrid
     integer nPrt !< number of partitions
     integer,allocatable::lPrt(:) !< list of partitions
     ! auxiliary grid data
+    logical isUpPointPos !< if the point position is updated
+    double precision,allocatable::PointPos(:,:) !< point position
+    logical isUpLinePos !< if the line position is updated
+    double precision,allocatable::LinePos(:,:) !< line position
+    logical isUpFacetPos !< if the facet position is updated
+    double precision,allocatable::FacetPos(:,:) !< facet position
+    logical isUpBlockPos !< if the block position is updated
+    double precision,allocatable::BlockPos(:,:) !< block position
   contains
     ! basic grid procedures
     procedure,public::init=>initGrid
     procedure,public::clear=>clearGrid
     !FIXME:final::purgeGrid
     ! auxiliary grid procedures
+    procedure,public::updatePointPos
+    procedure,public::updateLinePos
+    procedure,public::updateFacetPos
+    procedure,public::updateBlockPos
   end type
   
 contains
@@ -79,15 +91,9 @@ contains
   elemental subroutine clearEle(this)
     class(typeEle),intent(inout)::this !< this element
     
-    if(allocated(this%iNode))then
-      deallocate(this%iNode)
-    end if
-    if(allocated(this%Dmn))then
-      deallocate(this%Dmn)
-    end if
-    if(allocated(this%Prt))then
-      deallocate(this%Prt)
-    end if
+    if(allocated(this%iNode)) deallocate(this%iNode)
+    if(allocated(this%Dmn)) deallocate(this%Dmn)
+    if(allocated(this%Prt)) deallocate(this%Prt)
   end subroutine
   
   !> destructor of typeEle
@@ -108,6 +114,10 @@ contains
     this%nBlock=0
     this%nDmn=0
     this%nPrt=0
+    this%isUpPointPos=.false.
+    this%isUpLinePos=.false.
+    this%isUpFacetPos=.false.
+    this%isUpBlockPos=.false.
     call this%clear()
   end subroutine
   
@@ -115,27 +125,17 @@ contains
   elemental subroutine clearGrid(this)
     class(typeGrid),intent(inout)::this !< this grid
     
-    if(allocated(this%NodePos))then
-      deallocate(this%NodePos)
-    end if
-    if(allocated(this%Point))then
-      deallocate(this%Point)
-    end if
-    if(allocated(this%Line))then
-      deallocate(this%Line)
-    end if
-    if(allocated(this%Facet))then
-      deallocate(this%Facet)
-    end if
-    if(allocated(this%Block))then
-      deallocate(this%Block)
-    end if
-    if(allocated(this%lDmn))then
-      deallocate(this%lDmn)
-    end if
-    if(allocated(this%lPrt))then
-      deallocate(this%lPrt)
-    end if
+    if(allocated(this%NodePos)) deallocate(this%NodePos)
+    if(allocated(this%Point)) deallocate(this%Point)
+    if(allocated(this%Line)) deallocate(this%Line)
+    if(allocated(this%Facet)) deallocate(this%Facet)
+    if(allocated(this%Block)) deallocate(this%Block)
+    if(allocated(this%lDmn)) deallocate(this%lDmn)
+    if(allocated(this%lPrt)) deallocate(this%lPrt)
+    if(allocated(this%PointPos)) deallocate(this%PointPos)
+    if(allocated(this%LinePos)) deallocate(this%LinePos)
+    if(allocated(this%FacetPos)) deallocate(this%FacetPos)
+    if(allocated(this%BlockPos)) deallocate(this%BlockPos)
   end subroutine
   
   !> destructor of typeGrid
@@ -143,6 +143,86 @@ contains
     type(typeGrid),intent(inout)::this !< this grid
     
     call this%clear()
+  end subroutine
+  
+  !> update the point position
+  elemental subroutine updatePointPos(this)
+    class(typeGrid),intent(inout)::this !< this grid
+    
+    if(.not.this%isUpPointPos)then
+      if(allocated(this%PointPos))then
+        if(size(this%PointPos,2)/=this%nPoint)then
+          deallocate(this%PointPos)
+          allocate(this%PointPos(DIMS,this%nPoint))
+        end if
+      else
+        allocate(this%PointPos(DIMS,this%nPoint))
+      end if
+      forall(i=1:this%nPoint)
+        this%PointPos(:,i)=this%NodePos(:,this%Point(i)%iNode(1))
+      end forall
+      this%isUpPointPos=.true.
+    end if
+  end subroutine
+  
+  !> update the line position
+  elemental subroutine updateLinePos(this)
+    class(typeGrid),intent(inout)::this !< this grid
+    
+    if(.not.this%isUpLinePos)then
+      if(allocated(this%LinePos))then
+        if(size(this%LinePos,2)/=this%nLine)then
+          deallocate(this%LinePos)
+          allocate(this%LinePos(DIMS,this%nLine))
+        end if
+      else
+        allocate(this%LinePos(DIMS,this%nLine))
+      end if
+      forall(i=1:this%nLine)
+        this%LinePos(:,i)=sum(this%NodePos(:,this%Line(i)%iNode(:)),2)/dble(this%Line(i)%nNode)
+      end forall
+      this%isUpLinePos=.true.
+    end if
+  end subroutine
+  
+  !> update the facet position
+  elemental subroutine updateFacetPos(this)
+    class(typeGrid),intent(inout)::this !< this grid
+    
+    if(.not.this%isUpFacetPos)then
+      if(allocated(this%FacetPos))then
+        if(size(this%FacetPos,2)/=this%nFacet)then
+          deallocate(this%FacetPos)
+          allocate(this%FacetPos(DIMS,this%nFacet))
+        end if
+      else
+        allocate(this%FacetPos(DIMS,this%nFacet))
+      end if
+      forall(i=1:this%nFacet)
+        this%FacetPos(:,i)=sum(this%NodePos(:,this%Facet(i)%iNode(:)),2)/dble(this%Facet(i)%nNode)
+      end forall
+      this%isUpFacetPos=.true.
+    end if
+  end subroutine
+  
+  !> update the block position
+  elemental subroutine updateBlockPos(this)
+    class(typeGrid),intent(inout)::this !< this grid
+    
+    if(.not.this%isUpBlockPos)then
+      if(allocated(this%BlockPos))then
+        if(size(this%BlockPos,2)/=this%nBlock)then
+          deallocate(this%BlockPos)
+          allocate(this%BlockPos(DIMS,this%nBlock))
+        end if
+      else
+        allocate(this%BlockPos(DIMS,this%nBlock))
+      end if
+      forall(i=1:this%nBlock)
+        this%BlockPos(:,i)=sum(this%NodePos(:,this%Block(i)%iNode(:)),2)/dble(this%Block(i)%nNode)
+      end forall
+      this%isUpBlockPos=.true.
+    end if
   end subroutine
   
 end module
