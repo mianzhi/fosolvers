@@ -4,6 +4,13 @@
 module moduleBasicDataStruct
   private
   
+  !> reallocate a generic allocatable array
+  interface reallocArr
+    module procedure::realloc1DDArr
+    module procedure::realloc2DDArr
+  end interface
+  public::reallocArr
+  
   !> extend a generic allocatable array
   interface extendArr
     module procedure::extendIArr
@@ -18,6 +25,37 @@ module moduleBasicDataStruct
   public::pushArr
   
 contains
+  
+  !> reallocate the 1D double allocatable array arr to have m entries
+  pure subroutine realloc1DDArr(arr,m)
+    double precision,allocatable,intent(inout)::arr(:) !< 1D double array to be reallocated
+    integer,intent(in)::m !< number of entries
+    
+    if(allocated(arr))then
+      if(size(arr)/=m)then
+        deallocate(arr)
+        allocate(arr(m))
+      end if
+    else
+      allocate(arr(m))
+    end if
+  end subroutine
+  
+  !> reallocate the 2D double allocatable array arr to be m by n
+  pure subroutine realloc2DDArr(arr,m,n)
+    double precision,allocatable,intent(inout)::arr(:,:) !< 2D double array to be reallocated
+    integer,intent(in)::m !< number of rows
+    integer,intent(in)::n !< number of columns
+    
+    if(allocated(arr))then
+      if(size(arr,1)/=m.or.size(arr,2)/=n)then
+        deallocate(arr)
+        allocate(arr(m,n))
+      end if
+    else
+      allocate(arr(m,n))
+    end if
+  end subroutine
   
   !> extend the integer allocatable array arr by l or by 1
   pure subroutine extendIArr(arr,l)
