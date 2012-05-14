@@ -3,7 +3,6 @@
 !> grid
 module moduleGrid
   use moduleBasicDataStruct
-  use moduleSimpleGeometry
   private
   
   ! constants
@@ -63,6 +62,12 @@ module moduleGrid
     double precision,allocatable::FacetPos(:,:) !< facet position
     logical isUpBlockPos !< if the block position is updated
     double precision,allocatable::BlockPos(:,:) !< block position
+    logical isUpLineLen !< if the line length is updated
+    double precision,allocatable::LineLen(:) !< line length
+    logical isUpFacetArea !< if the facet area is updated
+    double precision,allocatable::FacetArea(:) !< facet area
+    logical isUpBlockVol !< if the block volume is updated
+    double precision,allocatable::BlockVol(:) !< block volume
   contains
     ! basic grid procedures
     procedure,public::init=>initGrid
@@ -73,6 +78,9 @@ module moduleGrid
     procedure,public::updateLinePos
     procedure,public::updateFacetPos
     procedure,public::updateBlockPos
+    procedure,public::updateLineLen
+    procedure,public::updateFacetArea
+    procedure,public::updateBlockVol
   end type
   
 contains
@@ -118,6 +126,9 @@ contains
     this%isUpLinePos=.false.
     this%isUpFacetPos=.false.
     this%isUpBlockPos=.false.
+    this%isUpLineLen=.false.
+    this%isUpFacetArea=.false.
+    this%isUpBlockVol=.false.
     call this%clear()
   end subroutine
   
@@ -136,6 +147,9 @@ contains
     if(allocated(this%LinePos)) deallocate(this%LinePos)
     if(allocated(this%FacetPos)) deallocate(this%FacetPos)
     if(allocated(this%BlockPos)) deallocate(this%BlockPos)
+    if(allocated(this%LineLen)) deallocate(this%LineLen)
+    if(allocated(this%FacetArea)) deallocate(this%FacetArea)
+    if(allocated(this%BlockVol)) deallocate(this%BlockVol)
   end subroutine
   
   !> destructor of typeGrid
@@ -150,14 +164,7 @@ contains
     class(typeGrid),intent(inout)::this !< this grid
     
     if(.not.this%isUpPointPos)then
-      if(allocated(this%PointPos))then
-        if(size(this%PointPos,2)/=this%nPoint)then
-          deallocate(this%PointPos)
-          allocate(this%PointPos(DIMS,this%nPoint))
-        end if
-      else
-        allocate(this%PointPos(DIMS,this%nPoint))
-      end if
+      call reallocArr(this%PointPos,DIMS,this%nPoint)
       forall(i=1:this%nPoint)
         this%PointPos(:,i)=this%NodePos(:,this%Point(i)%iNode(1))
       end forall
@@ -170,14 +177,7 @@ contains
     class(typeGrid),intent(inout)::this !< this grid
     
     if(.not.this%isUpLinePos)then
-      if(allocated(this%LinePos))then
-        if(size(this%LinePos,2)/=this%nLine)then
-          deallocate(this%LinePos)
-          allocate(this%LinePos(DIMS,this%nLine))
-        end if
-      else
-        allocate(this%LinePos(DIMS,this%nLine))
-      end if
+      call reallocArr(this%LinePos,DIMS,this%nLine)
       forall(i=1:this%nLine)
         this%LinePos(:,i)=sum(this%NodePos(:,this%Line(i)%iNode(:)),2)/dble(this%Line(i)%nNode)
       end forall
@@ -190,14 +190,7 @@ contains
     class(typeGrid),intent(inout)::this !< this grid
     
     if(.not.this%isUpFacetPos)then
-      if(allocated(this%FacetPos))then
-        if(size(this%FacetPos,2)/=this%nFacet)then
-          deallocate(this%FacetPos)
-          allocate(this%FacetPos(DIMS,this%nFacet))
-        end if
-      else
-        allocate(this%FacetPos(DIMS,this%nFacet))
-      end if
+      call reallocArr(this%FacetPos,DIMS,this%nFacet)
       forall(i=1:this%nFacet)
         this%FacetPos(:,i)=sum(this%NodePos(:,this%Facet(i)%iNode(:)),2)/dble(this%Facet(i)%nNode)
       end forall
@@ -210,14 +203,7 @@ contains
     class(typeGrid),intent(inout)::this !< this grid
     
     if(.not.this%isUpBlockPos)then
-      if(allocated(this%BlockPos))then
-        if(size(this%BlockPos,2)/=this%nBlock)then
-          deallocate(this%BlockPos)
-          allocate(this%BlockPos(DIMS,this%nBlock))
-        end if
-      else
-        allocate(this%BlockPos(DIMS,this%nBlock))
-      end if
+      call reallocArr(this%BlockPos,DIMS,this%nBlock)
       forall(i=1:this%nBlock)
         this%BlockPos(:,i)=sum(this%NodePos(:,this%Block(i)%iNode(:)),2)/dble(this%Block(i)%nNode)
       end forall
@@ -225,4 +211,61 @@ contains
     end if
   end subroutine
   
+  !> update the line length
+  elemental subroutine updateLineLen(this)
+    class(typeGrid),intent(inout)::this !< this grid
+    
+    if(.not.this%isUpLineLen)then
+      call reallocArr(this%LineLen,this%nLine)
+      do i=1,this%nLine
+        select case(this%Line(i)%Shp)
+        case(LINE_TYPE)
+          this%LineLen(i)=norm2(this%NodePos(:,this%Line(i)%iNode(1))&
+          &                    -this%NodePos(:,this%Line(i)%iNode(2)))
+        case default
+        end select
+      end do
+      this%isUpLineLen=.true.
+    end if
+  end subroutine
+  
+  !> update the facet area
+  elemental subroutine updateFacetArea(this)
+    use moduleSimpleGeometry
+    class(typeGrid),intent(inout)::this !< this grid
+    
+    if(.not.this%isUpFacetArea)then
+      call reallocArr(this%FacetArea,this%nFacet)
+      do i=1,this%nFacet
+        select case(this%Facet(i)%Shp)
+        case(TRI_TYPE)
+          this%FacetArea(i)=find3PArea(this%NodePos(:,this%Facet(i)%iNode(:)))
+        case(QUAD_TYPE)
+          this%FacetArea(i)=find4PArea(this%NodePos(:,this%Facet(i)%iNode(:)))
+        case default
+        end select
+      end do
+      this%isUpFacetArea=.true.
+    end if
+  end subroutine
+  
+  !> update the block volume
+  elemental subroutine updateBlockVol(this)
+    use moduleSimpleGeometry
+    class(typeGrid),intent(inout)::this !< this grid
+    
+    if(.not.this%isUpBlockVol)then
+      call reallocArr(this%BlockVol,this%nBlock)
+      do i=1,this%nBlock
+        select case(this%Block(i)%Shp)
+        case(TET_TYPE)
+          this%BlockVol(i)=find4PVol(this%NodePos(:,this%Block(i)%iNode(:)))
+        case(HEX_TYPE)
+          this%BlockVol(i)=find8PVol(this%NodePos(:,this%Block(i)%iNode(:)))
+        case default
+        end select
+      end do
+      this%isUpBlockVol=.true.
+    end if
+  end subroutine
 end module
