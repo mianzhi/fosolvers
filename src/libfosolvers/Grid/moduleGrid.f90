@@ -68,6 +68,8 @@ module moduleGrid
     double precision,allocatable::FacetArea(:) !< facet area
     logical isUpBlockVol !< if the block volume is updated
     double precision,allocatable::BlockVol(:) !< block volume
+    logical isUpFacetNorm !< if the facet normal vector is updated
+    double precision,allocatable::FacetNorm(:,:) !< facet normal vector
   contains
     ! basic grid procedures
     procedure,public::init=>initGrid
@@ -81,6 +83,7 @@ module moduleGrid
     procedure,public::updateLineLen
     procedure,public::updateFacetArea
     procedure,public::updateBlockVol
+    procedure,public::updateFacetNorm
   end type
   
 contains
@@ -129,6 +132,7 @@ contains
     this%isUpLineLen=.false.
     this%isUpFacetArea=.false.
     this%isUpBlockVol=.false.
+    this%isUpFacetNorm=.false.
     call this%clear()
   end subroutine
   
@@ -150,6 +154,7 @@ contains
     if(allocated(this%LineLen)) deallocate(this%LineLen)
     if(allocated(this%FacetArea)) deallocate(this%FacetArea)
     if(allocated(this%BlockVol)) deallocate(this%BlockVol)
+    if(allocated(this%FacetNorm)) deallocate(this%FacetNorm)
   end subroutine
   
   !> destructor of typeGrid
@@ -268,4 +273,25 @@ contains
       this%isUpBlockVol=.true.
     end if
   end subroutine
+  
+  !> update the facet normal vector
+  elemental subroutine updateFacetNorm(this)
+    use moduleSimpleGeometry
+    class(typeGrid),intent(inout)::this !< this grid
+    
+    if(.not.this%isUpFacetNorm)then
+      call reallocArr(this%FacetNorm,DIMS,this%nFacet)
+      do i=1,this%nFacet
+        select case(this%Facet(i)%Shp)
+        case(TRI_TYPE)
+          this%FacetNorm(:,i)=find3PNorm(this%NodePos(:,this%Facet(i)%iNode(:)))
+        case(QUAD_TYPE)
+          this%FacetNorm(:,i)=find3PNorm(this%NodePos(:,this%Facet(i)%iNode([1,2,3])))
+        case default
+        end select
+      end do
+      this%isUpFacetNorm=.true.
+    end if
+  end subroutine
+  
 end module
