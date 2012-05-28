@@ -54,6 +54,8 @@ module moduleGrid
     integer nPrt !< number of partitions
     integer,allocatable::lPrt(:) !< list of partitions
     ! auxiliary grid data
+    logical isUpNodeNeibBlock !< if the node neighbour block is updated
+    type(typeHtr1DIArr),allocatable::NodeNeibBlock(:) !< node neighbour block
     logical isUpPointPos !< if the point position is updated
     double precision,allocatable::PointPos(:,:) !< point position
     logical isUpLinePos !< if the line position is updated
@@ -76,6 +78,7 @@ module moduleGrid
     procedure,public::clear=>clearGrid
     !FIXME:final::purgeGrid
     ! auxiliary grid procedures
+    procedure,public::updateNodeNeibBlock
     procedure,public::updatePointPos
     procedure,public::updateLinePos
     procedure,public::updateFacetPos
@@ -125,6 +128,7 @@ contains
     this%nBlock=0
     this%nDmn=0
     this%nPrt=0
+    this%isUpNodeNeibBlock=.false.
     this%isUpPointPos=.false.
     this%isUpLinePos=.false.
     this%isUpFacetPos=.false.
@@ -147,6 +151,7 @@ contains
     if(allocated(this%Block)) deallocate(this%Block)
     if(allocated(this%lDmn)) deallocate(this%lDmn)
     if(allocated(this%lPrt)) deallocate(this%lPrt)
+    if(allocated(this%NodeNeibBlock)) deallocate(this%NodeNeibBlock)
     if(allocated(this%PointPos)) deallocate(this%PointPos)
     if(allocated(this%LinePos)) deallocate(this%LinePos)
     if(allocated(this%FacetPos)) deallocate(this%FacetPos)
@@ -162,6 +167,21 @@ contains
     type(typeGrid),intent(inout)::this !< this grid
     
     call this%clear()
+  end subroutine
+  
+  !> update the node neighbour block
+  elemental subroutine updateNodeNeibBlock(this)
+    class(typeGrid),intent(inout)::this !< this grid
+    
+    if(.not.this%isUpNodeNeibBlock)then
+      call reallocArr(this%NodeNeibBlock,this%nNode)
+      !TODO: do work
+      do i=1,this%nNode
+        call pushArr(this%NodeNeibBlock(i)%dat,20)
+      end do
+      !FIXME: fake code
+      this%isUpNodeNeibBlock=.true.
+    end if
   end subroutine
   
   !> update the point position
