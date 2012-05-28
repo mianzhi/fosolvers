@@ -4,10 +4,18 @@
 module moduleBasicDataStruct
   private
   
+  !> heterogeneous 1D integer allocatable array
+  type,public::typeHtr1DIArr
+    integer,allocatable::dat(:) !< 1D integer allocatable array
+  contains
+    !FIXME:final::purgeHtr1DIArr
+  end type
+  
   !> reallocate a generic allocatable array
   interface reallocArr
     module procedure::realloc1DDArr
     module procedure::realloc2DDArr
+    module procedure::realloc1DHtr1DIArr
   end interface
   public::reallocArr
   
@@ -25,6 +33,13 @@ module moduleBasicDataStruct
   public::pushArr
   
 contains
+  
+  !> destructor of typeHtr1DIArr
+  elemental subroutine purgeHtr1DIArr(this)
+    type(typeHtr1DIArr),intent(inout)::this !< this 1D integer allocatable array
+    
+    if(allocated(this%dat)) deallocate(this%dat)
+  end subroutine
   
   !> reallocate the 1D double allocatable array arr to have m entries
   pure subroutine realloc1DDArr(arr,m)
@@ -54,6 +69,22 @@ contains
       end if
     else
       allocate(arr(m,n))
+    end if
+  end subroutine
+  
+  !> reallocate the 1D allocatable array arr of the heterogeneous 1D integer allocatable array
+  !> to have m heterogeneous elements
+  pure subroutine realloc1DHtr1DIArr(arr,m)
+    type(typeHtr1DIArr),allocatable,intent(inout)::arr(:) !< 1D array to be reallocated
+    integer,intent(in)::m !< number of entries
+    
+    if(allocated(arr))then
+      if(size(arr)/=m)then
+        deallocate(arr)
+        allocate(arr(m))
+      end if
+    else
+      allocate(arr(m))
     end if
   end subroutine
   
