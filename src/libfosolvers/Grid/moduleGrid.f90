@@ -22,6 +22,15 @@ module moduleGrid
   integer,parameter,public::TET_NODE_NUM=4 !< number of nodes per tet
   integer,parameter,public::HEX_NODE_NUM=8 !< number of nodes per hex
   
+  integer,parameter,public::TET_SURF_NUM=4 !< number of surfaces per tet
+  integer,parameter,public::HEX_SURF_NUM=6 !< number of surfaces per hex
+  
+  integer,public::TET_SURF_TAB(TRI_NODE_NUM,TET_SURF_NUM) !< table of surface nodes for tet
+  parameter(TET_SURF_TAB=reshape([1,3,2,1,2,4,1,4,3,2,3,4],[TRI_NODE_NUM,TET_SURF_NUM]))
+  integer,public::HEX_SURF_TAB(QUAD_NODE_NUM,HEX_SURF_NUM) !< table of surface nodes for hex
+  parameter(HEX_SURF_TAB=reshape([2,3,7,6,1,5,8,4,3,4,8,7,1,2,6,5,5,6,7,8,1,4,3,2],&
+  &                              [QUAD_NODE_NUM,HEX_SURF_NUM]))
+  
   !> basic information of elements
   type,public::typeEle
     integer Ent !< geometric entity number
@@ -175,11 +184,11 @@ contains
     
     if(.not.this%isUpNodeNeibBlock)then
       call reallocArr(this%NodeNeibBlock,this%nNode)
-      !TODO: do work
-      do i=1,this%nNode
-        call pushArr(this%NodeNeibBlock(i)%dat,20)
+      do i=1,this%nBlock
+        do j=1,this%Block(i)%nNode
+          call pushArr(this%NodeNeibBlock(this%Block(i)%iNode(j))%dat,i)
+        end do
       end do
-      !FIXME: fake code
       this%isUpNodeNeibBlock=.true.
     end if
   end subroutine
