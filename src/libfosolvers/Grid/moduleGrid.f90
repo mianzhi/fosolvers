@@ -25,6 +25,8 @@ module moduleGrid
   integer,parameter,public::TET_SURF_NUM=4 !< number of surfaces per tet
   integer,parameter,public::HEX_SURF_NUM=6 !< number of surfaces per hex
   
+  integer,parameter,public::INTF_NEIB_BLOCK_NUM=2 !< number of neighbour blocks per interface
+  
   integer,public::TET_SURF_TAB(TRI_NODE_NUM,TET_SURF_NUM) !< table of surface nodes for tet
   parameter(TET_SURF_TAB=reshape([1,3,2,1,2,4,1,4,3,2,3,4],[TRI_NODE_NUM,TET_SURF_NUM]))
   integer,public::HEX_SURF_TAB(QUAD_NODE_NUM,HEX_SURF_NUM) !< table of surface nodes for hex
@@ -62,23 +64,37 @@ module moduleGrid
     integer,allocatable::lDmn(:) !< list of physical domains
     integer nPrt !< number of partitions
     integer,allocatable::lPrt(:) !< list of partitions
+    
     ! auxiliary grid data
     logical isUpNodeNeibBlock !< if the node neighbour block is updated
     type(typeHtr1DIArr),allocatable::NodeNeibBlock(:) !< node neighbour block
+    
+    logical isUpIntf !< if the interface between blocks is updated
+    integer nIntf !< number of interfaces between blocks
+    type(typeEle),allocatable::Intf(:) !< interface between blocks
+    integer,allocatable::IntfNeibBlock(:,:) !< neighbour blocks of interface
+    
     logical isUpPointPos !< if the point position is updated
     double precision,allocatable::PointPos(:,:) !< point position
+    
     logical isUpLinePos !< if the line position is updated
     double precision,allocatable::LinePos(:,:) !< line position
+    
     logical isUpFacetPos !< if the facet position is updated
     double precision,allocatable::FacetPos(:,:) !< facet position
+    
     logical isUpBlockPos !< if the block position is updated
     double precision,allocatable::BlockPos(:,:) !< block position
+    
     logical isUpLineLen !< if the line length is updated
     double precision,allocatable::LineLen(:) !< line length
+    
     logical isUpFacetArea !< if the facet area is updated
     double precision,allocatable::FacetArea(:) !< facet area
+    
     logical isUpBlockVol !< if the block volume is updated
     double precision,allocatable::BlockVol(:) !< block volume
+    
     logical isUpFacetNorm !< if the facet normal vector is updated
     double precision,allocatable::FacetNorm(:,:) !< facet normal vector
   contains
@@ -88,6 +104,7 @@ module moduleGrid
     !FIXME:final::purgeGrid
     ! auxiliary grid procedures
     procedure,public::updateNodeNeibBlock
+    procedure,public::updateIntf
     procedure,public::updatePointPos
     procedure,public::updateLinePos
     procedure,public::updateFacetPos
@@ -138,6 +155,7 @@ contains
     this%nDmn=0
     this%nPrt=0
     this%isUpNodeNeibBlock=.false.
+    this%isUpIntf=.false.
     this%isUpPointPos=.false.
     this%isUpLinePos=.false.
     this%isUpFacetPos=.false.
@@ -161,6 +179,8 @@ contains
     if(allocated(this%lDmn)) deallocate(this%lDmn)
     if(allocated(this%lPrt)) deallocate(this%lPrt)
     if(allocated(this%NodeNeibBlock)) deallocate(this%NodeNeibBlock)
+    if(allocated(this%Intf)) deallocate(this%Intf)
+    if(allocated(this%IntfNeibBlock)) deallocate(this%IntfNeibBlock)
     if(allocated(this%PointPos)) deallocate(this%PointPos)
     if(allocated(this%LinePos)) deallocate(this%LinePos)
     if(allocated(this%FacetPos)) deallocate(this%FacetPos)
@@ -190,6 +210,27 @@ contains
         end do
       end do
       this%isUpNodeNeibBlock=.true.
+    end if
+  end subroutine
+  
+  !> update the interface between blocks
+  elemental subroutine updateIntf(this)
+    class(typeGrid),intent(inout)::this !< this grid
+    
+    if(.not.this%isUpIntf)then
+      !TODO:count interface num
+      this%nIntf=3
+      if(allocated(this%Intf))then
+        if(size(this%Intf)/=this%nIntf)then
+          deallocate(this%Intf)
+          allocate(this%Intf(this%nIntf))
+        end if
+      else
+        allocate(this%Intf(this%nIntf))
+      end if
+      call reallocArr(this%IntfNeibBlock,INTF_NEIB_BLOCK_NUM,this%nIntf)
+      !TODO:save interfaces
+      this%isUpIntf=.true.
     end if
   end subroutine
   
