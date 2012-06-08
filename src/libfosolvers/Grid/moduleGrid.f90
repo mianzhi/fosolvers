@@ -323,8 +323,15 @@ contains
     class(typeGrid),intent(inout)::this !< this grid
     
     if(.not.this%isUpIntf)then
-      !TODO:count interface num
-      this%nIntf=3
+      call this%updateBlockNeib()
+      this%nIntf=0
+      do i=1,this%nBlock
+        do j=1,getBlockSurfNum(this%Block(i))
+          if(this%BlockNeibBlock(i)%dat(j)>i.and.this%BlockNeibFacet(i)%dat(j)==0)then
+            this%nIntf=this%nIntf+1
+          end if
+        end do
+      end do
       if(allocated(this%Intf))then
         if(size(this%Intf)/=this%nIntf)then
           deallocate(this%Intf)
@@ -334,7 +341,30 @@ contains
         allocate(this%Intf(this%nIntf))
       end if
       call reallocArr(this%IntfNeibBlock,INTF_NEIB_BLOCK_NUM,this%nIntf)
-      !TODO:save interfaces
+      k=0
+      do i=1,this%nBlock
+        do j=1,getBlockSurfNum(this%Block(i))
+          if(this%BlockNeibBlock(i)%dat(j)>i.and.this%BlockNeibFacet(i)%dat(j)==0)then
+            k=k+1
+            select case(this%Block(i)%Shp)
+            case(TET_TYPE)
+              this%Intf(k)%Shp=TRI_TYPE
+              this%Intf(k)%nNode=TRI_NODE_NUM
+            case(HEX_TYPE)
+              this%Intf(k)%Shp=QUAD_TYPE
+              this%Intf(k)%nNode=QUAD_NODE_NUM
+            case default
+            end select
+            call reallocArr(this%Intf(k)%iNode,this%Intf(k)%nNode)
+            this%Intf(k)%iNode=getBlockSurfNode(this%Block(i),j)
+            call reallocArr(this%Intf(k)%Dmn,size(this%Block(i)%Dmn))
+            this%Intf(k)%Dmn(:)=this%Block(i)%Dmn(:)
+            call reallocArr(this%Intf(k)%Prt,1)
+            this%Intf(k)%Prt(1)=maxval(this%Block(i)%Prt(:))
+            this%IntfNeibBlock(:,k)=[i,this%BlockNeibBlock(i)%dat(j)]
+          end if
+        end do
+      end do
       this%isUpIntf=.true.
     end if
   end subroutine

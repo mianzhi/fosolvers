@@ -12,8 +12,8 @@ subroutine testReadGMSH()
   open(12,file='bin/gridGMSH1.msh',status='old')
   call readGMSH(12,grid)
   
-  call grid%updateBlockNeib()
-  do i=1,grid%nBlock
-    write(*,*),i,grid%BlockNeibBlock(i)%dat(:)
+  call grid%updateIntf()
+  do i=1,grid%nIntf
+    write(*,*),i,grid%Intf(i)%Dmn,grid%Intf(i)%Prt
   end do
 end subroutine
