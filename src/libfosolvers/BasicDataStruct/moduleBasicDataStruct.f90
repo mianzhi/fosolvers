@@ -13,6 +13,7 @@ module moduleBasicDataStruct
   
   !> reallocate a generic allocatable array
   interface reallocArr
+    module procedure::realloc1DIArr
     module procedure::realloc2DIArr
     module procedure::realloc1DDArr
     module procedure::realloc2DDArr
@@ -40,6 +41,21 @@ contains
     type(typeHtr1DIArr),intent(inout)::this !< this 1D integer allocatable array
     
     if(allocated(this%dat)) deallocate(this%dat)
+  end subroutine
+  
+  !> reallocate the 1D integer array arr to have m entries
+  pure subroutine realloc1DIArr(arr,m)
+    integer,allocatable,intent(inout)::arr(:) !< 1D integer array to be reallocated
+    integer,intent(in)::m !< number of entries
+    
+    if(allocated(arr))then
+      if(size(arr)/=m)then
+        deallocate(arr)
+        allocate(arr(m))
+      end if
+    else
+      allocate(arr(m))
+    end if
   end subroutine
   
   !> reallocate the 2D integer allocatable array arr to be m by n
