@@ -66,8 +66,13 @@ module moduleGrid
     integer,allocatable::lPrt(:) !< list of partitions
     
     ! auxiliary grid data
-    logical isUpNodeNeibBlock !< if the node neighbour block is updated
+    logical isUpNodeNeib !< if the node neighbour facet and block are updated
+    type(typeHtr1DIArr),allocatable::NodeNeibFacet(:) !< node neighbour block
     type(typeHtr1DIArr),allocatable::NodeNeibBlock(:) !< node neighbour block
+    
+    logical isUpBlockNeib !< if the block neighbour facet and neighbour block is updated
+    type(typeHtr1DIArr),allocatable::BlockNeibFacet(:) !< block neighbour facet
+    type(typeHtr1DIArr),allocatable::BlockNeibBlock(:) !< block neighbour block
     
     logical isUpIntf !< if the interface between blocks is updated
     integer nIntf !< number of interfaces between blocks
@@ -103,7 +108,8 @@ module moduleGrid
     procedure,public::clear=>clearGrid
     !FIXME:final::purgeGrid
     ! auxiliary grid procedures
-    procedure,public::updateNodeNeibBlock
+    procedure,public::updateNodeNeib
+    procedure,public::updateBlockNeib
     procedure,public::updateIntf
     procedure,public::updatePointPos
     procedure,public::updateLinePos
@@ -143,6 +149,38 @@ contains
     call this%clear()
   end subroutine
   
+  !> get the number of surfaces of a block
+  elemental function getBlockSurfNum(block)
+    class(typeEle),intent(in)::block !< block to be get the number of surfaces of
+    integer getBlockSurfNum !< number of surfaces
+    
+    select case(block%Shp)
+    case(TET_TYPE)
+      getBlockSurfNum=TET_SURF_NUM
+    case(HEX_TYPE)
+      getBlockSurfNum=HEX_SURF_NUM
+    case default
+      getBlockSurfNum=0
+    end select
+  end function
+  
+  !> get the nodes of the k_th surface of a block
+  pure function getBlockSurfNode(block,k)
+    class(typeEle),intent(in)::block !< block to be get the nodes of k_th surface of
+    integer,intent(in)::k !< index of surface
+    integer,allocatable::getBlockSurfNode(:) !< surface nodes
+    
+    select case(block%Shp)
+    case(TET_TYPE)
+      allocate(getBlockSurfNode(TRI_NODE_NUM))
+      getBlockSurfNode(:)=block%iNode(TET_SURF_TAB(:,k))
+    case(HEX_TYPE)
+      allocate(getBlockSurfNode(QUAD_NODE_NUM))
+      getBlockSurfNode(:)=block%iNode(HEX_SURF_TAB(:,k))
+    case default
+    end select
+  end function
+  
   !> initialize this Grid
   elemental subroutine initGrid(this)
     class(typeGrid),intent(inout)::this !< this grid
@@ -154,7 +192,8 @@ contains
     this%nBlock=0
     this%nDmn=0
     this%nPrt=0
-    this%isUpNodeNeibBlock=.false.
+    this%isUpNodeNeib=.false.
+    this%isUpBlockNeib=.false.
     this%isUpIntf=.false.
     this%isUpPointPos=.false.
     this%isUpLinePos=.false.
@@ -178,7 +217,10 @@ contains
     if(allocated(this%Block)) deallocate(this%Block)
     if(allocated(this%lDmn)) deallocate(this%lDmn)
     if(allocated(this%lPrt)) deallocate(this%lPrt)
+    if(allocated(this%NodeNeibFacet)) deallocate(this%NodeNeibFacet)
     if(allocated(this%NodeNeibBlock)) deallocate(this%NodeNeibBlock)
+    if(allocated(this%BlockNeibFacet)) deallocate(this%BlockNeibFacet)
+    if(allocated(this%BlockNeibBlock)) deallocate(this%BlockNeibBlock)
     if(allocated(this%Intf)) deallocate(this%Intf)
     if(allocated(this%IntfNeibBlock)) deallocate(this%IntfNeibBlock)
     if(allocated(this%PointPos)) deallocate(this%PointPos)
@@ -198,18 +240,81 @@ contains
     call this%clear()
   end subroutine
   
-  !> update the node neighbour block
-  elemental subroutine updateNodeNeibBlock(this)
+  !> update the node neighbour facet and block
+  elemental subroutine updateNodeNeib(this)
     class(typeGrid),intent(inout)::this !< this grid
     
-    if(.not.this%isUpNodeNeibBlock)then
+    if(.not.this%isUpNodeNeib)then
+      call reallocArr(this%NodeNeibFacet,this%nNode)
+      do i=1,this%nFacet
+        do j=1,this%Facet(i)%nNode
+          call pushArr(this%NodeNeibFacet(this%Facet(i)%iNode(j))%dat,i)
+        end do
+      end do
       call reallocArr(this%NodeNeibBlock,this%nNode)
       do i=1,this%nBlock
         do j=1,this%Block(i)%nNode
           call pushArr(this%NodeNeibBlock(this%Block(i)%iNode(j))%dat,i)
         end do
       end do
-      this%isUpNodeNeibBlock=.true.
+      this%isUpNodeNeib=.true.
+    end if
+  end subroutine
+  
+  !> update the block neighbour facet and neighbour block
+  elemental subroutine updateBlockNeib(this)
+    class(typeGrid),intent(inout)::this !< this grid
+    integer,allocatable::SurfNode(:),ScanList(:)
+    logical,allocatable::mask(:)
+    
+    if(.not.this%isUpBlockNeib)then
+      call reallocArr(this%BlockNeibFacet,this%nBlock)
+      call reallocArr(this%BlockNeibBlock,this%nBlock)
+      call this%updateNodeNeib()
+      do i=1,this%nBlock
+        m=getBlockSurfNum(this%Block(i))
+        call reallocArr(this%BlockNeibFacet(i)%dat,m)
+        this%BlockNeibFacet(i)%dat(:)=0
+        call reallocArr(this%BlockNeibBlock(i)%dat,m)
+        this%BlockNeibBlock(i)%dat(:)=0
+        do j=1,m
+          SurfNode=getBlockSurfNode(this%Block(i),j)
+          allocate(mask(size(SurfNode)))
+          if(allocated(this%NodeNeibFacet(SurfNode(1))%dat))then
+            ScanList=this%NodeNeibFacet(SurfNode(1))%dat
+            do k=1,size(ScanList)
+              mask(:)=.false.
+              forall(l=1:size(SurfNode))
+                mask(l)=any(this%Facet(ScanList(k))%iNode(:)==SurfNode(l))
+              end forall
+              if(all(mask(:)))then
+                this%BlockNeibFacet(i)%dat(j)=ScanList(k)
+                exit
+              end if
+            end do
+            deallocate(ScanList)
+          end if
+          if(allocated(this%NodeNeibBlock(SurfNode(1))%dat))then
+            ScanList=this%NodeNeibBlock(SurfNode(1))%dat
+            do k=1,size(ScanList)
+              if(ScanList(k)/=i)then
+                mask(:)=.false.
+                forall(l=1:size(SurfNode))
+                  mask(l)=any(this%Block(ScanList(k))%iNode(:)==SurfNode(l))
+                end forall
+                if(all(mask(:)))then
+                  this%BlockNeibBlock(i)%dat(j)=ScanList(k)
+                  exit
+                end if
+              end if
+            end do
+            deallocate(ScanList)
+          end if
+          deallocate(SurfNode)
+          deallocate(mask)
+        end do
+      end do
+      this%isUpBlockNeib=.true.
     end if
   end subroutine
   
