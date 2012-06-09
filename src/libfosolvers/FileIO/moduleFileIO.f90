@@ -10,6 +10,12 @@ module moduleFileIO
   end interface
   public::readGMSH
   
+  !> write GMSH file
+  interface writeGMSH
+    module procedure::writeGMSHGrid
+  end interface
+  public::writeGMSH
+  
 contains
   
   !> read grid data from opened file id into grid
@@ -126,6 +132,50 @@ contains
         cycle
       end if
     end do
+  end subroutine
+  
+  !> write grid data into opened file id
+  subroutine writeGMSHGrid(id,grid)
+    use moduleBasicDataStruct
+    use moduleGrid
+    integer,intent(in)::id !< the file id
+    class(typeGrid),intent(in)::grid !< grid to be written
+    integer,parameter::DFLT_STR_LEN=400
+    character(DFLT_STR_LEN)::tempStr
+    
+    write(id,'(a)'),'$MeshFormat'
+    write(id,'(a)'),'2.2 0 8'
+    write(id,'(a)'),'$EndMeshFormat'
+    write(id,'(a)'),'$Nodes'
+    write(tempStr,*),grid%nNode
+    write(id,'(a)'),trim(adjustl(tempStr))
+    do i=1,grid%nNode
+      write(tempStr,*),i,grid%NodePos(:,i)
+      write(id,'(a)'),trim(adjustl(tempStr))
+    end do
+    write(id,'(a)'),'$EndNodes'
+    write(id,'(a)'),'$Elements'
+    write(tempStr,*),grid%nBlock+grid%nFacet+grid%nLine+grid%nPoint
+    write(id,'(a)'),trim(adjustl(tempStr))
+    do i=1,grid%nBlock
+      write(tempStr,*),i,grid%Block(i)%Shp,2,0,grid%Block(i)%Ent,grid%Block(i)%iNode(:)
+      write(id,'(a)'),trim(adjustl(tempStr))
+    end do
+    do i=1,grid%nFacet
+      write(tempStr,*),grid%nBlock+i,grid%Facet(i)%Shp,2,0,grid%Facet(i)%Ent,grid%Facet(i)%iNode(:)
+      write(id,'(a)'),trim(adjustl(tempStr))
+    end do
+    do i=1,grid%nLine
+      write(tempStr,*),grid%nBlock+grid%nFacet+i,grid%Line(i)%Shp,2,0,grid%Line(i)%Ent,&
+      &                grid%Line(i)%iNode(:)
+      write(id,'(a)'),trim(adjustl(tempStr))
+    end do
+    do i=1,grid%nPoint
+      write(tempStr,*),grid%nBlock+grid%nFacet+grid%nLine+i,grid%Point(i)%Shp,2,0,&
+      &                grid%Point(i)%Ent,grid%Point(i)%iNode(:)
+      write(id,'(a)'),trim(adjustl(tempStr))
+    end do
+    write(id,'(a)'),'$EndElements'
   end subroutine
   
 end module
