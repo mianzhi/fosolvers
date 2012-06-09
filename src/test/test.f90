@@ -12,8 +12,10 @@ subroutine testReadGMSH()
   open(12,file='bin/gridGMSH1.msh',status='old')
   call readGMSH(12,grid)
   
-  call grid%updateIntf()
+  call grid%updateIntfPos()
+  call grid%updateIntfArea()
+  call grid%updateIntfNorm()
   do i=1,grid%nIntf
-    write(*,*),i,grid%Intf(i)%Dmn,grid%Intf(i)%Prt
+    write(*,*),i,grid%IntfArea(i)
   end do
 end subroutine

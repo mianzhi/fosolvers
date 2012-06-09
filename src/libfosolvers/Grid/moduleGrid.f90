@@ -91,17 +91,26 @@ module moduleGrid
     logical isUpBlockPos !< if the block position is updated
     double precision,allocatable::BlockPos(:,:) !< block position
     
+    logical isUpIntfPos !< if the interface position is updated
+    double precision,allocatable::IntfPos(:,:) !< interface position
+    
     logical isUpLineLen !< if the line length is updated
     double precision,allocatable::LineLen(:) !< line length
     
     logical isUpFacetArea !< if the facet area is updated
     double precision,allocatable::FacetArea(:) !< facet area
     
+    logical isUpIntfArea !< if the interface area is updated
+    double precision,allocatable::IntfArea(:) !< interface area
+    
     logical isUpBlockVol !< if the block volume is updated
     double precision,allocatable::BlockVol(:) !< block volume
     
     logical isUpFacetNorm !< if the facet normal vector is updated
     double precision,allocatable::FacetNorm(:,:) !< facet normal vector
+    
+    logical isUpIntfNorm !< if the interface normal vector is updated
+    double precision,allocatable::IntfNorm(:,:) !< interface normal vector
   contains
     ! basic grid procedures
     procedure,public::init=>initGrid
@@ -115,10 +124,13 @@ module moduleGrid
     procedure,public::updateLinePos
     procedure,public::updateFacetPos
     procedure,public::updateBlockPos
+    procedure,public::updateIntfPos
     procedure,public::updateLineLen
     procedure,public::updateFacetArea
+    procedure,public::updateIntfArea
     procedure,public::updateBlockVol
     procedure,public::updateFacetNorm
+    procedure,public::updateIntfNorm
   end type
   
 contains
@@ -199,10 +211,13 @@ contains
     this%isUpLinePos=.false.
     this%isUpFacetPos=.false.
     this%isUpBlockPos=.false.
+    this%isUpIntfPos=.false.
     this%isUpLineLen=.false.
     this%isUpFacetArea=.false.
+    this%isUpIntfArea=.false.
     this%isUpBlockVol=.false.
     this%isUpFacetNorm=.false.
+    this%isUpIntfNorm=.false.
     call this%clear()
   end subroutine
   
@@ -227,10 +242,13 @@ contains
     if(allocated(this%LinePos)) deallocate(this%LinePos)
     if(allocated(this%FacetPos)) deallocate(this%FacetPos)
     if(allocated(this%BlockPos)) deallocate(this%BlockPos)
+    if(allocated(this%IntfPos)) deallocate(this%IntfPos)
     if(allocated(this%LineLen)) deallocate(this%LineLen)
     if(allocated(this%FacetArea)) deallocate(this%FacetArea)
+    if(allocated(this%IntfArea)) deallocate(this%IntfArea)
     if(allocated(this%BlockVol)) deallocate(this%BlockVol)
     if(allocated(this%FacetNorm)) deallocate(this%FacetNorm)
+    if(allocated(this%IntfNorm)) deallocate(this%IntfNorm)
   end subroutine
   
   !> destructor of typeGrid
@@ -421,6 +439,20 @@ contains
     end if
   end subroutine
   
+  !> update the interface position
+  elemental subroutine updateIntfPos(this)
+    class(typeGrid),intent(inout)::this !< this grid
+    
+    if(.not.this%isUpIntfPos)then
+      call this%updateIntf()
+      call reallocArr(this%IntfPos,DIMS,this%nIntf)
+      forall(i=1:this%nIntf)
+        this%IntfPos(:,i)=sum(this%NodePos(:,this%Intf(i)%iNode(:)),2)/dble(this%Intf(i)%nNode)
+      end forall
+      this%isUpIntfPos=.true.
+    end if
+  end subroutine
+  
   !> update the line length
   elemental subroutine updateLineLen(this)
     class(typeGrid),intent(inout)::this !< this grid
@@ -456,6 +488,27 @@ contains
         end select
       end do
       this%isUpFacetArea=.true.
+    end if
+  end subroutine
+  
+  !> update the interface area
+  elemental subroutine updateIntfArea(this)
+    use moduleSimpleGeometry
+    class(typeGrid),intent(inout)::this !< this grid
+    
+    if(.not.this%isUpIntfArea)then
+      call this%updateIntf()
+      call reallocArr(this%IntfArea,this%nIntf)
+      do i=1,this%nIntf
+        select case(this%Intf(i)%Shp)
+        case(TRI_TYPE)
+          this%IntfArea(i)=find3PArea(this%NodePos(:,this%Intf(i)%iNode(:)))
+        case(QUAD_TYPE)
+          this%IntfArea(i)=find4PArea(this%NodePos(:,this%Intf(i)%iNode(:)))
+        case default
+        end select
+      end do
+      this%isUpIntfArea=.true.
     end if
   end subroutine
   
@@ -496,6 +549,27 @@ contains
         end select
       end do
       this%isUpFacetNorm=.true.
+    end if
+  end subroutine
+  
+  !> update the interface normal vector
+  elemental subroutine updateIntfNorm(this)
+    use moduleSimpleGeometry
+    class(typeGrid),intent(inout)::this !< this grid
+    
+    if(.not.this%isUpIntfNorm)then
+      call this%updateIntf()
+      call reallocArr(this%IntfNorm,DIMS,this%nIntf)
+      do i=1,this%nIntf
+        select case(this%Intf(i)%Shp)
+        case(TRI_TYPE)
+          this%IntfNorm(:,i)=find3PNorm(this%NodePos(:,this%Intf(i)%iNode(:)))
+        case(QUAD_TYPE)
+          this%IntfNorm(:,i)=find3PNorm(this%NodePos(:,this%Intf(i)%iNode([1,2,3])))
+        case default
+        end select
+      end do
+      this%isUpIntfNorm=.true.
     end if
   end subroutine
   
