@@ -21,6 +21,7 @@ contains
   !> read grid data from opened file id into grid
   subroutine readGMSHGrid(id,grid)
     use moduleBasicDataStruct
+    use moduleSimpleSetLogic
     use moduleGrid
     integer,intent(in)::id !< the file id
     class(typeGrid),intent(inout)::grid !< resulting grid
@@ -29,6 +30,7 @@ contains
     character(DFLT_STR_LEN)::tempStr
     integer nEle,shapetype,nt,np,tempIVect(DFLT_STR_LEN/2),jP,jL,jF,jB
     type(typeEle),allocatable::tempEle(:)
+    type(typeHtr1DIArr),allocatable::NodePrt(:)
     
     call grid%init()
     ierr=0
@@ -128,7 +130,47 @@ contains
           end select
         end do
         deallocate(tempEle)
-        ! process physical domain and partition TODO
+        ! process partition
+        if(maxval([(maxval(grid%Block(l)%Prt(:)),l=1,grid%nBlock)])>0)then
+          allocate(NodePrt(grid%nNode))
+          call grid%updateBlockNeib()
+          do i=1,grid%nBlock
+            do j=1,size(grid%Block(i)%Prt)
+              if(grid%Block(i)%Prt(j)>0)then
+                do k=1,grid%Block(i)%nNode
+                  if(allocated(NodePrt(grid%Block(i)%iNode(k))%dat))then
+                    call applUnion(NodePrt(grid%Block(i)%iNode(k))%dat,[grid%Block(i)%Prt(j)])
+                  else
+                    call pushArr(NodePrt(grid%Block(i)%iNode(k))%dat,grid%Block(i)%Prt(j))
+                  end if
+                end do
+                do k=1,getBlockSurfNum(grid%Block(i))
+                  if(grid%BlockNeibFacet(i)%dat(k)/=0)then
+                    if(grid%Facet(grid%BlockNeibFacet(i)%dat(k))%Prt(1)==0)then
+                      grid%Facet(grid%BlockNeibFacet(i)%dat(k))%Prt(1)=grid%Block(i)%Prt(j)
+                    else
+                      call applUnion(grid%Facet(grid%BlockNeibFacet(i)%dat(k))%Prt,&
+                      &             [grid%Block(i)%Prt(j)])
+                    end if
+                  end if
+                end do
+              end if
+            end do
+          end do
+          do i=1,grid%nPoint
+            call reallocArr(grid%Point(i)%Prt,size(NodePrt(grid%Point(i)%iNode(1))%dat))
+            grid%Point(i)%Prt(:)=NodePrt(grid%Point(i)%iNode(1))%dat(:)
+          end do
+          do i=1,grid%nLine
+            call reallocArr(grid%Line(i)%Prt,size(NodePrt(grid%Line(i)%iNode(1))%dat))
+            grid%Line(i)%Prt(:)=NodePrt(grid%Line(i)%iNode(1))%dat(:)
+            do j=2,grid%Line(i)%nNode
+              call applIntersection(grid%Line(i)%Prt,NodePrt(grid%Line(i)%iNode(j))%dat)
+            end do
+          end do
+          deallocate(NodePrt)
+        end if
+        ! process physical domain TODO
         cycle
       end if
     end do

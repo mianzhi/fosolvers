@@ -133,6 +133,10 @@ module moduleGrid
     procedure,public::updateIntfNorm
   end type
   
+  ! individual procedures
+  public::getBlockSurfNum
+  public::getBlockSurfNode
+  
 contains
   
   !> initialize this Ele
