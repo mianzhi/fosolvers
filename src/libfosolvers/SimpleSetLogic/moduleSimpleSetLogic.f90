@@ -7,6 +7,8 @@ module moduleSimpleSetLogic
   ! public procedures
   public findIntersection
   public findUnion
+  public applIntersection
+  public applUnion
   
 contains
   
@@ -34,12 +36,37 @@ contains
     integer,intent(in)::b(:) !< array b
     integer,allocatable::findUnion(:) !< intersection of a and b
     
-    findUnion=a
+    allocate(findUnion(size(a)))
+    findUnion(:)=a(:)
     do i=1,size(b)
       if(.not.any(a(:)==b(i)))then
         call pushArr(findUnion,b(i))
       end if
     end do
   end function
+  
+  !> apply to array a intersection operation with b
+  pure subroutine applIntersection(a,b)
+    use moduleBasicDataStruct
+    integer,intent(inout),allocatable::a(:) !< array a
+    integer,intent(in)::b(:) !< array b
+    integer,allocatable::temp(:)
+    
+    temp=findIntersection(a,b)
+    deallocate(a)
+    call move_alloc(temp,a)
+  end subroutine
+  
+  !> apply to array a union operation with b
+  pure subroutine applUnion(a,b)
+    use moduleBasicDataStruct
+    integer,intent(inout),allocatable::a(:) !< array a
+    integer,intent(in)::b(:) !< array b
+    integer,allocatable::temp(:)
+    
+    temp=findUnion(a,b)
+    deallocate(a)
+    call move_alloc(temp,a)
+  end subroutine
   
 end module
