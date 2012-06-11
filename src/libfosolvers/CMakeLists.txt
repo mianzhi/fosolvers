@@ -1,6 +1,7 @@
 SET(libfosolvers_src
   BasicDataStruct/moduleBasicDataStruct.f90
   SimpleGeometry/moduleSimpleGeometry.f90
+  SimpleSetLogic/moduleSimpleSetLogic.f90
   Grid/moduleGrid.f90
   FileIO/moduleFileIO.f90
 )
