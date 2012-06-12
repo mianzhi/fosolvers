@@ -3,6 +3,7 @@ SET(libfosolvers_src
   SimpleGeometry/moduleSimpleGeometry.f90
   SimpleSetLogic/moduleSimpleSetLogic.f90
   Grid/moduleGrid.f90
+  GridOperation/moduleGridOperation.f90
   FileIO/moduleFileIO.f90
 )
 ADD_LIBRARY(fosolvers STATIC ${libfosolvers_src})
