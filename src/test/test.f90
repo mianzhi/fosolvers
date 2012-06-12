@@ -9,12 +9,10 @@ subroutine testReadGMSH()
   use moduleGrid
   type(typeGrid)::grid
   
-  open(12,file='bin/gridGMSH2.msh',status='old')
+  open(12,file='bin/gridGMSH1.msh',status='old')
   call readGMSH(12,grid)
   close(12)
-  do i=1,grid%nFacet
-    write(*,*),i,grid%Facet(i)%Ent,grid%Facet(i)%Prt(:)
-  end do
+  write(*,*),grid%nPrt
   open(13,file='rst.msh',status='replace')
   call writeGMSH(13,grid)
   close(13)

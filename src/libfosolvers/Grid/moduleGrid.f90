@@ -63,7 +63,6 @@ module moduleGrid
     integer nDmn !< number of physical domains
     integer,allocatable::lDmn(:) !< list of physical domains
     integer nPrt !< number of partitions
-    integer,allocatable::lPrt(:) !< list of partitions
     
     ! auxiliary grid data
     logical isUpNodeNeib !< if the node neighbour facet and block are updated
@@ -235,7 +234,6 @@ contains
     if(allocated(this%Facet)) deallocate(this%Facet)
     if(allocated(this%Block)) deallocate(this%Block)
     if(allocated(this%lDmn)) deallocate(this%lDmn)
-    if(allocated(this%lPrt)) deallocate(this%lPrt)
     if(allocated(this%NodeNeibFacet)) deallocate(this%NodeNeibFacet)
     if(allocated(this%NodeNeibBlock)) deallocate(this%NodeNeibBlock)
     if(allocated(this%BlockNeibFacet)) deallocate(this%BlockNeibFacet)

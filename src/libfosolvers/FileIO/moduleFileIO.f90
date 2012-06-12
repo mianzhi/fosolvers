@@ -131,7 +131,8 @@ contains
         end do
         deallocate(tempEle)
         ! process partition
-        if(maxval([(maxval(grid%Block(l)%Prt(:)),l=1,grid%nBlock)])>0)then
+        grid%nPrt=maxval([(maxval(grid%Block(l)%Prt(:)),l=1,grid%nBlock)])
+        if(grid%nPrt>0)then
           allocate(NodePrt(grid%nNode))
           call grid%updateBlockNeib()
           do i=1,grid%nBlock
@@ -169,6 +170,8 @@ contains
             end do
           end do
           deallocate(NodePrt)
+        else
+          grid%nPrt=1
         end if
         ! process physical domain TODO
         cycle
