@@ -300,20 +300,6 @@ contains
         do j=1,m
           SurfNode=getBlockSurfNode(this%Block(i),j)
           allocate(mask(size(SurfNode)))
-          if(allocated(this%NodeNeibFacet(SurfNode(1))%dat))then
-            ScanList=this%NodeNeibFacet(SurfNode(1))%dat
-            do k=1,size(ScanList)
-              mask(:)=.false.
-              forall(l=1:size(SurfNode))
-                mask(l)=any(this%Facet(ScanList(k))%iNode(:)==SurfNode(l))
-              end forall
-              if(all(mask(:)))then
-                this%BlockNeibFacet(i)%dat(j)=ScanList(k)
-                exit
-              end if
-            end do
-            deallocate(ScanList)
-          end if
           if(allocated(this%NodeNeibBlock(SurfNode(1))%dat))then
             ScanList=this%NodeNeibBlock(SurfNode(1))%dat
             do k=1,size(ScanList)
@@ -324,6 +310,23 @@ contains
                 end forall
                 if(all(mask(:)))then
                   this%BlockNeibBlock(i)%dat(j)=ScanList(k)
+                  exit
+                end if
+              end if
+            end do
+            deallocate(ScanList)
+          end if
+          if(allocated(this%NodeNeibFacet(SurfNode(1))%dat))then
+            ScanList=this%NodeNeibFacet(SurfNode(1))%dat
+            do k=1,size(ScanList)
+              mask(:)=.false.
+              forall(l=1:size(SurfNode))
+                mask(l)=any(this%Facet(ScanList(k))%iNode(:)==SurfNode(l))
+              end forall
+              if(all(mask(:)))then
+                this%BlockNeibFacet(i)%dat(j)=ScanList(k)
+                if(.not.(this%BlockNeibBlock(i)%dat(j)/=0.and.&
+                &        this%Facet(this%BlockNeibFacet(i)%dat(j))%Ent>=0))then
                   exit
                 end if
               end if
