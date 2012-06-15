@@ -18,9 +18,9 @@ subroutine testReadGMSH()
   close(12)
   call splitGridPrt(grid,sgrid,map,isOverlap=.false.)
   do i=1,grid%nPrt
-    write(*,*),i,'::',size(map(MAP_BLOCK,i)%dat)
-    do j=1,sgrid(i)%nBlock
-      write(*,*),'    ',j,map(MAP_BLOCK,i)%dat(j)
+    write(*,*),i,'::',size(map(MAP_FACET,i)%dat)
+    do j=1,sgrid(i)%nFacet
+      write(*,*),'    ',j,sgrid(i)%Facet(j)%Prt(:)
     end do
   end do
   open(13,file='rst.msh',status='replace')

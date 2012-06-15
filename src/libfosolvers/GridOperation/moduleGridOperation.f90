@@ -32,13 +32,16 @@ contains
     else
       overlap=.false.
     end if
+    ! initiate output data
     if(allocated(rst)) deallocate(rst)
     if(allocated(r2o)) deallocate(r2o)
     allocate(rst(org%nPrt))
     allocate(r2o(NPLFB,org%nPrt))
     do i=1,org%nPrt
       call rst(i)%init()
+      rst(i)%nPrt=1
     end do
+    ! generate element mapping
     do i=1,org%nPoint
       do j=1,size(org%Point(i)%Prt)
         if(org%Point(i)%Prt(j)/=0)then
@@ -78,6 +81,20 @@ contains
         end if
       end do
     end do
+    ! copy elements
+    do i=1,org%nPrt
+      allocate(rst(i)%Point(rst(i)%nPoint))
+      rst(i)%Point(:)=org%Point(r2o(MAP_POINT,i)%dat(:))
+      allocate(rst(i)%Line(rst(i)%nLine))
+      rst(i)%Line(:)=org%Line(r2o(MAP_LINE,i)%dat(:))
+      allocate(rst(i)%Facet(rst(i)%nFacet))
+      rst(i)%Facet(:)=org%Facet(r2o(MAP_FACET,i)%dat(:))
+      allocate(rst(i)%Block(rst(i)%nBlock))
+      rst(i)%Block(:)=org%Block(r2o(MAP_BLOCK,i)%dat(:))
+    end do
+    ! generate node mapping
+    ! copy nodes
+    ! correct node reference
   end subroutine
   
 end module
