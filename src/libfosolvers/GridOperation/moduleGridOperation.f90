@@ -21,6 +21,7 @@ contains
   !> split the original grid into resulting grids with respect to partition
   subroutine splitGridPrt(org,rst,r2o,isOverlap)
     use moduleBasicDataStruct
+    use moduleSimpleSetLogic
     type(typeGrid),intent(in)::org !< the original grid
     type(typeGrid),intent(inout),allocatable::rst(:) !< the resulting grids
     type(typeHtr1DIArr),intent(inout),allocatable::r2o(:,:) !< mapping from rst to org
@@ -41,7 +42,7 @@ contains
       call rst(i)%init()
       rst(i)%nPrt=1
     end do
-    ! generate element mapping
+    ! generate mapping
     do i=1,org%nPoint
       do j=1,size(org%Point(i)%Prt)
         if(org%Point(i)%Prt(j)/=0)then
@@ -72,17 +73,28 @@ contains
           if(org%Block(i)%Prt(j)/=0)then
             call pushArr(r2o(MAP_BLOCK,abs(org%Block(i)%Prt(j)))%dat,i)
             rst(abs(org%Block(i)%Prt(j)))%nBlock=rst(abs(org%Block(i)%Prt(j)))%nBlock+1
+            do k=1,org%Block(i)%nNode
+              call applUnion(r2o(MAP_NODE,abs(org%Block(i)%Prt(j)))%dat,[org%Block(i)%iNode(k)])
+            end do
           end if
         else
           if(org%Block(i)%Prt(j)>0)then
             call pushArr(r2o(MAP_BLOCK,org%Block(i)%Prt(j))%dat,i)
             rst(org%Block(i)%Prt(j))%nBlock=rst(org%Block(i)%Prt(j))%nBlock+1
+            do k=1,org%Block(i)%nNode
+              call applUnion(r2o(MAP_NODE,org%Block(i)%Prt(j))%dat,[org%Block(i)%iNode(k)])
+            end do
           end if
         end if
       end do
     end do
-    ! copy elements
     do i=1,org%nPrt
+      rst(i)%nNode=size(r2o(MAP_NODE,i)%dat)
+    end do
+    ! copy items
+    do i=1,org%nPrt
+      allocate(rst(i)%NodePos(DIMS,rst(i)%nNode))
+      rst(i)%NodePos(:,:)=org%NodePos(:,r2o(MAP_NODE,i)%dat(:))
       allocate(rst(i)%Point(rst(i)%nPoint))
       rst(i)%Point(:)=org%Point(r2o(MAP_POINT,i)%dat(:))
       allocate(rst(i)%Line(rst(i)%nLine))
@@ -92,8 +104,6 @@ contains
       allocate(rst(i)%Block(rst(i)%nBlock))
       rst(i)%Block(:)=org%Block(r2o(MAP_BLOCK,i)%dat(:))
     end do
-    ! generate node mapping
-    ! copy nodes
     ! correct node reference
   end subroutine
   
