@@ -64,6 +64,9 @@ contains
     integer,intent(in)::b(:) !< array b
     integer,allocatable::temp(:)
     
+    if(.not.allocated(a))then
+      allocate(a(0))
+    end if
     temp=findUnion(a,b)
     deallocate(a)
     call move_alloc(temp,a)
