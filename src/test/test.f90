@@ -16,14 +16,8 @@ subroutine testReadGMSH()
   open(12,file='bin/gridGMSH1.msh',status='old')
   call readGMSH(12,grid)
   close(12)
-  call splitGridPrt(grid,sgrid,map,isOverlap=.false.)
-  do i=1,grid%nPrt
-    write(*,*),i,'::',size(map(MAP_NODE,i)%dat)
-    do j=1,sgrid(i)%nNode
-      write(*,*),'    ',j,sgrid(i)%NodePos(:,j)
-    end do
-  end do
+  call splitGridPrt(grid,sgrid,map,overlap=.false.)
   open(13,file='rst.msh',status='replace')
-  call writeGMSH(13,grid)
+  call writeGMSH(13,sgrid(2))
   close(13)
 end subroutine
