@@ -25,7 +25,7 @@ contains
     type(typeGrid),intent(in)::org !< the original grid
     type(typeGrid),intent(inout),allocatable::rst(:) !< the resulting grids
     type(typeHtr1DIArr),intent(inout),allocatable::r2o(:,:) !< mapping from rst to org
-    logical,intent(in),optional::overlap ! whether the partitions are overlapping
+    logical,intent(in),optional::overlap !< whether the partitions are overlapping
     integer o2rNodeMap(org%nNode,org%nPrt)
     logical isOverlap
     
