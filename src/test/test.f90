@@ -6,12 +6,19 @@ end program
 
 subroutine testReadGMSH()
   use moduleBasicDataStruct
+  use moduleSimpleSetLogic
   use moduleFileIO
   use moduleGrid
   use moduleGridOperation
   type(typeGrid)::grid
   type(typeGrid),allocatable::sgrid(:)
   type(typeHtr1DIArr),allocatable::map(:,:)
+  
+  integer,allocatable::a(:)
+  allocate(a(4))
+  a(:)=[1,2,3,4]
+  call applComplement(a,[2,4])
+  write(*,*),a
   
   open(12,file='bin/gridGMSH1.msh',status='old')
   call readGMSH(12,grid)
