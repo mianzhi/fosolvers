@@ -10,8 +10,9 @@ subroutine testReadGMSH()
   use moduleFileIO
   use moduleGrid
   use moduleFVMGrad
+  use moduleInterpolation
   type(typeGrid)::grid
-  double precision,allocatable::v(:),vv(:,:),vvv(:,:,:)
+  double precision,allocatable::v(:),vv(:,:),vvv(:,:,:),vIntf(:)
   
   open(12,file='bin/gridGMSH2.msh',status='old')
   call readGMSH(12,grid)
@@ -25,8 +26,11 @@ subroutine testReadGMSH()
   end do
   vv=findGrad(v,grid,bind=BIND_BLOCK)
   vvv=findGrad(vv,grid,bind=BIND_BLOCK)
-  do i=1,grid%nBlock
-    write(*,*),vvv(1,1,i),vvv(3,2,i)
+  call grid%updateIntfPos()
+  allocate(vIntf(grid%nIntf))
+  vIntf=itplBlock2Intf(v,grid)
+  do i=1,grid%nIntf
+    write(*,*),vIntf(i)
   end do
   open(13,file='rst.msh',status='replace')
   call writeGMSH(13,grid)
