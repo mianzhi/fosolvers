@@ -5,6 +5,10 @@ SET(libfosolvers_src
   Grid/moduleGrid.f90
   GridOperation/moduleGridOperation.f90
   FileIO/moduleFileIO.f90
+  Interpolation/moduleInterpolation.f90
+  FVM/moduleFVMGrad.f90
+  FVM/moduleFVMDiffus.f90
+  FVM/moduleFVMConvect.f90
 )
 ADD_LIBRARY(fosolvers STATIC ${libfosolvers_src})
 TARGET_LINK_LIBRARIES(fosolvers lapack)
