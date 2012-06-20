@@ -28,7 +28,7 @@ subroutine testReadGMSH()
   vvv=findGrad(vv,grid,bind=BIND_BLOCK)
   call grid%updateIntfPos()
   allocate(vIntf(grid%nIntf))
-  vIntf=itplBlock2Intf(v,grid)
+  vIntf=itplBlock2Intf(v,vv,grid)
   do i=1,grid%nIntf
     write(*,*),vIntf(i)
   end do
