@@ -7,9 +7,6 @@ module moduleFVMGrad
   ! constants
   integer,parameter::GRAD_MIN_NEIB=4 !< minimum number of neighbor data sets to find gradient
   
-  integer,parameter,public::BIND_NODE=1 !< bind with node
-  integer,parameter,public::BIND_BLOCK=5 !< bind with block
-  
   !> generic find gradient
   interface findGrad
     module procedure::findGradScal

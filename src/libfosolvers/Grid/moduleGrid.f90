@@ -8,6 +8,12 @@ module moduleGrid
   ! constants
   integer,parameter,public::DIMS=3 !< dimensions
   
+  integer,parameter,public::BIND_NODE=1 !< bind with node
+  integer,parameter,public::BIND_POINT=2 !< bind with point
+  integer,parameter,public::BIND_LINE=3 !< bind with line
+  integer,parameter,public::BIND_FACET=4 !< bind with facet
+  integer,parameter,public::BIND_BLOCK=5 !< bind with block
+  
   integer,parameter,public::POINT_TYPE=15 !< point type
   integer,parameter,public::LINE_TYPE=1 !< line type
   integer,parameter,public::TRI_TYPE=2 !< tri type
