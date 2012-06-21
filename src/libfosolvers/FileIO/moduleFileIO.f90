@@ -13,6 +13,9 @@ module moduleFileIO
   !> write GMSH file
   interface writeGMSH
     module procedure::writeGMSHGrid
+    module procedure::writeGMSHScal
+    module procedure::writeGMSHVect
+    module procedure::writeGMSHTens
   end interface
   public::writeGMSH
   
@@ -221,6 +224,171 @@ contains
       write(id,'(a)'),trim(adjustl(tempStr))
     end do
     write(id,'(a)'),'$EndElements'
+  end subroutine
+  
+  !> write scalar v into opened file id
+  subroutine writeGMSHScal(id,v,grid,bind,vName,n,t)
+    use moduleGrid
+    integer,intent(in)::id !< the file id
+    double precision,intent(in)::v(:) !< scalar to be written
+    type(typeGrid),intent(in)::grid !< grid on which v is defined
+    integer,intent(in)::bind !< bind with Node/Facet/Block
+    character(*),intent(in)::vName !< name of v
+    integer,intent(in),optional::n !< time step index
+    double precision,intent(in),optional::t !< time
+    integer,parameter::DFLT_STR_LEN=400
+    character(DFLT_STR_LEN)::tempStr
+    
+    select case(bind)
+    case(BIND_NODE)
+      write(id,'(a)'),'$NodeData'
+    case(BIND_FACET,BIND_BLOCK)
+      write(id,'(a)'),'$ElementData'
+    case default
+    end select
+    write(id,'(i1)'),1 ! 1 string tag
+    write(id,'(a,a,a)'),'"',vName,'"'
+    write(id,'(i1)'),1 ! 1 real tag
+    if(present(t))then
+      write(id,*),t
+    else
+      write(id,*),0d0
+    end if
+    write(id,'(i1)'),3 ! 3 integer tags
+    if(present(n))then
+      write(id,*),n
+    else
+      write(id,*),0
+    end if
+    write(id,'(i1)'),1 ! 1-component scalar
+    write(id,*),size(v)
+    do i=1,size(v)
+      select case(bind)
+      case(BIND_NODE,BIND_BLOCK)
+        write(tempStr,*),i,v(i)
+      case(BIND_FACET)
+        write(tempStr,*),i+grid%nBlock,v(i)
+      case default
+      end select
+      write(id,'(a)'),trim(adjustl(tempStr))
+    end do
+    select case(bind)
+    case(BIND_NODE)
+      write(id,'(a)'),'$EndNodeData'
+    case(BIND_FACET,BIND_BLOCK)
+      write(id,'(a)'),'$EndElementData'
+    case default
+    end select
+  end subroutine
+  
+  !> write vector v into opened file id
+  subroutine writeGMSHVect(id,v,grid,bind,vName,n,t)
+    use moduleGrid
+    integer,intent(in)::id !< the file id
+    double precision,intent(in)::v(:,:) !< vector to be written
+    type(typeGrid),intent(in)::grid !< grid on which v is defined
+    integer,intent(in)::bind !< bind with Node/Facet/Block
+    character(*),intent(in)::vName !< name of v
+    integer,intent(in),optional::n !< time step index
+    double precision,intent(in),optional::t !< time
+    integer,parameter::DFLT_STR_LEN=400
+    character(DFLT_STR_LEN)::tempStr
+    
+    select case(bind)
+    case(BIND_NODE)
+      write(id,'(a)'),'$NodeData'
+    case(BIND_FACET,BIND_BLOCK)
+      write(id,'(a)'),'$ElementData'
+    case default
+    end select
+    write(id,'(i1)'),1 ! 1 string tag
+    write(id,'(a,a,a)'),'"',vName,'"'
+    write(id,'(i1)'),1 ! 1 real tag
+    if(present(t))then
+      write(id,*),t
+    else
+      write(id,*),0d0
+    end if
+    write(id,'(i1)'),3 ! 3 integer tags
+    if(present(n))then
+      write(id,*),n
+    else
+      write(id,*),0
+    end if
+    write(id,'(i1)'),3 ! 3-component vector
+    write(id,*),size(v,2)
+    do i=1,size(v,2)
+      select case(bind)
+      case(BIND_NODE,BIND_BLOCK)
+        write(tempStr,*),i,v(:,i)
+      case(BIND_FACET)
+        write(tempStr,*),i+grid%nBlock,v(:,i)
+      case default
+      end select
+      write(id,'(a)'),trim(adjustl(tempStr))
+    end do
+    select case(bind)
+    case(BIND_NODE)
+      write(id,'(a)'),'$EndNodeData'
+    case(BIND_FACET,BIND_BLOCK)
+      write(id,'(a)'),'$EndElementData'
+    case default
+    end select
+  end subroutine
+  
+  !> write tensor v into opened file id
+  subroutine writeGMSHTens(id,v,grid,bind,vName,n,t)
+    use moduleGrid
+    integer,intent(in)::id !< the file id
+    double precision,intent(in)::v(:,:,:) !< tensor to be written
+    type(typeGrid),intent(in)::grid !< grid on which v is defined
+    integer,intent(in)::bind !< bind with Node/Facet/Block
+    character(*),intent(in)::vName !< name of v
+    integer,intent(in),optional::n !< time step index
+    double precision,intent(in),optional::t !< time
+    integer,parameter::DFLT_STR_LEN=400
+    character(DFLT_STR_LEN)::tempStr
+    
+    select case(bind)
+    case(BIND_NODE)
+      write(id,'(a)'),'$NodeData'
+    case(BIND_FACET,BIND_BLOCK)
+      write(id,'(a)'),'$ElementData'
+    case default
+    end select
+    write(id,'(i1)'),1 ! 1 string tag
+    write(id,'(a,a,a)'),'"',vName,'"'
+    write(id,'(i1)'),1 ! 1 real tag
+    if(present(t))then
+      write(id,*),t
+    else
+      write(id,*),0d0
+    end if
+    write(id,'(i1)'),3 ! 3 integer tags
+    if(present(n))then
+      write(id,*),n
+    else
+      write(id,*),0
+    end if
+    write(id,'(i1)'),9 ! 9-component tensor
+    write(id,*),size(v,3)
+    do i=1,size(v,3)
+      select case(bind)
+      case(BIND_NODE,BIND_BLOCK)
+        write(tempStr,*),i,v(:,1,i),v(:,2,i),v(:,3,i)
+      case(BIND_FACET)
+        write(tempStr,*),i+grid%nBlock,v(:,1,i),v(:,2,i),v(:,3,i)
+      case default
+      end select
+      write(id,'(a)'),trim(adjustl(tempStr))
+    end do
+    select case(bind)
+    case(BIND_NODE)
+      write(id,'(a)'),'$EndNodeData'
+    case(BIND_FACET,BIND_BLOCK)
+      write(id,'(a)'),'$EndElementData'
+    case default
+    end select
   end subroutine
   
 end module
