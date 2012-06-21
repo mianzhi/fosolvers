@@ -4,6 +4,11 @@
 module moduleFileIO
   private
   
+  ! constants
+  integer,parameter::RANK_SCAL=1 !< rank of scalar
+  integer,parameter::RANK_VECT=2 !< rank of vector
+  integer,parameter::RANK_TENS=3 !< rank of tensor
+  
   !> read GMSH file
   interface readGMSH
     module procedure::readGMSHGrid
@@ -226,11 +231,12 @@ contains
     write(id,'(a)'),'$EndElements'
   end subroutine
   
-  !> write scalar v into opened file id
-  subroutine writeGMSHScal(id,v,grid,bind,vName,n,t)
+  !> write scalar/vector/tensor v into opened file id
+  subroutine writeGMSHScalVectTens(id,rank,v,grid,bind,vName,n,t)
     use moduleGrid
     integer,intent(in)::id !< the file id
-    double precision,intent(in)::v(:) !< scalar to be written
+    integer,intent(in)::rank !< rank of v
+    double precision,intent(in)::v(*) !< data to be written
     type(typeGrid),intent(in)::grid !< grid on which v is defined
     integer,intent(in)::bind !< bind with Node/Facet/Block
     character(*),intent(in)::vName !< name of v
@@ -238,6 +244,7 @@ contains
     double precision,intent(in),optional::t !< time
     integer,parameter::DFLT_STR_LEN=400
     character(DFLT_STR_LEN)::tempStr
+    integer nEntry,nItem
     
     select case(bind)
     case(BIND_NODE)
@@ -260,14 +267,34 @@ contains
     else
       write(id,*),0
     end if
-    write(id,'(i1)'),1 ! 1-component scalar
-    write(id,*),size(v)
-    do i=1,size(v)
+    select case(rank)
+    case(RANK_SCAL)
+      nEntry=1
+    case(RANK_VECT)
+      nEntry=3
+    case(RANK_TENS)
+      nEntry=9
+    case default
+      nEntry=0
+    end select
+    write(id,'(i1)'),nEntry
+    select case(bind)
+    case(BIND_NODE)
+      nItem=grid%nNode
+    case(BIND_FACET)
+      nItem=grid%nFacet
+    case(BIND_BLOCK)
+      nItem=grid%nBlock
+    case default
+      nItem=0
+    end select
+    write(id,*),nItem
+    do i=1,nItem
       select case(bind)
       case(BIND_NODE,BIND_BLOCK)
-        write(tempStr,*),i,v(i)
+        write(tempStr,*),i,v((i-1)*nEntry+1:(i-1)*nEntry+nEntry)
       case(BIND_FACET)
-        write(tempStr,*),i+grid%nBlock,v(i)
+        write(tempStr,*),i+grid%nBlock,v((i-1)*nEntry+1:(i-1)*nEntry+nEntry)
       case default
       end select
       write(id,'(a)'),trim(adjustl(tempStr))
@@ -279,6 +306,24 @@ contains
       write(id,'(a)'),'$EndElementData'
     case default
     end select
+  end subroutine
+  
+  !> write scalar v into opened file id
+  subroutine writeGMSHScal(id,v,grid,bind,vName,n,t)
+    use moduleGrid
+    integer,intent(in)::id !< the file id
+    double precision,intent(in)::v(:) !< scalar to be written
+    type(typeGrid),intent(in)::grid !< grid on which v is defined
+    integer,intent(in)::bind !< bind with Node/Facet/Block
+    character(*),intent(in)::vName !< name of v
+    integer,intent(in),optional::n !< time step index
+    double precision,intent(in),optional::t !< time
+    
+    if(present(n).and.present(t))then
+      call writeGMSHScalVectTens(id,RANK_SCAL,v,grid,bind,vName,n,t)
+    else
+      call writeGMSHScalVectTens(id,RANK_SCAL,v,grid,bind,vName)
+    end if
   end subroutine
   
   !> write vector v into opened file id
@@ -291,49 +336,12 @@ contains
     character(*),intent(in)::vName !< name of v
     integer,intent(in),optional::n !< time step index
     double precision,intent(in),optional::t !< time
-    integer,parameter::DFLT_STR_LEN=400
-    character(DFLT_STR_LEN)::tempStr
     
-    select case(bind)
-    case(BIND_NODE)
-      write(id,'(a)'),'$NodeData'
-    case(BIND_FACET,BIND_BLOCK)
-      write(id,'(a)'),'$ElementData'
-    case default
-    end select
-    write(id,'(i1)'),1 ! 1 string tag
-    write(id,'(a,a,a)'),'"',vName,'"'
-    write(id,'(i1)'),1 ! 1 real tag
-    if(present(t))then
-      write(id,*),t
+    if(present(n).and.present(t))then
+      call writeGMSHScalVectTens(id,RANK_VECT,v,grid,bind,vName,n,t)
     else
-      write(id,*),0d0
+      call writeGMSHScalVectTens(id,RANK_VECT,v,grid,bind,vName)
     end if
-    write(id,'(i1)'),3 ! 3 integer tags
-    if(present(n))then
-      write(id,*),n
-    else
-      write(id,*),0
-    end if
-    write(id,'(i1)'),3 ! 3-component vector
-    write(id,*),size(v,2)
-    do i=1,size(v,2)
-      select case(bind)
-      case(BIND_NODE,BIND_BLOCK)
-        write(tempStr,*),i,v(:,i)
-      case(BIND_FACET)
-        write(tempStr,*),i+grid%nBlock,v(:,i)
-      case default
-      end select
-      write(id,'(a)'),trim(adjustl(tempStr))
-    end do
-    select case(bind)
-    case(BIND_NODE)
-      write(id,'(a)'),'$EndNodeData'
-    case(BIND_FACET,BIND_BLOCK)
-      write(id,'(a)'),'$EndElementData'
-    case default
-    end select
   end subroutine
   
   !> write tensor v into opened file id
@@ -346,49 +354,12 @@ contains
     character(*),intent(in)::vName !< name of v
     integer,intent(in),optional::n !< time step index
     double precision,intent(in),optional::t !< time
-    integer,parameter::DFLT_STR_LEN=400
-    character(DFLT_STR_LEN)::tempStr
     
-    select case(bind)
-    case(BIND_NODE)
-      write(id,'(a)'),'$NodeData'
-    case(BIND_FACET,BIND_BLOCK)
-      write(id,'(a)'),'$ElementData'
-    case default
-    end select
-    write(id,'(i1)'),1 ! 1 string tag
-    write(id,'(a,a,a)'),'"',vName,'"'
-    write(id,'(i1)'),1 ! 1 real tag
-    if(present(t))then
-      write(id,*),t
+    if(present(n).and.present(t))then
+      call writeGMSHScalVectTens(id,RANK_TENS,v,grid,bind,vName,n,t)
     else
-      write(id,*),0d0
+      call writeGMSHScalVectTens(id,RANK_TENS,v,grid,bind,vName)
     end if
-    write(id,'(i1)'),3 ! 3 integer tags
-    if(present(n))then
-      write(id,*),n
-    else
-      write(id,*),0
-    end if
-    write(id,'(i1)'),9 ! 9-component tensor
-    write(id,*),size(v,3)
-    do i=1,size(v,3)
-      select case(bind)
-      case(BIND_NODE,BIND_BLOCK)
-        write(tempStr,*),i,v(:,1,i),v(:,2,i),v(:,3,i)
-      case(BIND_FACET)
-        write(tempStr,*),i+grid%nBlock,v(:,1,i),v(:,2,i),v(:,3,i)
-      case default
-      end select
-      write(id,'(a)'),trim(adjustl(tempStr))
-    end do
-    select case(bind)
-    case(BIND_NODE)
-      write(id,'(a)'),'$EndNodeData'
-    case(BIND_FACET,BIND_BLOCK)
-      write(id,'(a)'),'$EndElementData'
-    case default
-    end select
   end subroutine
   
 end module
