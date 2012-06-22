@@ -25,6 +25,7 @@ contains
     double precision PF(DIMS),PS(DIMS),alpha
     
     call grid%updateIntfPos()
+    call grid%updateBlockPos()
     call reallocArr(itplBCDVect,size(v,1),grid%nIntf)
     do i=1,grid%nIntf
       m=grid%IntfNeibBlock(1,i)
@@ -62,6 +63,7 @@ contains
     double precision dPS,dSF,alpha,Saux(DIMS)
     
     call grid%updateIntfPos()
+    call grid%updateBlockPos()
     call reallocArr(itplBCDCVect,size(v,1),grid%nIntf)
     do i=1,grid%nIntf
       m=grid%IntfNeibBlock(1,i)

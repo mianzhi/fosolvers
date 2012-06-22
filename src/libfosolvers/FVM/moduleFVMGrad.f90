@@ -59,6 +59,7 @@ contains
       end do
     case(BIND_BLOCK)
       call grid%updateBlockNeib()
+      call grid%updateBlockPos()
       do i=1,grid%nBlock
         call applUnion(lNeib,grid%BlockNeibBlock(i)%dat(:))
         call applComplement(lNeib,[i,0])
