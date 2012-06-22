@@ -14,7 +14,7 @@ module moduleFVMDiffus
 contains
   
   !> find diffusion driven by vector v through interface using orthogonal scheme
-  !> \f[ \int_{intf} v \cdot \hat n dA \f]
+  !> \f[ \int_{intf} \nabla \mathbf{v} \cdot \hat{n} dA \f]
   function findDiffusORTHVect(v,grid)
     use moduleGrid
     double precision,intent(in)::v(:,:) !< the vector which drives the diffusion
@@ -36,7 +36,7 @@ contains
   end function
   
   !> find diffusion driven by scalar v through interface using orthogonal scheme
-  !> \f[ \int_{intf} v \cdot \hat n dA \f]
+  !> \f[ \int_{intf} \nabla v \cdot \hat{n} dA \f]
   function findDiffusORTHScal(v,grid)
     use moduleGrid
     double precision,intent(in)::v(:) !< the scalar which drives the diffusion
