@@ -10,25 +10,28 @@ subroutine testReadGMSH()
   use moduleFileIO
   use moduleGrid
   use moduleFVMGrad
+  use moduleFVMDiffus
   use moduleInterpolation
   type(typeGrid)::grid
-  double precision,allocatable::v(:),vv(:,:),vvv(:,:,:)
+  double precision,allocatable::v(:)
+  double precision t
   
-  open(12,file='bin/gridGMSH1.msh',status='old')
+  open(12,file='bin/gridGMSH3.msh',status='old')
   call readGMSH(12,grid)
   close(12)
-  allocate(v(grid%nNode))
-  allocate(vv(DIMS,grid%nNode))
-  allocate(vvv(DIMS,DIMS,grid%nNode))
-  do i=1,grid%nNode
-    v(i)=sin(10d0*grid%NodePos(1,i))+sin(10d0*grid%NodePos(2,i))+sin(10d0*grid%NodePos(3,i))
+  allocate(v(grid%nBlock))
+  call grid%updateBlockPos()
+  do i=1,grid%nBlock
+    v(i)=merge(1d0,0d0,norm2(grid%BlockPos(:,i))>0.8d0)
   end do
-  vv=findGrad(v,grid,BIND_NODE)
-  vvv=findGrad(vv,grid,BIND_NODE)
+  t=0d0
   open(13,file='rst.msh',status='replace')
   call writeGMSH(13,grid)
-  call writeGMSH(13,v,grid,BIND_NODE,'name1')
-  call writeGMSH(13,vv,grid,BIND_NODE,'name2')
-  call writeGMSH(13,vvv,grid,BIND_NODE,'name3')
+  call writeGMSH(13,v,grid,BIND_BLOCK,'name1',0,t)
+  do i=1,100
+    v=v+findDiffus(v,grid)*1d0
+    t=t+1d0
+    call writeGMSH(13,v,grid,BIND_BLOCK,'name1',i,t)
+  end do
   close(13)
 end subroutine
