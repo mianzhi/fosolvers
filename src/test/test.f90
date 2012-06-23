@@ -13,13 +13,14 @@ subroutine testReadGMSH()
   use moduleFVMDiffus
   use moduleInterpolation
   type(typeGrid)::grid
-  double precision,allocatable::v(:)
+  double precision,allocatable::v(:),vv(:,:)
   double precision t
   
   open(12,file='bin/gridGMSH3.msh',status='old')
   call readGMSH(12,grid)
   close(12)
   allocate(v(grid%nBlock))
+  allocate(vv(DIMS,grid%nBlock))
   call grid%updateBlockPos()
   do i=1,grid%nBlock
     v(i)=merge(1d0,0d0,norm2(grid%BlockPos(:,i))>0.8d0)
@@ -29,8 +30,9 @@ subroutine testReadGMSH()
   call writeGMSH(13,grid)
   call writeGMSH(13,v,grid,BIND_BLOCK,'name1',0,t)
   do i=1,100
-    v=v+findDiffus(v,grid)*1d0
-    t=t+1d0
+    vv=findGrad(v,grid,BIND_BLOCK)
+    v=v+findDiffus(v,grid,vv)*0.8d0
+    t=t+0.8d0
     call writeGMSH(13,v,grid,BIND_BLOCK,'name1',i,t)
   end do
   close(13)
