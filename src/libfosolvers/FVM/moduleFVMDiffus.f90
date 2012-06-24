@@ -21,7 +21,7 @@ contains
     use moduleGrid
     double precision,intent(in)::v(:,:) !< the vector which drives the diffusion
     type(typeGrid),intent(inout)::grid !< the grid on which v is defined
-    double precision findDiffusORTHVect(size(v,1),grid%nBlock)
+    double precision findDiffusORTHVect(size(v,1),grid%nBlock) !< increment due to diffusion
     double precision flowRate(size(v,1))
     
     call grid%updateIntfPos()
@@ -43,7 +43,7 @@ contains
     use moduleGrid
     double precision,intent(in)::v(:) !< the scalar which drives the diffusion
     type(typeGrid),intent(inout)::grid !< the grid on which v is defined
-    double precision findDiffusORTHScal(grid%nBlock)
+    double precision findDiffusORTHScal(grid%nBlock) !< increment due to diffusion
     double precision vv(1,size(v)),vrst(1,grid%nBlock)
     
     vv(1,:)=v(:)
@@ -59,7 +59,7 @@ contains
     double precision,intent(in)::v(:,:) !< the vector which drives the diffusion
     type(typeGrid),intent(inout)::grid !< the grid on which v is defined
     double precision,intent(in)::grad(DIMS,size(v,1),size(v,2)) !< the gradient of v
-    double precision findDiffusSDVect(size(v,1),grid%nBlock)
+    double precision findDiffusSDVect(size(v,1),grid%nBlock) !< increment due to diffusion
     double precision flowRate(size(v,1)),dPF,sf(DIMS),tf(DIMS),rf(DIMS),Afs
     double precision,allocatable::gradIntf(:,:,:)
     
@@ -98,7 +98,7 @@ contains
     double precision,intent(in)::v(:) !< the scalar which drives the diffusion
     type(typeGrid),intent(inout)::grid !< the grid on which v is defined
     double precision,intent(in)::grad(DIMS,size(v)) !< the gradient of v
-    double precision findDiffusSDScal(grid%nBlock)
+    double precision findDiffusSDScal(grid%nBlock) !< increment due to diffusion
     double precision vv(1,size(v)),vgrad(DIMS,1,size(v)),vrst(1,grid%nBlock)
     
     vv(1,:)=v(:)
