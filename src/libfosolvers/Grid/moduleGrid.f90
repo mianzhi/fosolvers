@@ -13,6 +13,7 @@ module moduleGrid
   integer,parameter,public::BIND_LINE=3 !< bind with line
   integer,parameter,public::BIND_FACET=4 !< bind with facet
   integer,parameter,public::BIND_BLOCK=5 !< bind with block
+  integer,parameter,public::BIND_INTF=6 !< bind with interface
   
   integer,parameter,public::POINT_TYPE=15 !< point type
   integer,parameter,public::LINE_TYPE=1 !< line type
