@@ -63,9 +63,9 @@ contains
     allocate(uIntf(DIMS,grid%nIntf))
     select case(ubind)
     case(BIND_NODE)
-      !TODO: interpolation from node to interface
+      !TODO:interpolation from node to interface
     case(BIND_BLOCK)
-      !TODO: interpolation for co-located u
+      !TODO:interpolation for co-located u
     case(BIND_INTF)
       uIntf(:,:)=u(:,:)
     case default
