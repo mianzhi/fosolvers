@@ -6,6 +6,8 @@ module moduleFVMConvect
   
   !> find convection through interface
   interface findConvect
+    module procedure findConvectUpWindScal
+    module procedure findConvectUpWindVect
     module procedure findConvectTVDScal
     module procedure findConvectTVDVect
   end interface
@@ -24,6 +26,61 @@ module moduleFVMConvect
   public minmod
   
 contains
+  
+  !> find the convection of vector phi driven by velocity u through interface using upwind scheme
+  !> \f[ \int_{intf} \mathbf{\Phi} (\mathbf{u} \cdot \hat{n}) dA \f]
+  function findConvectUpWindVect(phi,u,ubind,grid)
+    use moduleGrid
+    double precision,intent(in)::phi(:,:) !< variable to be convected
+    double precision,intent(in)::u(:,:) !< velocity which drives the convection
+    integer,intent(in)::ubind !< bind velocity with node/block/interface
+    type(typeGrid),intent(inout)::grid !< the grid
+    double precision findConvectUpWindVect(size(phi,1),grid%nBlock) !< increment due to convection
+    double precision F,flowRate(size(phi,1))
+    double precision,allocatable::uIntf(:,:)
+    
+    call grid%updateIntfArea()
+    call grid%updateIntfNorm()
+    findConvectUpWindVect(:,:)=0d0
+    allocate(uIntf(DIMS,grid%nIntf))
+    select case(ubind)
+    case(BIND_NODE)
+      !TODO:interpolation from node to interface
+    case(BIND_BLOCK)
+      !TODO:interpolation for co-located u
+    case(BIND_INTF)
+      uIntf(:,:)=u(:,:)
+    case default
+    end select
+    do i=1,grid%nIntf
+      m=grid%IntfNeibBlock(1,i)
+      n=grid%IntfNeibBlock(2,i)
+      F=dot_product(grid%IntfNorm(:,i),uIntf(:,i))*grid%IntfArea(i)
+      if(F>0d0)then
+        flowRate=-F*phi(:,m)
+      else
+        flowRate=-F*phi(:,n)
+      end if
+      findConvectUpWindVect(:,m)=findConvectUpWindVect(:,m)+flowRate(:)
+      findConvectUpWindVect(:,n)=findConvectUpWindVect(:,n)-flowRate(:)
+    end do
+  end function
+  
+  !> find the convection of scalar phi driven by velocity u through interface using upwind scheme
+  !> \f[ \int_{intf} \Phi (\mathbf{u} \cdot \hat{n}) dA \f]
+  function findConvectUpWindScal(phi,u,ubind,grid)
+    use moduleGrid
+    double precision,intent(in)::phi(:) !< variable to be convected
+    double precision,intent(in)::u(:,:) !< velocity which drives the convection
+    integer,intent(in)::ubind !< bind velocity with node/block/interface
+    type(typeGrid),intent(inout)::grid !< the grid
+    double precision findConvectUpWindScal(grid%nBlock) !< increment due to convection
+    double precision vphi(1,size(phi)),vrst(1,grid%nBlock)
+    
+    vphi(1,:)=phi(:)
+    vrst=findConvectUpWindVect(vphi,u,ubind,grid)
+    findConvectUpWindScal(:)=vrst(1,:)
+  end function
   
   !> van Leer flux limiter
   pure function vanLeerLimiter(r)

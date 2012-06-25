@@ -38,8 +38,8 @@ subroutine testReadGMSH()
   call writeGMSH(13,v,grid,BIND_BLOCK,'name1',0,t)
   call grid%updateBlockVol()
   do i=1,100
-    vv=findGrad(v,grid,BIND_BLOCK)
-    tempv=v+5d-3*findConvect(v,u,BIND_INTF,grid,vv,limiter=minmod)/grid%BlockVol(:)
+    !vv=findGrad(v,grid,BIND_BLOCK)
+    tempv=v+5d-3*findConvect(v,u,BIND_INTF,grid)/grid%BlockVol(:)
     do j=1,801,100
       tempv(j)=100d0
     end do
