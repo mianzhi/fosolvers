@@ -1,10 +1,6 @@
 !----------------------------------------------------------------------------- best with 100 columns
 
-program tests
-  call testReadGMSH()
-end program
-
-subroutine testReadGMSH()
+program test
   use moduleBasicDataStruct
   use moduleSimpleSetLogic
   use moduleFileIO
@@ -13,44 +9,35 @@ subroutine testReadGMSH()
   use moduleFVMDiffus
   use moduleFVMConvect
   use moduleInterpolation
+  use moduleMPIComm
   type(typeGrid)::grid
-  double precision,allocatable::v(:),tempv(:),vv(:,:),u(:,:)
-  double precision t
+  integer a,v(2,3)
+  double precision b,d(3)
   
-  open(12,file='bin/gridGMSH4.msh',status='old')
-  call readGMSH(12,grid)
-  close(12)
-  call grid%updateIntf()
-  allocate(v(grid%nBlock))
-  allocate(tempv(grid%nBlock))
-  allocate(vv(DIMS,grid%nBlock))
-  call grid%updateBlockPos()
-  do i=1,grid%nBlock
-    v(i)=merge(100d0,000d0,grid%BlockPos(1,i)<0.1d0)
-  end do
-  allocate(u(DIMS,grid%nIntf))
-  do i=1,grid%nIntf
-    u(:,i)=[1d0,0d0,0d0]
-  end do
-  t=0d0
-  open(13,file='rst.msh',status='replace')
-  call writeGMSH(13,grid)
-  call writeGMSH(13,v,grid,BIND_BLOCK,'name1',0,t)
-  call grid%updateBlockVol()
-  do i=1,100
-    !vv=findGrad(v,grid,BIND_BLOCK)
-    tempv=v+5d-3*findConvect(v,u,BIND_INTF,grid)/grid%BlockVol(:)
-    do j=1,801,100
-      tempv(j)=100d0
-    end do
-    do j=100,900,100
-      tempv(j)=tempv(j)
-    end do
-    v(:)=tempv(:)
-    t=t+5d-3
-    if(mod(i,1)==0)then
-      call writeGMSH(13,v,grid,BIND_BLOCK,'name1',i,t)
-    end if
-  end do
-  close(13)
-end subroutine
+  call initMPI()
+  if(pidMPI==0)then
+    open(12,file='bin/gridGMSH1.msh',status='old')
+    call readGMSH(12,grid)
+    close(12)
+    a=2
+    b=3d0
+    v=reshape([1,2,3,4,5,6],[2,3])
+    d=[1d0,2d0,3d0]
+    call sendDat(a,1)
+    call sendDat(b,1)
+    call sendDat(v,1)
+    call sendDat(d,1)
+  else
+    call recvDat(a,0)
+    call recvDat(b,0)
+    call recvDat(v,0)
+    call recvDat(d,0)
+    write(*,*),a,b
+    write(*,*),v(:,1),v(:,2),v(:,3)
+    write(*,*),d
+    !open(13,file='rst.msh',status='replace')
+    !call writeGMSH(13,grid)
+    !close(13)
+  end if
+  call finalMPI()
+end program

@@ -8,6 +8,8 @@ TARGET_LINK_LIBRARIES(test fosolvers)
 ADD_CUSTOM_COMMAND(
   TARGET test
   POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/runTest.sh
+                                   ${PROJECT_BINARY_DIR}/bin/runTest
   COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/gridGMSH1.msh
                                    ${PROJECT_BINARY_DIR}/bin/gridGMSH1.msh
   COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/gridGMSH2.msh
