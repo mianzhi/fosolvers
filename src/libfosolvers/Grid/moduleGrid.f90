@@ -68,7 +68,6 @@ module moduleGrid
     integer nBlock !< number of blocks
     type(typeEle),allocatable::Block(:) !< basic information of facets
     integer nDmn !< number of physical domains
-    integer,allocatable::lDmn(:) !< list of physical domains
     integer nPrt !< number of partitions
     
     ! auxiliary grid data
@@ -240,7 +239,6 @@ contains
     if(allocated(this%Line)) deallocate(this%Line)
     if(allocated(this%Facet)) deallocate(this%Facet)
     if(allocated(this%Block)) deallocate(this%Block)
-    if(allocated(this%lDmn)) deallocate(this%lDmn)
     if(allocated(this%NodeNeibFacet)) deallocate(this%NodeNeibFacet)
     if(allocated(this%NodeNeibBlock)) deallocate(this%NodeNeibBlock)
     if(allocated(this%BlockNeibFacet)) deallocate(this%BlockNeibFacet)
