@@ -21,6 +21,7 @@ module moduleMPIComm
     module procedure::sendIMat
     module procedure::sendDMat
     module procedure::sendEle
+    module procedure::sendGrid
   end interface
   public::sendDat
   
@@ -37,6 +38,7 @@ module moduleMPIComm
     module procedure::recvDMat
     module procedure::recvDMatRealloc
     module procedure::recvEle
+    module procedure::recvGrid
   end interface
   public::recvDat
   
@@ -331,6 +333,71 @@ contains
     call recvIVectRealloc(ele%iNode,source,.true.)
     call recvIVectRealloc(ele%Dmn,source,.true.)
     call recvIVectRealloc(ele%Prt,source,.true.)
+  end subroutine
+  
+  !> send typeGrid
+  subroutine sendGrid(grid,dest)
+    use mpi
+    use moduleGrid
+    type(typeGrid),intent(in)::grid !< the grid to be sent
+    integer,intent(in)::dest !< the destination process
+    integer ierr
+    
+    call MPI_send(grid%nNode,1,MPI_integer,dest,0,MPI_comm_world,ierr)
+    call MPI_send(grid%nPoint,1,MPI_integer,dest,0,MPI_comm_world,ierr)
+    call MPI_send(grid%nLine,1,MPI_integer,dest,0,MPI_comm_world,ierr)
+    call MPI_send(grid%nFacet,1,MPI_integer,dest,0,MPI_comm_world,ierr)
+    call MPI_send(grid%nBlock,1,MPI_integer,dest,0,MPI_comm_world,ierr)
+    call MPI_send(grid%nDmn,1,MPI_integer,dest,0,MPI_comm_world,ierr)
+    call MPI_send(grid%nPrt,1,MPI_integer,dest,0,MPI_comm_world,ierr)
+    call sendDMat(grid%NodePos,dest)
+    do i=1,grid%nPoint
+      call sendEle(grid%Point(i),dest)
+    end do
+    do i=1,grid%nLine
+      call sendEle(grid%Line(i),dest)
+    end do
+    do i=1,grid%nFacet
+      call sendEle(grid%Facet(i),dest)
+    end do
+    do i=1,grid%nBlock
+      call sendEle(grid%Block(i),dest)
+    end do
+  end subroutine
+  
+  !> receive typeGrid
+  subroutine recvGrid(grid,source)
+    use mpi
+    use moduleGrid
+    type(typeGrid),intent(inout)::grid !< the grid to be received
+    integer,intent(in)::source !< the source process
+    integer ierr,stat(MPI_status_size)
+    
+    call grid%init()
+    call MPI_recv(grid%nNode,1,MPI_integer,source,0,MPI_comm_world,stat,ierr)
+    call MPI_recv(grid%nPoint,1,MPI_integer,source,0,MPI_comm_world,stat,ierr)
+    call MPI_recv(grid%nLine,1,MPI_integer,source,0,MPI_comm_world,stat,ierr)
+    call MPI_recv(grid%nFacet,1,MPI_integer,source,0,MPI_comm_world,stat,ierr)
+    call MPI_recv(grid%nBlock,1,MPI_integer,source,0,MPI_comm_world,stat,ierr)
+    call MPI_recv(grid%nDmn,1,MPI_integer,source,0,MPI_comm_world,stat,ierr)
+    call MPI_recv(grid%nPrt,1,MPI_integer,source,0,MPI_comm_world,stat,ierr)
+    call recvDMatRealloc(grid%NodePos,source,.true.)
+    allocate(grid%Point(grid%nPoint))
+    allocate(grid%Line(grid%nLine))
+    allocate(grid%Facet(grid%nFacet))
+    allocate(grid%Block(grid%nBlock))
+    do i=1,grid%nPoint
+      call recvEle(grid%Point(i),source)
+    end do
+    do i=1,grid%nLine
+      call recvEle(grid%Line(i),source)
+    end do
+    do i=1,grid%nFacet
+      call recvEle(grid%Facet(i),source)
+    end do
+    do i=1,grid%nBlock
+      call recvEle(grid%Block(i),source)
+    end do
   end subroutine
   
 end module
