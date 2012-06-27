@@ -20,6 +20,7 @@ module moduleMPIComm
     module procedure::sendDVect
     module procedure::sendIMat
     module procedure::sendDMat
+    module procedure::sendEle
   end interface
   public::sendDat
   
@@ -35,6 +36,7 @@ module moduleMPIComm
     module procedure::recvIMatRealloc
     module procedure::recvDMat
     module procedure::recvDMatRealloc
+    module procedure::recvEle
   end interface
   public::recvDat
   
@@ -296,6 +298,39 @@ contains
       call reallocArr(obj,shp(1),shp(2))
     end if
     call recvDArr(obj,n,source)
+  end subroutine
+  
+  !> send typeEle
+  subroutine sendEle(ele,dest)
+    use mpi
+    use moduleGrid
+    type(typeEle),intent(in)::ele !< the element to be sent
+    integer,intent(in)::dest !< the destination process
+    integer ierr,m(3)
+    
+    m(:)=[ele%Ent,ele%Shp,ele%nNode]
+    call MPI_send(m,3,MPI_integer,dest,0,MPI_comm_world,ierr)
+    call sendIVect(ele%iNode,dest)
+    call sendIVect(ele%Dmn,dest)
+    call sendIVect(ele%Prt,dest)
+  end subroutine
+  
+  !> receive typeEle
+  subroutine recvEle(ele,source)
+    use mpi
+    use moduleGrid
+    type(typeEle),intent(inout)::ele !< the element to be received
+    integer,intent(in)::source !< the source process
+    integer ierr,stat(MPI_status_size),m(3)
+    
+    call ele%init()
+    call MPI_recv(m,3,MPI_integer,source,0,MPI_comm_world,stat,ierr)
+    ele%Ent=m(1)
+    ele%Shp=m(2)
+    ele%nNode=m(3)
+    call recvIVectRealloc(ele%iNode,source,.true.)
+    call recvIVectRealloc(ele%Dmn,source,.true.)
+    call recvIVectRealloc(ele%Prt,source,.true.)
   end subroutine
   
 end module
