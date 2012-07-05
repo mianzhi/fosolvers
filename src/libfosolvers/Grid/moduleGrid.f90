@@ -111,6 +111,9 @@ module moduleGrid
     logical isUpBlockVol !< if the block volume is updated
     double precision,allocatable::BlockVol(:) !< block volume
     
+    logical isUpNodeVol !< if the node/median-dual block volume is updated
+    double precision,allocatable::NodeVol(:) !< node/median-dual block volume
+    
     logical isUpFacetNorm !< if the facet normal vector is updated
     double precision,allocatable::FacetNorm(:,:) !< facet normal vector
     
@@ -134,6 +137,7 @@ module moduleGrid
     procedure,public::updateFacetArea
     procedure,public::updateIntfArea
     procedure,public::updateBlockVol
+    procedure,public::updateNodeVol
     procedure,public::updateFacetNorm
     procedure,public::updateIntfNorm
   end type
@@ -225,6 +229,7 @@ contains
     this%isUpFacetArea=.false.
     this%isUpIntfArea=.false.
     this%isUpBlockVol=.false.
+    this%isUpNodeVol=.false.
     this%isUpFacetNorm=.false.
     this%isUpIntfNorm=.false.
     call this%clear()
@@ -254,6 +259,7 @@ contains
     if(allocated(this%FacetArea)) deallocate(this%FacetArea)
     if(allocated(this%IntfArea)) deallocate(this%IntfArea)
     if(allocated(this%BlockVol)) deallocate(this%BlockVol)
+    if(allocated(this%NodeVol)) deallocate(this%NodeVol)
     if(allocated(this%FacetNorm)) deallocate(this%FacetNorm)
     if(allocated(this%IntfNorm)) deallocate(this%IntfNorm)
   end subroutine
@@ -539,6 +545,23 @@ contains
         end select
       end do
       this%isUpBlockVol=.true.
+    end if
+  end subroutine
+  
+  !> update the node/median-dual block volume
+  elemental subroutine updateNodeVol(this)
+    use moduleSimpleGeometry
+    class(typeGrid),intent(inout)::this !< this grid
+    
+    if(.not.this%isUpNodeVol)then
+      call this%updateBlockVol()
+      call reallocArr(this%NodeVol,this%nNode)
+      this%NodeVol(:)=0d0
+      do i=1,this%nBlock
+        this%NodeVol(this%Block(i)%iNode(:))=this%NodeVol(this%Block(i)%iNode(:))&
+        &                                    +this%BlockVol(i)/dble(this%Block(i)%nNode)
+      end do
+      this%isUpNodeVol=.true.
     end if
   end subroutine
   

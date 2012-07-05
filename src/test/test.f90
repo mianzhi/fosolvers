@@ -12,21 +12,18 @@ program test
   use moduleInterpolation
   use moduleMPIComm
   type(typeGrid)::grid
-  type(typeGrid),allocatable::sgrid(:)
-  type(typeHtr1DIArr),allocatable::r2o(:,:)
   
   call initMPI()
   if(pidMPI==0)then
-    open(12,file='bin/gridGMSH1.msh',status='old')
+    open(12,file='bin/gridGMSH4.msh',status='old')
     call readGMSH(12,grid)
     close(12)
-    call splitGridPrt(grid,sgrid,r2o)
-    call sendDat(sgrid(1),1)
+    call grid%updateNodeVol()
+    do i=1,grid%nNode
+      write(*,*),i,grid%NodeVol(i)
+    end do
+    write(*,*),sum(grid%NodeVol(:)),sum(grid%BlockVol(:))
   else
-    call recvDat(grid,0)
-    open(13,file='rst.msh',status='replace')
-    call writeGMSH(13,grid)
-    close(13)
   end if
   call finalMPI()
 end program
