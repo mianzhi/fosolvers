@@ -29,10 +29,19 @@ module moduleGrid
   integer,parameter,public::TET_NODE_NUM=4 !< number of nodes per tet
   integer,parameter,public::HEX_NODE_NUM=8 !< number of nodes per hex
   
+  integer,parameter,public::TET_EDGE_NUM=6 !< number of edges per tet
+  integer,parameter,public::HEX_EDGE_NUM=12 !< number of edges per hex
+  
   integer,parameter,public::TET_SURF_NUM=4 !< number of surfaces per tet
   integer,parameter,public::HEX_SURF_NUM=6 !< number of surfaces per hex
   
   integer,parameter,public::INTF_NEIB_BLOCK_NUM=2 !< number of neighbour blocks per interface
+  
+  integer,public::TET_EDGE_TAB(LINE_NODE_NUM,TET_EDGE_NUM) !< table of edge nodes for tet
+  parameter(TET_EDGE_TAB=reshape([1,3,3,2,2,1,2,4,4,1,4,3],[LINE_NODE_NUM,TET_EDGE_NUM]))
+  integer,public::HEX_EDGE_TAB(LINE_NODE_NUM,HEX_EDGE_NUM) !< table of edge nodes for hex
+  parameter(HEX_EDGE_TAB=reshape([2,3,3,7,7,6,6,2,1,5,5,8,8,4,4,1,3,4,8,7,1,2,6,5],&
+  &                              [LINE_NODE_NUM,HEX_EDGE_NUM]))
   
   integer,public::TET_SURF_TAB(TRI_NODE_NUM,TET_SURF_NUM) !< table of surface nodes for tet
   parameter(TET_SURF_TAB=reshape([1,3,2,1,2,4,1,4,3,2,3,4],[TRI_NODE_NUM,TET_SURF_NUM]))
@@ -71,13 +80,18 @@ module moduleGrid
     integer nPrt !< number of partitions
     
     ! auxiliary grid data
-    logical isUpNodeNeib !< if the node neighbour facet and block are updated
-    type(typeHtr1DIArr),allocatable::NodeNeibFacet(:) !< node neighbour block
+    logical isUpNodeNeib !< if the node neighbour node facet and block are updated
+    type(typeHtr1DIArr),allocatable::NodeNeibNode(:) !< node neighbour node
+    type(typeHtr1DIArr),allocatable::NodeNeibFacet(:) !< node neighbour facet
     type(typeHtr1DIArr),allocatable::NodeNeibBlock(:) !< node neighbour block
     
     logical isUpBlockNeib !< if the block neighbour facet and neighbour block is updated
     type(typeHtr1DIArr),allocatable::BlockNeibFacet(:) !< block neighbour facet
     type(typeHtr1DIArr),allocatable::BlockNeibBlock(:) !< block neighbour block
+    
+    logical isUpEdge !< if the edge between nodes is updated
+    integer nEdge !< number of edges between nodes
+    type(typeEle),allocatable::Edge(:) !< edge between nodes
     
     logical isUpIntf !< if the interface between blocks is updated
     integer nIntf !< number of interfaces between blocks
@@ -127,6 +141,7 @@ module moduleGrid
     ! auxiliary grid procedures
     procedure,public::updateNodeNeib
     procedure,public::updateBlockNeib
+    procedure,public::updateEdge
     procedure,public::updateIntf
     procedure,public::updatePointPos
     procedure,public::updateLinePos
@@ -143,6 +158,8 @@ module moduleGrid
   end type
   
   ! individual procedures
+  public::getBlockEdgeNum
+  public::getBlockEdgeNode
   public::getBlockSurfNum
   public::getBlockSurfNode
   
@@ -174,9 +191,41 @@ contains
     call this%clear()
   end subroutine
   
+  !> get the number of edges of a block
+  elemental function getBlockEdgeNum(block)
+    class(typeEle),intent(in)::block !< the block containing the edges
+    integer getBlockEdgeNum !< number of edges
+    
+    select case(block%Shp)
+    case(TET_TYPE)
+      getBlockEdgeNum=TET_Edge_NUM
+    case(HEX_TYPE)
+      getBlockEdgeNum=HEX_Edge_NUM
+    case default
+      getBlockEdgeNum=0
+    end select
+  end function
+  
+  !> get the nodes of the k_th edge of a block
+  pure function getBlockEdgeNode(block,k)
+    class(typeEle),intent(in)::block !< the block containing the edges
+    integer,intent(in)::k !< index of edge
+    integer,allocatable::getBlockEdgeNode(:) !< edge nodes
+    
+    select case(block%Shp)
+    case(TET_TYPE)
+      call reallocArr(getBlockEdgeNode,LINE_NODE_NUM)
+      getBlockEdgeNode(:)=block%iNode(TET_EDGE_TAB(:,k))
+    case(HEX_TYPE)
+      call reallocArr(getBlockEdgeNode,LINE_NODE_NUM)
+      getBlockEdgeNode(:)=block%iNode(HEX_EDGE_TAB(:,k))
+    case default
+    end select
+  end function
+  
   !> get the number of surfaces of a block
   elemental function getBlockSurfNum(block)
-    class(typeEle),intent(in)::block !< block to be get the number of surfaces of
+    class(typeEle),intent(in)::block !< the block containing the surfaces
     integer getBlockSurfNum !< number of surfaces
     
     select case(block%Shp)
@@ -191,16 +240,16 @@ contains
   
   !> get the nodes of the k_th surface of a block
   pure function getBlockSurfNode(block,k)
-    class(typeEle),intent(in)::block !< block to be get the nodes of k_th surface of
+    class(typeEle),intent(in)::block !< the block containing the surfaces
     integer,intent(in)::k !< index of surface
     integer,allocatable::getBlockSurfNode(:) !< surface nodes
     
     select case(block%Shp)
     case(TET_TYPE)
-      allocate(getBlockSurfNode(TRI_NODE_NUM))
+      call reallocArr(getBlockSurfNode,TRI_NODE_NUM)
       getBlockSurfNode(:)=block%iNode(TET_SURF_TAB(:,k))
     case(HEX_TYPE)
-      allocate(getBlockSurfNode(QUAD_NODE_NUM))
+      call reallocArr(getBlockSurfNode,QUAD_NODE_NUM)
       getBlockSurfNode(:)=block%iNode(HEX_SURF_TAB(:,k))
     case default
     end select
@@ -219,6 +268,7 @@ contains
     this%nPrt=0
     this%isUpNodeNeib=.false.
     this%isUpBlockNeib=.false.
+    this%isUpEdge=.false.
     this%isUpIntf=.false.
     this%isUpPointPos=.false.
     this%isUpLinePos=.false.
@@ -244,10 +294,12 @@ contains
     if(allocated(this%Line)) deallocate(this%Line)
     if(allocated(this%Facet)) deallocate(this%Facet)
     if(allocated(this%Block)) deallocate(this%Block)
+    if(allocated(this%NodeNeibNode)) deallocate(this%NodeNeibNode)
     if(allocated(this%NodeNeibFacet)) deallocate(this%NodeNeibFacet)
     if(allocated(this%NodeNeibBlock)) deallocate(this%NodeNeibBlock)
     if(allocated(this%BlockNeibFacet)) deallocate(this%BlockNeibFacet)
     if(allocated(this%BlockNeibBlock)) deallocate(this%BlockNeibBlock)
+    if(allocated(this%Edge)) deallocate(this%Edge)
     if(allocated(this%Intf)) deallocate(this%Intf)
     if(allocated(this%IntfNeibBlock)) deallocate(this%IntfNeibBlock)
     if(allocated(this%PointPos)) deallocate(this%PointPos)
@@ -271,11 +323,25 @@ contains
     call this%clear()
   end subroutine
   
-  !> update the node neighbour facet and block
+  !> update the node neighbour node facet and block
   elemental subroutine updateNodeNeib(this)
+    use moduleSimpleSetLogic
     class(typeGrid),intent(inout)::this !< this grid
+    integer,allocatable::nodeArr(:)
     
     if(.not.this%isUpNodeNeib)then
+      call reallocArr(this%NodeNeibNode,this%nNode)
+      do i=1,this%nBlock
+        do j=1,getBlockEdgeNum(this%Block(i))
+          nodeArr=getBlockEdgeNode(this%Block(i),j)
+          do k=1,size(nodeArr)
+            call applUnion(this%NodeNeibNode(nodeArr(k))%dat,nodeArr)
+          end do
+        end do
+      end do
+      do i=1,this%nNode
+        call applComplement(this%NodeNeibNode(i)%dat,[i])
+      end do
       call reallocArr(this%NodeNeibFacet,this%nNode)
       do i=1,this%nFacet
         do j=1,this%Facet(i)%nNode
@@ -349,6 +415,20 @@ contains
         end do
       end do
       this%isUpBlockNeib=.true.
+    end if
+  end subroutine
+  
+  !> update the edge between nodes
+  elemental subroutine updateEdge(this)
+    class(typeGrid),intent(inout)::this !< this grid
+    
+    if(.not.this%isUpEdge)then
+      call this%updateNodeNeib()
+      this%nEdge=0
+      !TODO: count number of edges
+      !TODO: allocate this%Edge
+      !TODO: save edges
+      this%isUpEdge=.true.
     end if
   end subroutine
   
