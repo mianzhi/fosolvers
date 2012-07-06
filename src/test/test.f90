@@ -20,7 +20,7 @@ program test
     close(12)
     call grid%updateEdge()
     do i=1,grid%nEdge
-      write(*,*),i,':',grid%Edge(i)%iNode
+      write(*,*),i,':',grid%EdgeNeibBlock(i)%dat
     end do
   else
   end if

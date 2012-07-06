@@ -92,6 +92,7 @@ module moduleGrid
     logical isUpEdge !< if the edge between nodes is updated
     integer nEdge !< number of edges between nodes
     type(typeEle),allocatable::Edge(:) !< edge between nodes
+    type(typeHtr1DIArr),allocatable::EdgeNeibBlock(:) !< neighbour blocks surrounding the edge
     
     logical isUpIntf !< if the interface between blocks is updated
     integer nIntf !< number of interfaces between blocks
@@ -300,6 +301,7 @@ contains
     if(allocated(this%BlockNeibFacet)) deallocate(this%BlockNeibFacet)
     if(allocated(this%BlockNeibBlock)) deallocate(this%BlockNeibBlock)
     if(allocated(this%Edge)) deallocate(this%Edge)
+    if(allocated(this%EdgeNeibBlock)) deallocate(this%EdgeNeibBlock)
     if(allocated(this%Intf)) deallocate(this%Intf)
     if(allocated(this%IntfNeibBlock)) deallocate(this%IntfNeibBlock)
     if(allocated(this%PointPos)) deallocate(this%PointPos)
@@ -420,6 +422,7 @@ contains
   
   !> update the edge between nodes
   elemental subroutine updateEdge(this)
+    use moduleSimpleSetLogic
     class(typeGrid),intent(inout)::this !< this grid
     integer,allocatable::nodeArr(:)
     
@@ -474,6 +477,14 @@ contains
               end forall
             end do
           end if
+        end do
+      end do
+      call reallocArr(this%EdgeNeibBlock,this%nEdge)
+      do i=1,this%nEdge
+        call applUnion(this%EdgeNeibBlock(i)%dat,this%NodeNeibBlock(this%Edge(i)%iNode(1))%dat)
+        do j=2,this%Edge(i)%nNode
+          call applIntersection(this%EdgeNeibBlock(i)%dat,&
+          &                     this%NodeNeibBlock(this%Edge(i)%iNode(j))%dat)
         end do
       end do
       this%isUpEdge=.true.
