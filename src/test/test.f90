@@ -15,12 +15,12 @@ program test
   
   call initMPI()
   if(pidMPI==0)then
-    open(12,file='bin/gridGMSH1.msh',status='old')
+    open(12,file='bin/gridGMSH4.msh',status='old')
     call readGMSH(12,grid)
     close(12)
-    call grid%updateNodeNeib()
-    do i=1,grid%nNode
-      write(*,*),i,':',grid%NodeNeibNode(i)%dat
+    call grid%updateEdge()
+    do i=1,grid%nEdge
+      write(*,*),i,':',grid%Edge(i)%iNode
     end do
   else
   end if

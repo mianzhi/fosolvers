@@ -421,13 +421,61 @@ contains
   !> update the edge between nodes
   elemental subroutine updateEdge(this)
     class(typeGrid),intent(inout)::this !< this grid
+    integer,allocatable::nodeArr(:)
     
     if(.not.this%isUpEdge)then
       call this%updateNodeNeib()
       this%nEdge=0
-      !TODO: count number of edges
-      !TODO: allocate this%Edge
-      !TODO: save edges
+      do i=1,this%nBlock
+        do j=1,getBlockEdgeNum(this%Block(i))
+          nodeArr=getBlockEdgeNode(this%Block(i),j)
+          ! check if the "connection" between nodes is already used
+          if(any(this%NodeNeibNode(nodeArr(1))%dat(:)==nodeArr(2)))then
+            this%nEdge=this%nEdge+1
+            ! temporarily disable the used "connection" between nodes
+            do k=1,size(nodeArr)
+              forall(l=1:size(this%NodeNeibNode(nodeArr(k))%dat),&
+              &      any(nodeArr==this%NodeNeibNode(nodeArr(k))%dat(l)))
+                this%NodeNeibNode(nodeArr(k))%dat(l)=-this%NodeNeibNode(nodeArr(k))%dat(l)
+              end forall
+            end do
+          end if
+        end do
+      end do
+      if(allocated(this%Edge))then
+        if(size(this%Edge)/=this%nEdge)then
+          deallocate(this%Edge)
+          allocate(this%Edge(this%nEdge))
+        end if
+      else
+        allocate(this%Edge(this%nEdge))
+      end if
+      m=0
+      do i=1,this%nBlock
+        do j=1,getBlockEdgeNum(this%Block(i))
+          nodeArr=getBlockEdgeNode(this%Block(i),j)
+          if(any(this%NodeNeibNode(nodeArr(1))%dat(:)==-nodeArr(2)))then
+            m=m+1
+            select case(this%Block(i)%Shp)
+            case(TET_TYPE,HEX_TYPE)
+              this%Edge(m)%Shp=LINE_TYPE
+              this%Edge(m)%nNode=LINE_NODE_NUM
+            case default
+            end select
+            allocate(this%Edge(m)%iNode(this%Edge(m)%nNode))
+            this%Edge(m)%iNode(:)=nodeArr(:)
+            allocate(this%Edge(m)%Dmn(0))
+            allocate(this%Edge(m)%Prt(0))
+            ! change the "connection" back to positive
+            do k=1,size(nodeArr)
+              forall(l=1:size(this%NodeNeibNode(nodeArr(k))%dat),&
+              &      any(nodeArr==-this%NodeNeibNode(nodeArr(k))%dat(l)))
+                this%NodeNeibNode(nodeArr(k))%dat(l)=-this%NodeNeibNode(nodeArr(k))%dat(l)
+              end forall
+            end do
+          end if
+        end do
+      end do
       this%isUpEdge=.true.
     end if
   end subroutine
