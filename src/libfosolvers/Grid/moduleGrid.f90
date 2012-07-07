@@ -421,7 +421,7 @@ contains
   end subroutine
   
   !> update the edge between nodes
-  elemental subroutine updateEdge(this)
+  subroutine updateEdge(this)
     use moduleSimpleSetLogic
     class(typeGrid),intent(inout)::this !< this grid
     integer,allocatable::nodeArr(:)
@@ -482,10 +482,11 @@ contains
       call reallocArr(this%EdgeNeibBlock,this%nEdge)
       do i=1,this%nEdge
         call applUnion(this%EdgeNeibBlock(i)%dat,this%NodeNeibBlock(this%Edge(i)%iNode(1))%dat)
-        do j=2,this%Edge(i)%nNode
-          call applIntersection(this%EdgeNeibBlock(i)%dat,&
-          &                     this%NodeNeibBlock(this%Edge(i)%iNode(j))%dat)
-        end do
+        call applIntersection(this%EdgeNeibBlock(i)%dat,&
+        &                     this%NodeNeibBlock(this%Edge(i)%iNode(2))%dat)
+        !FIXME: the following should be better
+        !this%EdgeNeibBlock(i)%dat=findIntersection(this%NodeNeibBlock(this%Edge(i)%iNode(1))%dat,&
+        !&                                          this%NodeNeibBlock(this%Edge(i)%iNode(2))%dat)
       end do
       this%isUpEdge=.true.
     end if
