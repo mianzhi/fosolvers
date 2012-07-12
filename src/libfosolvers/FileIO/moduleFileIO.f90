@@ -9,6 +9,9 @@ module moduleFileIO
   integer,parameter::RANK_VECT=2 !< rank of vector
   integer,parameter::RANK_TENS=3 !< rank of tensor
   
+  ! read general data (implemented as typeGenDatLlist)
+  public::readGenDat
+  
   !> read GMSH file
   interface readGMSH
     module procedure::readGMSHGrid
@@ -25,6 +28,71 @@ module moduleFileIO
   public::writeGMSH
   
 contains
+  
+  !> read general data  from opened file id into item
+  subroutine readGenDat(id,item)
+    use moduleBasicDataStruct
+    integer,intent(in)::id !< the file id
+    type(typeGenDatLlist),intent(inout)::item !< resulting item
+    integer ierr
+    integer,parameter::DFLT_STR_LEN=400
+    character(DFLT_STR_LEN)::tempStr
+    !TODO: change to character(:) (waiting new gcc)
+    character(:),allocatable::itemkey
+    
+    
+    call item%clear()
+    ierr=0
+    
+    do while(ierr==0)
+      read(id,*,iostat=ierr),tempStr
+      if(tempStr(1:6)=='$Const')then
+        m=index(tempStr,'(')
+        n=index(tempStr,')')
+        l=n-m-1
+        allocate(character(11)::itemkey)
+        itemkey(1:l)=tempStr(m+1:n-1)
+        !TODO:remove this block, directly read to item%key
+        allocate(item%key(l))
+        forall(i=1:l)
+          item%key(i)=itemkey(i:i)
+        end forall
+        item%datType=CONST_TYPE
+        allocate(item%dat(1,1))
+        read(id,*),item%dat(1,1)
+        do while(tempStr(1:9)/='$EndConst')
+          read(id,*),tempStr
+        end do
+        deallocate(itemkey)
+        exit
+      end if
+      if(tempStr(1:6)=='$Tab1d')then
+        m=index(tempStr,'(')
+        n=index(tempStr,')')
+        l=n-m-1
+        allocate(character(5)::itemkey)
+        itemkey(1:l)=tempStr(m+1:n-1)
+        !write(*,*),itemkey,m,n,len(itemkey),tempStr(m+1:n-1)
+        !TODO:remove this block, directly read to item%key
+        allocate(item%key(l))
+        forall(i=1:l)
+          item%key(i)=itemkey(i:i)
+        end forall
+        item%datType=TAB1D_TYPE
+        read(id,*),k
+        allocate(item%dat(k,0:1))
+        do i=1,k
+          read(id,*),item%dat(i,:)
+        end do
+        do while(tempStr(1:9)/='$EndTab1d')
+          read(id,*),tempStr
+        end do
+        deallocate(itemkey)
+        exit
+      end if
+    end do
+    
+  end subroutine
   
   !> read grid data from opened file id into grid
   subroutine readGMSHGrid(id,grid)
