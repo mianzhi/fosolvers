@@ -36,6 +36,7 @@ module moduleBasicDataStruct
     module procedure::realloc2DIArr
     module procedure::realloc1DDArr
     module procedure::realloc2DDArr
+    module procedure::reallocStr
     module procedure::realloc1DHtr1DIArr
   end interface
   public::reallocArr
@@ -249,6 +250,21 @@ contains
       end if
     else
       allocate(arr(m,n))
+    end if
+  end subroutine
+  
+  !> reallocate the string str to have m characters
+  pure subroutine reallocStr(str,m)
+    character(:),allocatable,intent(inout)::str !< string to be reallocated
+    integer,intent(in)::m !< number of characters
+    
+    if(allocated(str))then
+      if(len(str)/=m)then
+        deallocate(str)
+        allocate(character(m)::str)
+      end if
+    else
+      allocate(character(m)::str)
     end if
   end subroutine
   

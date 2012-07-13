@@ -50,7 +50,7 @@ contains
         m=index(tempStr,'(')
         n=index(tempStr,')')
         l=n-m-1
-        allocate(character(11)::itemkey)
+        call reallocArr(itemkey,l)
         itemkey(1:l)=tempStr(m+1:n-1)
         !TODO:remove this block, directly read to item%key
         allocate(item%key(l))
@@ -70,9 +70,8 @@ contains
         m=index(tempStr,'(')
         n=index(tempStr,')')
         l=n-m-1
-        allocate(character(5)::itemkey)
+        call reallocArr(itemkey,l)
         itemkey(1:l)=tempStr(m+1:n-1)
-        !write(*,*),itemkey,m,n,len(itemkey),tempStr(m+1:n-1)
         !TODO:remove this block, directly read to item%key
         allocate(item%key(l))
         forall(i=1:l)
