@@ -34,59 +34,59 @@ contains
     use moduleBasicDataStruct
     integer,intent(in)::id !< the file id
     type(typeGenDatLlist),intent(inout)::item !< resulting item
+    type(typeGenDatLlist)::temp
     integer ierr
     integer,parameter::DFLT_STR_LEN=400
     character(DFLT_STR_LEN)::tempStr
     !TODO: change to character(:) (waiting new gcc)
-    character(:),allocatable::itemkey
+    character(:),allocatable::tempkey
     
-    
-    call item%clear()
     ierr=0
-    
     do while(ierr==0)
       read(id,*,iostat=ierr),tempStr
       if(tempStr(1:6)=='$Const')then
         m=index(tempStr,'(')
         n=index(tempStr,')')
         l=n-m-1
-        call reallocArr(itemkey,l)
-        itemkey(1:l)=tempStr(m+1:n-1)
-        !TODO:remove this block, directly read to item%key
-        allocate(item%key(l))
+        call reallocArr(tempkey,l)
+        tempkey(1:l)=tempStr(m+1:n-1)
+        !TODO:remove this block, directly read to temp%key
+        allocate(temp%key(l))
         forall(i=1:l)
-          item%key(i)=itemkey(i:i)
+          temp%key(i)=tempkey(i:i)
         end forall
-        item%datType=CONST_TYPE
-        allocate(item%dat(1,1))
-        read(id,*),item%dat(1,1)
+        temp%datType=CONST_TYPE
+        allocate(temp%dat(1,1))
+        read(id,*),temp%dat(1,1)
+        call item%push(temp)
         do while(tempStr(1:9)/='$EndConst')
           read(id,*),tempStr
         end do
-        deallocate(itemkey)
+        call temp%clear()
         exit
       end if
       if(tempStr(1:6)=='$Tab1d')then
         m=index(tempStr,'(')
         n=index(tempStr,')')
         l=n-m-1
-        call reallocArr(itemkey,l)
-        itemkey(1:l)=tempStr(m+1:n-1)
-        !TODO:remove this block, directly read to item%key
-        allocate(item%key(l))
+        call reallocArr(tempkey,l)
+        tempkey(1:l)=tempStr(m+1:n-1)
+        !TODO:remove this block, directly read to temp%key
+        allocate(temp%key(l))
         forall(i=1:l)
-          item%key(i)=itemkey(i:i)
+          temp%key(i)=tempkey(i:i)
         end forall
-        item%datType=TAB1D_TYPE
+        temp%datType=TAB1D_TYPE
         read(id,*),k
-        allocate(item%dat(k,0:1))
+        allocate(temp%dat(k,0:1))
         do i=1,k
-          read(id,*),item%dat(i,:)
+          read(id,*),temp%dat(i,:)
         end do
+        call item%push(temp)
         do while(tempStr(1:9)/='$EndTab1d')
           read(id,*),tempStr
         end do
-        deallocate(itemkey)
+        call temp%clear()
         exit
       end if
     end do
