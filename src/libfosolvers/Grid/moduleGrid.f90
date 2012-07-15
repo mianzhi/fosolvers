@@ -35,6 +35,7 @@ module moduleGrid
   integer,parameter,public::TET_SURF_NUM=4 !< number of surfaces per tet
   integer,parameter,public::HEX_SURF_NUM=6 !< number of surfaces per hex
   
+  integer,parameter,public::FACET_NEIB_BLOCK_NUM=2 !< max number of neighbour blocks per facet
   integer,parameter,public::INTF_NEIB_BLOCK_NUM=2 !< number of neighbour blocks per interface
   
   integer,public::TET_EDGE_TAB(LINE_NODE_NUM,TET_EDGE_NUM) !< table of edge nodes for tet
@@ -84,6 +85,9 @@ module moduleGrid
     type(typeHtr1DIArr),allocatable::NodeNeibNode(:) !< node neighbour node
     type(typeHtr1DIArr),allocatable::NodeNeibFacet(:) !< node neighbour facet
     type(typeHtr1DIArr),allocatable::NodeNeibBlock(:) !< node neighbour block
+    
+    logical isUpFacetNeib !< if the facet neighbour block is updated
+    integer,allocatable::FacetNeibBlock(:,:) !< facet neighbour block
     
     logical isUpBlockNeib !< if the block neighbour facet and neighbour block is updated
     type(typeHtr1DIArr),allocatable::BlockNeibFacet(:) !< block neighbour facet
@@ -141,6 +145,7 @@ module moduleGrid
     !FIXME:final::purgeGrid
     ! auxiliary grid procedures
     procedure,public::updateNodeNeib
+    procedure,public::updateFacetNeib
     procedure,public::updateBlockNeib
     procedure,public::updateEdge
     procedure,public::updateIntf
@@ -268,6 +273,7 @@ contains
     this%nDmn=0
     this%nPrt=0
     this%isUpNodeNeib=.false.
+    this%isUpFacetNeib=.false.
     this%isUpBlockNeib=.false.
     this%isUpEdge=.false.
     this%isUpIntf=.false.
@@ -298,6 +304,7 @@ contains
     if(allocated(this%NodeNeibNode)) deallocate(this%NodeNeibNode)
     if(allocated(this%NodeNeibFacet)) deallocate(this%NodeNeibFacet)
     if(allocated(this%NodeNeibBlock)) deallocate(this%NodeNeibBlock)
+    if(allocated(this%FacetNeibBlock)) deallocate(this%FacetNeibBlock)
     if(allocated(this%BlockNeibFacet)) deallocate(this%BlockNeibFacet)
     if(allocated(this%BlockNeibBlock)) deallocate(this%BlockNeibBlock)
     if(allocated(this%Edge)) deallocate(this%Edge)
@@ -357,6 +364,34 @@ contains
         end do
       end do
       this%isUpNodeNeib=.true.
+    end if
+  end subroutine
+  
+  !> update the facet neighbour block
+  elemental subroutine updateFacetNeib(this)
+    class(typeGrid),intent(inout)::this !< this grid
+    integer,allocatable::surfNode(:)
+    
+    if(.not.this%isUpFacetNeib)then
+      call this%updateBlockNeib()
+      call reallocArr(this%FacetNeibBlock,FACET_NEIB_BLOCK_NUM,this%nFacet)
+      this%FacetNeibBlock(:,:)=0
+      do i=1,this%nBlock
+        do j=1,getBlockSurfNum(this%Block(i))
+          if(this%BlockNeibFacet(i)%dat(j)>0)then
+            k=this%BlockNeibFacet(i)%dat(j)
+            surfNode=getBlockSurfNode(this%Block(i),j)
+            if(any([(all(surfNode(l:l+1)==this%Facet(k)%iNode(1:2)),l=1,size(surfNode)-1)]).or.&
+            &  all(surfNode([size(surfNode),1])==this%Facet(k)%iNode(1:2)))then
+              this%FacetNeibBlock(1,k)=i
+            else
+              this%FacetNeibBlock(2,k)=i
+            end if
+            deallocate(surfNode)
+          end if
+        end do
+      end do
+      this%isUpFacetNeib=.true.
     end if
   end subroutine
   
