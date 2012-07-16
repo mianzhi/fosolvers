@@ -15,6 +15,13 @@ module moduleBasicDataStruct
     !FIXME:final::purgeHtr1DIArr
   end type
   
+  !> heterogeneous 2D double allocatable array
+  type,public::typeHtr2DDArr
+    double precision,allocatable::dat(:,:) !< 2D double allocatable array
+  contains
+    !FIXME:final::purgeHtr2DDArr
+  end type
+  
   !> general data linked list
   type,public::typeGenDatLlist
     !TODO: change to character(:) (waiting new gcc)
@@ -38,6 +45,7 @@ module moduleBasicDataStruct
     module procedure::realloc2DDArr
     module procedure::reallocStr
     module procedure::realloc1DHtr1DIArr
+    module procedure::realloc1DHtr2DDArr
   end interface
   public::reallocArr
   
@@ -59,6 +67,13 @@ contains
   !> destructor of typeHtr1DIArr
   elemental subroutine purgeHtr1DIArr(this)
     type(typeHtr1DIArr),intent(inout)::this !< this 1D integer allocatable array
+    
+    if(allocated(this%dat)) deallocate(this%dat)
+  end subroutine
+  
+  !> destructor of typeHtr2DDArr
+  elemental subroutine purgeHtr2DDArr(this)
+    type(typeHtr2DDArr),intent(inout)::this !< this 2D double allocatable array
     
     if(allocated(this%dat)) deallocate(this%dat)
   end subroutine
@@ -272,6 +287,22 @@ contains
   !> to have m heterogeneous elements
   pure subroutine realloc1DHtr1DIArr(arr,m)
     type(typeHtr1DIArr),allocatable,intent(inout)::arr(:) !< 1D array to be reallocated
+    integer,intent(in)::m !< number of entries
+    
+    if(allocated(arr))then
+      if(size(arr)/=m)then
+        deallocate(arr)
+        allocate(arr(m))
+      end if
+    else
+      allocate(arr(m))
+    end if
+  end subroutine
+  
+  !> reallocate the 1D allocatable array arr of the heterogeneous 2D double allocatable array
+  !> to have m heterogeneous elements
+  pure subroutine realloc1DHtr2DDArr(arr,m)
+    type(typeHtr2DDArr),allocatable,intent(inout)::arr(:) !< 1D array to be reallocated
     integer,intent(in)::m !< number of entries
     
     if(allocated(arr))then
