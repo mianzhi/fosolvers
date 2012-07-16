@@ -130,14 +130,15 @@ module moduleGrid
     logical isUpBlockVol !< if the block volume is updated
     double precision,allocatable::BlockVol(:) !< block volume
     
-    logical isUpNodeVol !< if the node/median-dual block volume is updated
-    double precision,allocatable::NodeVol(:) !< node/median-dual block volume
-    
     logical isUpFacetNorm !< if the facet normal vector is updated
     double precision,allocatable::FacetNorm(:,:) !< facet normal vector
     
     logical isUpIntfNorm !< if the interface normal vector is updated
     double precision,allocatable::IntfNorm(:,:) !< interface normal vector
+    
+    logical isUpDualBlock !< if the median-dual block is updated
+    double precision,allocatable::NodeVol(:) !< volume of node/median-dual block
+    type(typeHtr2DDArr),allocatable::NBAreaVect(:) !< area vector of node-block surface
   contains
     ! basic grid procedures
     procedure,public::init=>initGrid
@@ -158,9 +159,9 @@ module moduleGrid
     procedure,public::updateFacetArea
     procedure,public::updateIntfArea
     procedure,public::updateBlockVol
-    procedure,public::updateNodeVol
     procedure,public::updateFacetNorm
     procedure,public::updateIntfNorm
+    procedure,public::updateDualBlock
   end type
   
   ! individual procedures
@@ -286,9 +287,9 @@ contains
     this%isUpFacetArea=.false.
     this%isUpIntfArea=.false.
     this%isUpBlockVol=.false.
-    this%isUpNodeVol=.false.
     this%isUpFacetNorm=.false.
     this%isUpIntfNorm=.false.
+    this%isUpDualBlock=.false.
     call this%clear()
   end subroutine
   
@@ -320,9 +321,10 @@ contains
     if(allocated(this%FacetArea)) deallocate(this%FacetArea)
     if(allocated(this%IntfArea)) deallocate(this%IntfArea)
     if(allocated(this%BlockVol)) deallocate(this%BlockVol)
-    if(allocated(this%NodeVol)) deallocate(this%NodeVol)
     if(allocated(this%FacetNorm)) deallocate(this%FacetNorm)
     if(allocated(this%IntfNorm)) deallocate(this%IntfNorm)
+    if(allocated(this%NodeVol)) deallocate(this%NodeVol)
+    if(allocated(this%NBAreaVect)) deallocate(this%NBAreaVect)
   end subroutine
   
   !> destructor of typeGrid
@@ -500,10 +502,10 @@ contains
               this%Edge(m)%nNode=LINE_NODE_NUM
             case default
             end select
-            allocate(this%Edge(m)%iNode(this%Edge(m)%nNode))
+            call reallocArr(this%Edge(m)%iNode,this%Edge(m)%nNode)
             this%Edge(m)%iNode(:)=nodeArr(:)
-            allocate(this%Edge(m)%Dmn(0))
-            allocate(this%Edge(m)%Prt(0))
+            call reallocArr(this%Edge(m)%Dmn,0)
+            call reallocArr(this%Edge(m)%Prt,0)
             ! change the "connection" back to positive
             do k=1,size(nodeArr)
               forall(l=1:size(this%NodeNeibNode(nodeArr(k))%dat),&
@@ -723,23 +725,6 @@ contains
     end if
   end subroutine
   
-  !> update the node/median-dual block volume
-  elemental subroutine updateNodeVol(this)
-    use moduleSimpleGeometry
-    class(typeGrid),intent(inout)::this !< this grid
-    
-    if(.not.this%isUpNodeVol)then
-      call this%updateBlockVol()
-      call reallocArr(this%NodeVol,this%nNode)
-      this%NodeVol(:)=0d0
-      do i=1,this%nBlock
-        this%NodeVol(this%Block(i)%iNode(:))=this%NodeVol(this%Block(i)%iNode(:))&
-        &                                    +this%BlockVol(i)/dble(this%Block(i)%nNode)
-      end do
-      this%isUpNodeVol=.true.
-    end if
-  end subroutine
-  
   !> update the facet normal vector
   elemental subroutine updateFacetNorm(this)
     use moduleSimpleGeometry
@@ -778,6 +763,65 @@ contains
         end select
       end do
       this%isUpIntfNorm=.true.
+    end if
+  end subroutine
+  
+  !> update the node/median-dual block
+  elemental subroutine updateDualBlock(this)
+    use moduleSimpleGeometry
+    class(typeGrid),intent(inout)::this !< this grid
+    
+    if(.not.this%isUpDualBlock)then
+      call this%updateBlockVol()
+      call this%updateFacetArea()
+      call this%updateIntfArea()
+      call this%updateFacetNorm()
+      call this%updateIntfNorm()
+      call this%updateFacetNeib()
+      call reallocArr(this%NodeVol,this%nNode)
+      this%NodeVol(:)=0d0
+      do i=1,this%nBlock
+        this%NodeVol(this%Block(i)%iNode(:))=this%NodeVol(this%Block(i)%iNode(:))&
+        &                                    +this%BlockVol(i)/dble(this%Block(i)%nNode)
+      end do
+      call reallocArr(this%NBAreaVect,this%nNode)
+      do i=1,this%nNode
+        call reallocArr(this%NBAreaVect(i)%dat,DIMS,size(this%NodeNeibBlock(i)%dat))
+        this%NBAreaVect(i)%dat(:,:)=0d0
+      end do
+      do i=1,this%nIntf
+        do j=1,this%Intf(i)%nNode
+          n=this%Intf(i)%iNode(j)
+          do k=1,size(this%NodeNeibBlock(n)%dat)
+            if(this%NodeNeibBlock(n)%dat(k)==this%IntfNeibBlock(1,i))then
+              this%NBAreaVect(n)%dat(:,k)=this%NBAreaVect(n)%dat(:,k)&
+              &                           -this%IntfArea(i)*this%IntfNorm(:,i)&
+              &                            /dble(this%Intf(i)%nNode)
+            else if(this%NodeNeibBlock(n)%dat(k)==this%IntfNeibBlock(2,i))then
+              this%NBAreaVect(n)%dat(:,k)=this%NBAreaVect(n)%dat(:,k)&
+              &                           +this%IntfArea(i)*this%IntfNorm(:,i)&
+              &                            /dble(this%Intf(i)%nNode)
+            end if
+          end do
+        end do
+      end do
+      do i=1,this%nFacet
+        do j=1,this%Facet(i)%nNode
+          n=this%Facet(i)%iNode(j)
+          do k=1,size(this%NodeNeibBlock(n)%dat)
+            if(this%NodeNeibBlock(n)%dat(k)==this%FacetNeibBlock(1,i))then
+              this%NBAreaVect(n)%dat(:,k)=this%NBAreaVect(n)%dat(:,k)&
+              &                           -this%FacetArea(i)*this%FacetNorm(:,i)&
+              &                            /dble(this%Facet(i)%nNode)
+            else if(this%NodeNeibBlock(n)%dat(k)==this%FacetNeibBlock(2,i))then
+              this%NBAreaVect(n)%dat(:,k)=this%NBAreaVect(n)%dat(:,k)&
+              &                           +this%FacetArea(i)*this%FacetNorm(:,i)&
+              &                            /dble(this%Facet(i)%nNode)
+            end if
+          end do
+        end do
+      end do
+      this%isUpDualBlock=.true.
     end if
   end subroutine
   

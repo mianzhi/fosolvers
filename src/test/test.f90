@@ -15,12 +15,15 @@ program test
   
   call initMPI()
   if(pidMPI==0)then
-    open(12,file='bin/gridGMSH1.msh',status='old')
+    open(12,file='bin/gridGMSH4.msh',status='old')
     call readGMSH(12,grid)
     close(12)
-    call grid%updateFacetNeib()
-    do i=1,grid%nFacet
-      write(*,*),i,grid%Facet(i)%Ent,':',grid%FacetNeibBlock(:,i)
+    call grid%updateDualBlock()
+    do i=1,grid%nNode
+      write(*,*),i,':',grid%NodeVol(i)
+      do j=1,size(grid%NodeNeibBlock(i)%dat)
+        write(*,*),i,j,norm2(grid%NBAreaVect(i)%dat(:,j))
+      end do
     end do
   else
   end if
