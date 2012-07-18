@@ -13,6 +13,13 @@ module moduleInterpolation
   end interface
   public itplBlock2Intf
   
+  !> interpolate from node to interface
+  interface itplNode2Intf
+    module procedure::itplNode2IntfVect
+    module procedure::itplNode2IntfScal
+  end interface
+  public itplNode2Intf
+  
 contains
   
   !> interpolate vector v within grid from block to interface using block center direction scheme
@@ -40,6 +47,7 @@ contains
   !> interpolate scalar v within grid from block to interface using block center direction scheme
   function itplBCDScal(v,grid)
     use moduleGrid
+    use moduleBasicDataStruct
     double precision,intent(in)::v(:) !< block data to be interpolated
     type(typeGrid),intent(inout)::grid !< grid on which v is defined
     double precision,allocatable::itplBCDScal(:) !< interpolated data on interface
@@ -48,7 +56,7 @@ contains
     
     vv(1,:)=v(:)
     vrst=itplBCDVect(vv,grid)
-    allocate(itplBCDScal(size(vrst,2)))
+    call reallocArr(itplBCDScal,size(vrst,2))
     itplBCDScal(:)=vrst(1,:)
   end function
   
@@ -80,6 +88,7 @@ contains
   !> interpolate scalar v within grid from block to interface using BCD scheme corrected using grad
   function itplBCDCScal(v,grad,grid)
     use moduleGrid
+    use moduleBasicDataStruct
     double precision,intent(in)::v(:) !< block data to be interpolated
     double precision,intent(in)::grad(:,:) !< gradient of v
     type(typeGrid),intent(inout)::grid !< grid on which v is defined
@@ -90,8 +99,39 @@ contains
     vv(1,:)=v(:)
     vgrad(:,1,:)=grad(:,:)
     vrst=itplBCDCVect(vv,vgrad,grid)
-    allocate(itplBCDCScal(size(vrst,2)))
+    call reallocArr(itplBCDCScal,size(vrst,2))
     itplBCDCScal(:)=vrst(1,:)
+  end function
+  
+  !> interpolate vector v within grid from node to interface
+  function itplNode2IntfVect(v,grid)
+    use moduleGrid
+    use moduleBasicDataStruct
+    double precision,intent(in)::v(:,:) !< node data to be interpolated
+    type(typeGrid),intent(inout)::grid !< grid on which v is defined
+    double precision,allocatable::itplNode2IntfVect(:,:) !< interpolated data on interface
+    
+    call grid%updateIntf()
+    call reallocArr(itplNode2IntfVect,size(v,1),grid%nIntf)
+    forall(i=1:grid%nIntf)
+      itplNode2IntfVect(:,i)=sum(v(:,grid%Intf(i)%iNode(:)),2)/dble(grid%Intf(i)%nNode)
+    end forall
+  end function
+  
+  !> interpolate scaler v within grid from node to interface
+  function itplNode2IntfScal(v,grid)
+    use moduleGrid
+    use moduleBasicDataStruct
+    double precision,intent(in)::v(:) !< node data to be interpolated
+    type(typeGrid),intent(inout)::grid !< grid on which v is defined
+    double precision,allocatable::itplNode2IntfScal(:) !< interpolated data on interface
+    double precision vv(1,size(v))
+    double precision,allocatable::vrst(:,:)
+    
+    vv(1,:)=v(:)
+    vrst=itplNode2IntfVect(vv,grid)
+    call reallocArr(itplNode2IntfScal,size(vrst,2))
+    itplNode2IntfScal(:)=vrst(1,:)
   end function
   
 end module

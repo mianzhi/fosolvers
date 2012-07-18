@@ -12,18 +12,20 @@ program test
   use moduleInterpolation
   use moduleMPIComm
   type(typeGrid)::grid
+  double precision,allocatable::v(:),vi(:)
   
   call initMPI()
   if(pidMPI==0)then
     open(12,file='bin/gridGMSH4.msh',status='old')
     call readGMSH(12,grid)
     close(12)
-    call grid%updateDualBlock()
-    do i=1,grid%nNode
-      write(*,*),i,':',grid%NodeVol(i)
-      do j=1,size(grid%NodeNeibBlock(i)%dat)
-        write(*,*),i,j,norm2(grid%NBAreaVect(i)%dat(:,j))
-      end do
+    allocate(v(grid%nNode))
+    forall(i=1:grid%nNode)
+      v(i)=grid%NodePos(1,i)
+    end forall
+    vi=itplNode2Intf(v,grid)
+    do i=1,grid%nIntf
+      write(*,*),i,':',vi(i)
     end do
   else
   end if
