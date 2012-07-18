@@ -14,9 +14,30 @@ module moduleGridOperation
   integer,parameter,public::MAP_BLOCK=5 !< map index of Block
   
   ! public procedures
+  public::mvGrid
   public::splitGridPrt
   
 contains
+  
+  !> move grid node along vector field disp
+  subroutine mvGrid(grid,disp)
+    type(typeGrid),intent(inout)::grid !< the grid to be moved
+    double precision,intent(in)::disp(DIMS,grid%nNode) !< the displacement vector
+    
+    grid%NodePos(:,:)=grid%NodePos(:,:)+disp(:,:)
+    grid%isUpPointPos=.false.
+    grid%isUpLinePos=.false.
+    grid%isUpFacetPos=.false.
+    grid%isUpBlockPos=.false.
+    grid%isUpIntfPos=.false.
+    grid%isUpLineLen=.false.
+    grid%isUpFacetArea=.false.
+    grid%isUpIntfArea=.false.
+    grid%isUpBlockVol=.false.
+    grid%isUpFacetNorm=.false.
+    grid%isUpIntfNorm=.false.
+    grid%isUpDualBlock=.false.
+  end subroutine
   
   !> split the original grid into resulting grids with respect to partition
   subroutine splitGridPrt(org,rst,r2o,overlap)
