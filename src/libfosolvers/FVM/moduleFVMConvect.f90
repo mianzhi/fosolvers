@@ -13,6 +13,13 @@ module moduleFVMConvect
   end interface
   public findConvect
   
+  !> find displacement convection (for ALE rezoning)
+  interface findDispConvect
+    module procedure findDispConvectUpWindScal
+    module procedure findDispConvectUpWindVect
+  end interface
+  public findDispConvect
+  
   ! flux limiters
   interface
     pure function modelLimiter(r)
@@ -57,9 +64,9 @@ contains
       n=grid%IntfNeibBlock(2,i)
       F=dot_product(grid%IntfNorm(:,i),uIntf(:,i))*grid%IntfArea(i)
       if(F>0d0)then
-        flowRate=-F*phi(:,m)
+        flowRate(:)=-F*phi(:,m)
       else
-        flowRate=-F*phi(:,n)
+        flowRate(:)=-F*phi(:,n)
       end if
       findConvectUpWindVect(:,m)=findConvectUpWindVect(:,m)+flowRate(:)
       findConvectUpWindVect(:,n)=findConvectUpWindVect(:,n)-flowRate(:)
@@ -178,6 +185,92 @@ contains
       vrst=findConvectTVDVect(vphi,u,ubind,grid,vgrad)
     end if
     findConvectTVDScal(:)=vrst(1,:)
+  end function
+  
+  !> find the convection of vector phi due to the displacement of block surface using upwind scheme
+  !> \f[ \int_{V^{block}_{disp}} \mathbf{\Phi} dV \f]
+  function findDispConvectUpWindVect(phi,disp,grid)
+    use moduleGrid
+    use moduleInterpolation
+    use moduleGridOperation
+    double precision,intent(in)::phi(:,:) !< variable to be convected
+    type(typeGrid),intent(inout)::grid !< the grid
+    double precision,intent(in)::disp(DIMS,grid%nNode) !< node displacement
+    double precision findDispConvectUpWindVect(size(phi,1),grid%nBlock) !< increment of phi
+    double precision dVolFracMax,flowRate(size(phi,1)),phiTemp(size(phi,1),grid%nBlock)
+    double precision,allocatable::dVol(:),dispIntf(:,:)
+    double precision,parameter::LIM_DVOL_FRAC=0.2d0
+    
+    call grid%updateIntfArea()
+    call grid%updateIntfNorm()
+    call grid%updateBlockVol()
+    findDispConvectUpWindVect(:,:)=0d0
+    allocate(dVol(grid%nIntf))
+    dispIntf=itplNode2Intf(disp,grid)
+    forall(i=1:grid%nIntf)
+      dVol(i)=grid%IntfArea(i)*dot_product(grid%IntfNorm(:,i),dispIntf(:,i))
+    end forall
+    dVolFracMax=0d0
+    do i=1,grid%nIntf
+      dVolFracMax=max(dVolFracMax,abs(dVol(i)/minval(grid%BlockVol(grid%IntfNeibBlock(:,i)))))
+    end do
+    if(dVolFracMax<=LIM_DVOL_FRAC)then
+      do i=1,grid%nIntf
+        m=grid%IntfNeibBlock(1,i)
+        n=grid%IntfNeibBlock(2,i)
+        if(dVol(i)>0d0)then
+          flowRate(:)=dVol(i)*phi(:,n)
+        else
+          flowRate(:)=dVol(i)*phi(:,m)
+        end if
+        findDispConvectUpWindVect(:,m)=findDispConvectUpWindVect(:,m)+flowRate(:)
+        findDispConvectUpWindVect(:,n)=findDispConvectUpWindVect(:,n)-flowRate(:)
+      end do
+    else
+      k=ceiling(dVolFracMax/LIM_DVOL_FRAC) ! number of sub-cycle steps
+      dispIntf(:,:)=dispIntf(:,:)/dble(k)
+      phiTemp(:,:)=phi(:,:)
+      do l=1,k
+        call grid%updateIntfArea()
+        call grid%updateIntfNorm()
+        call grid%updateBlockVol()
+        forall(i=1:grid%nIntf)
+          dVol(i)=grid%IntfArea(i)*dot_product(grid%IntfNorm(:,i),dispIntf(:,i))
+        end forall
+        do i=1,grid%nIntf
+          m=grid%IntfNeibBlock(1,i)
+          n=grid%IntfNeibBlock(2,i)
+          if(dVol(i)>0d0)then
+            flowRate(:)=dVol(i)*phiTemp(:,n)
+          else
+            flowRate(:)=dVol(i)*phiTemp(:,m)
+          end if
+          findDispConvectUpWindVect(:,m)=findDispConvectUpWindVect(:,m)+flowRate(:)
+          findDispConvectUpWindVect(:,n)=findDispConvectUpWindVect(:,n)-flowRate(:)
+          phiTemp(:,m)=phiTemp(:,m)+flowRate(:)/grid%BlockVol(m)
+          phiTemp(:,n)=phiTemp(:,n)-flowRate(:)/grid%BlockVol(n)
+        end do
+        call mvGrid(grid,disp/dble(k))
+      end do
+      call mvGrid(grid,-dble(k)*disp)
+    end if
+    deallocate(dVol)
+    deallocate(dispIntf)
+  end function
+  
+  !> find the convection of scalar phi due to the displacement of block surface using upwind scheme
+  !> \f[ \int_{V^{block}_{disp}} \Phi dV \f]
+  function findDispConvectUpWindScal(phi,disp,grid)
+    use moduleGrid
+    double precision,intent(in)::phi(:) !< variable to be convected
+    type(typeGrid),intent(inout)::grid !< the grid
+    double precision,intent(in)::disp(DIMS,grid%nNode) !< node displacement
+    double precision findDispConvectUpWindScal(grid%nBlock) !< increment of phi
+    double precision vphi(1,size(phi)),vrst(1,grid%nBlock)
+    
+    vphi(1,:)=phi(:)
+    vrst=findDispConvectUpWindVect(vphi,disp,grid)
+    findDispConvectUpWindScal(:)=vrst(1,:)
   end function
   
 end module
