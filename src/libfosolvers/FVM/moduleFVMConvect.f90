@@ -327,7 +327,7 @@ contains
         end if
         do j=1,size(phi,1)
           if(abs(phiD(j)-phiU(j))>tiny(1d0))then
-            r=2d0*dot_product(gradTemp(:,j,m),grid%BlockPos(:,n)-grid%BlockPos(:,m))&
+            r=2d0*dot_product(gradTemp(:,j,n),grid%BlockPos(:,m)-grid%BlockPos(:,n))&
             &    /(phiD(j)-phiU(j))-1d0
             flowRate=dVol(i)*(phiU(j)+lim(r)*(phiD(j)-phiU(j))/2d0)
           else
