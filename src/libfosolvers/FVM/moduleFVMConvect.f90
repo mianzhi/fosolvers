@@ -91,22 +91,6 @@ contains
     findConvectUpWindScal(:)=vrst(1,:)
   end function
   
-  !> van Leer flux limiter
-  pure function vanLeerLimiter(r)
-    double precision,intent(in)::r !< successive gradient ratio
-    double precision vanLeerLimiter !< limit function
-    
-    vanLeerLimiter=(r+abs(r))/(1d0+abs(r))
-  end function
-  
-  !> minmod flux limiter
-  pure function minmodLimiter(r)
-    double precision,intent(in)::r !< successive gradient ratio
-    double precision minmodLimiter !< limit function
-    
-    minmodLimiter=max(0d0,min(r,1d0))
-  end function
-  
   !> find the convection of vector phi driven by velocity u through interface using TVD scheme
   !> \f[ \int_{intf} \mathbf{\Phi} (\mathbf{u} \cdot \hat{n}) dA \f]
   function findConvectTVDVect(phi,u,ubind,grid,grad,limiter)
@@ -366,6 +350,22 @@ contains
       vrst=findDispConvectTVDVect(vphi,disp,grid,vgrad)
     end if
     findDispConvectTVDScal(:)=vrst(1,:)
+  end function
+  
+  !> van Leer flux limiter
+  pure function vanLeerLimiter(r)
+    double precision,intent(in)::r !< successive gradient ratio
+    double precision vanLeerLimiter !< limit function
+    
+    vanLeerLimiter=(r+abs(r))/(1d0+abs(r))
+  end function
+  
+  !> minmod flux limiter
+  pure function minmodLimiter(r)
+    double precision,intent(in)::r !< successive gradient ratio
+    double precision minmodLimiter !< limit function
+    
+    minmodLimiter=max(0d0,min(r,1d0))
   end function
   
 end module
