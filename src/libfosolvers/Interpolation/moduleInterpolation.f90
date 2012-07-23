@@ -13,6 +13,13 @@ module moduleInterpolation
   end interface
   public itplBlock2Intf
   
+  !> interpolate from node to edge
+  interface itplNode2Edge
+    module procedure::itplNode2EdgeVect
+    module procedure::itplNode2EdgeScal
+  end interface
+  public itplNode2Edge
+  
   !> interpolate from node to interface
   interface itplNode2Intf
     module procedure::itplNode2IntfVect
@@ -101,6 +108,37 @@ contains
     vrst=itplBCDCVect(vv,vgrad,grid)
     call reallocArr(itplBCDCScal,size(vrst,2))
     itplBCDCScal(:)=vrst(1,:)
+  end function
+  
+  !> interpolate vector v within grid from node to edge
+  function itplNode2EdgeVect(v,grid)
+    use moduleGrid
+    use moduleBasicDataStruct
+    double precision,intent(in)::v(:,:) !< node data to be interpolated
+    type(typeGrid),intent(inout)::grid !< grid on which v is defined
+    double precision,allocatable::itplNode2EdgeVect(:,:) !< interpolated data on edge
+    
+    call grid%updateEdge()
+    call reallocArr(itplNode2EdgeVect,size(v,1),grid%nEdge)
+    forall(i=1:grid%nEdge)
+      itplNode2EdgeVect(:,i)=sum(v(:,grid%Edge(i)%iNode(:)),2)/dble(grid%Edge(i)%nNode)
+    end forall
+  end function
+  
+  !> interpolate scaler v within grid from node to edge
+  function itplNode2EdgeScal(v,grid)
+    use moduleGrid
+    use moduleBasicDataStruct
+    double precision,intent(in)::v(:) !< node data to be interpolated
+    type(typeGrid),intent(inout)::grid !< grid on which v is defined
+    double precision,allocatable::itplNode2EdgeScal(:) !< interpolated data on edge
+    double precision vv(1,size(v))
+    double precision,allocatable::vrst(:,:)
+    
+    vv(1,:)=v(:)
+    vrst=itplNode2EdgeVect(vv,grid)
+    call reallocArr(itplNode2EdgeScal,size(vrst,2))
+    itplNode2EdgeScal(:)=vrst(1,:)
   end function
   
   !> interpolate vector v within grid from node to interface
