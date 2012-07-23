@@ -20,6 +20,10 @@ program test
     open(12,file='bin/gridGMSH4.msh',status='old')
     call readGMSH(12,grid)
     close(12)
+    call grid%updateDualBlock()
+    do i=1,grid%nEdge
+      write(*,*),i,grid%EAreaVect(:,i)
+    end do
     call grid%updateBlockPos()
     call grid%updateBlockVol()
     allocate(disp(DIMS,grid%nNode))

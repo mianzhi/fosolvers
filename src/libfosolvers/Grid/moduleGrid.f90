@@ -139,6 +139,7 @@ module moduleGrid
     logical isUpDualBlock !< if the median-dual block is updated
     double precision,allocatable::NodeVol(:) !< volume of node/median-dual block
     type(typeHtr2DDArr),allocatable::NBAreaVect(:) !< area vector of node-block surface
+    double precision,allocatable::EAreaVect(:,:) !< area vector of edge(node-node) surface
   contains
     ! basic grid procedures
     procedure,public::init=>initGrid
@@ -325,6 +326,7 @@ contains
     if(allocated(this%IntfNorm)) deallocate(this%IntfNorm)
     if(allocated(this%NodeVol)) deallocate(this%NodeVol)
     if(allocated(this%NBAreaVect)) deallocate(this%NBAreaVect)
+    if(allocated(this%EAreaVect)) deallocate(this%EAreaVect)
   end subroutine
   
   !> destructor of typeGrid
@@ -399,9 +401,9 @@ contains
   
   !> update the block neighbour facet and neighbour block
   elemental subroutine updateBlockNeib(this)
+    use moduleSimpleSetLogic
     class(typeGrid),intent(inout)::this !< this grid
     integer,allocatable::SurfNode(:),ScanList(:)
-    logical,allocatable::mask(:)
     
     if(.not.this%isUpBlockNeib)then
       call reallocArr(this%BlockNeibFacet,this%nBlock)
@@ -415,16 +417,11 @@ contains
         this%BlockNeibBlock(i)%dat(:)=0
         do j=1,m
           SurfNode=getBlockSurfNode(this%Block(i),j)
-          allocate(mask(size(SurfNode)))
           if(allocated(this%NodeNeibBlock(SurfNode(1))%dat))then
             ScanList=this%NodeNeibBlock(SurfNode(1))%dat
             do k=1,size(ScanList)
               if(ScanList(k)/=i)then
-                mask(:)=.false.
-                forall(l=1:size(SurfNode))
-                  mask(l)=any(this%Block(ScanList(k))%iNode(:)==SurfNode(l))
-                end forall
-                if(all(mask(:)))then
+                if(isSubset(SurfNode,this%Block(ScanList(k))%iNode))then
                   this%BlockNeibBlock(i)%dat(j)=ScanList(k)
                   exit
                 end if
@@ -435,11 +432,7 @@ contains
           if(allocated(this%NodeNeibFacet(SurfNode(1))%dat))then
             ScanList=this%NodeNeibFacet(SurfNode(1))%dat
             do k=1,size(ScanList)
-              mask(:)=.false.
-              forall(l=1:size(SurfNode))
-                mask(l)=any(this%Facet(ScanList(k))%iNode(:)==SurfNode(l))
-              end forall
-              if(all(mask(:)))then
+              if(isSubset(SurfNode,this%Facet(ScanList(k))%iNode))then
                 this%BlockNeibFacet(i)%dat(j)=ScanList(k)
                 if(.not.(this%BlockNeibBlock(i)%dat(j)/=0.and.&
                 &        this%Facet(this%BlockNeibFacet(i)%dat(j))%Ent>=0))then
@@ -450,7 +443,6 @@ contains
             deallocate(ScanList)
           end if
           deallocate(SurfNode)
-          deallocate(mask)
         end do
       end do
       this%isUpBlockNeib=.true.
@@ -458,7 +450,7 @@ contains
   end subroutine
   
   !> update the edge between nodes
-  subroutine updateEdge(this)
+  elemental subroutine updateEdge(this)
     use moduleSimpleSetLogic
     class(typeGrid),intent(inout)::this !< this grid
     integer,allocatable::nodeArr(:)
@@ -768,16 +760,21 @@ contains
   
   !> update the node/median-dual block
   elemental subroutine updateDualBlock(this)
+    use moduleSimpleSetLogic
     use moduleSimpleGeometry
     class(typeGrid),intent(inout)::this !< this grid
+    integer,allocatable::NodeList(:)
+    double precision quadPos(DIMS,QUAD_NODE_NUM),unitVect(DIMS)
     
     if(.not.this%isUpDualBlock)then
+      call this%updateBlockPos()
       call this%updateBlockVol()
       call this%updateFacetArea()
       call this%updateIntfArea()
       call this%updateFacetNorm()
       call this%updateIntfNorm()
       call this%updateFacetNeib()
+      call this%updateEdge()
       call reallocArr(this%NodeVol,this%nNode)
       this%NodeVol(:)=0d0
       do i=1,this%nBlock
@@ -819,6 +816,34 @@ contains
               &                            /dble(this%Facet(i)%nNode)
             end if
           end do
+        end do
+      end do
+      call reallocArr(this%EAreaVect,DIMS,this%nEdge)
+      this%EAreaVect(:,:)=0d0
+      do i=1,this%nEdge
+        quadPos(:,1)=sum(this%NodePos(:,this%Edge(i)%iNode(:)),2)/dble(this%Edge(i)%nNode)
+        unitVect(:)=this%NodePos(:,this%Edge(i)%iNode(2))-this%NodePos(:,this%Edge(i)%iNode(1))
+        unitVect(:)=unitVect(:)/norm2(unitVect)
+        do j=1,size(this%EdgeNeibBlock(i)%dat)
+          k=this%EdgeNeibBlock(i)%dat(j)
+          quadPos(:,3)=this%BlockPos(:,k)
+          m=0
+          do l=1,getBlockSurfNum(this%Block(k))
+            NodeList=getBlockSurfNode(this%Block(k),l)
+            if(isSubset(this%Edge(i)%iNode,NodeList))then
+              m=m+1
+              quadPos(:,m*2)=sum(this%NodePos(:,NodeList(:)),2)/dble(size(NodeList))
+              if(m==2)then
+                exit
+              end if
+            end if
+            deallocate(NodeList)
+          end do
+          this%EAreaVect(:,i)=this%EAreaVect(:,i)&
+          &                   +find3PArea(quadPos(:,[1,2,3]))*unitVect(:)&
+          &                    *abs(dot_product(find3PNorm(quadPos(:,[1,2,3])),unitVect))&
+          &                   +find3PArea(quadPos(:,[1,3,4]))*unitVect(:)&
+          &                    *abs(dot_product(find3PNorm(quadPos(:,[1,3,4])),unitVect))
         end do
       end do
       this%isUpDualBlock=.true.
