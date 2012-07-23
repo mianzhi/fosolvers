@@ -5,6 +5,7 @@ module moduleSimpleSetLogic
   private
   
   ! public procedures
+  public isSubset
   public findIntersection
   public findUnion
   public findComplement
@@ -13,6 +14,15 @@ module moduleSimpleSetLogic
   public applComplement
   
 contains
+  
+  !> check if a is subset of b
+  pure function isSubset(a,b)
+    integer,intent(in)::a(:) !< array a
+    integer,intent(in)::b(:) !< array b
+    logical isSubset !< if a is subset of b
+    
+    isSubset=all([(any(b(:)==a(i)),i=1,size(a))])
+  end function
   
   !> find the intersection of array a and b
   pure function findIntersection(a,b)
