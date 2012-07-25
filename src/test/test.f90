@@ -38,7 +38,7 @@ program test
     do i=1,10
       t=t+1d0
       gradv=findGrad(v,grid,BIND_NODE)
-      temp=findDispConvect(v,BIND_NODE,disp,grid)
+      temp=findDispConvect(v,BIND_NODE,disp,grid,gradv,limiter=vanLeer)
       call grid%updateDualBlock()
       v=v+temp/grid%NodeVol
       call mvGrid(grid,disp)

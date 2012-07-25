@@ -102,8 +102,9 @@ contains
     double precision,intent(in)::grad(DIMS,size(phi,1),size(phi,2)) !< gradient of phi
     procedure(modelLimiter),pointer,optional::limiter !< the flux limiter
     double precision findConvectTVDVect(size(phi,1),grid%nBlock) !< increment due to convection
-    double precision F,phiU(size(phi,1)),phiD(size(phi,1)),r,flowRate
+    double precision F,r,flowRate
     double precision,allocatable::uIntf(:,:)
+    integer up,dn
     procedure(modelLimiter),pointer::lim
     
     call grid%updateIntfArea()
@@ -126,23 +127,23 @@ contains
       lim=>vanLeerLimiter
     end if
     do i=1,grid%nIntf
+      F=dot_product(grid%IntfNorm(:,i),uIntf(:,i))*grid%IntfArea(i)
       m=grid%IntfNeibBlock(1,i)
       n=grid%IntfNeibBlock(2,i)
-      F=dot_product(grid%IntfNorm(:,i),uIntf(:,i))*grid%IntfArea(i)
       if(F>0d0)then
-        phiU(:)=phi(:,m)
-        phiD(:)=phi(:,n)
+        up=m
+        dn=n
       else
-        phiU(:)=phi(:,n)
-        phiD(:)=phi(:,m)
+        up=n
+        dn=m
       end if
       do j=1,size(phi,1)
-        if(abs(phiD(j)-phiU(j))>tiny(1d0))then
-          r=2d0*dot_product(grad(:,j,m),grid%BlockPos(:,n)-grid%BlockPos(:,m))&
-          &    /(phiD(j)-phiU(j))-1d0
-          flowRate=-F*(phiU(j)+lim(r)*(phiD(j)-phiU(j))/2d0)
+        if(abs(phi(j,up)-phi(j,dn))>tiny(1d0))then
+          r=2d0*dot_product(grad(:,j,up),grid%BlockPos(:,dn)-grid%BlockPos(:,up))&
+          &    /(phi(j,dn)-phi(j,up))-1d0
+          flowRate=-F*(phi(j,up)+lim(r)*(phi(j,dn)-phi(j,up))/2d0)
         else
-          flowRate=-F*phiU(j)
+          flowRate=-F*phi(j,up)
         end if
         findConvectTVDVect(j,m)=findConvectTVDVect(j,m)+flowRate
         findConvectTVDVect(j,n)=findConvectTVDVect(j,n)-flowRate
@@ -173,8 +174,8 @@ contains
     findConvectTVDScal(:)=vrst(1,:)
   end function
   
-  !> find the convection of vector phi due to the displacement of block surface using upwind scheme
-  !> \f[ \int_{V^{block}_{disp}} \mathbf{\Phi} dV \f]
+  !> find the convection of vector phi due to the displacement of CV surface using upwind scheme
+  !> \f[ \int_{V^{CV}_{disp}} \mathbf{\Phi} dV \f]
   function findDispConvectUpWindVect(phi,bind,disp,grid)
     use moduleGrid
     use moduleInterpolation
@@ -271,8 +272,8 @@ contains
     end select
   end function
   
-  !> find the convection of scalar phi due to the displacement of block surface using upwind scheme
-  !> \f[ \int_{V^{block}_{disp}} \Phi dV \f]
+  !> find the convection of scalar phi due to the displacement of CV surface using upwind scheme
+  !> \f[ \int_{V^{CV}_{disp}} \Phi dV \f]
   function findDispConvectUpWindScal(phi,bind,disp,grid)
     use moduleGrid
     double precision,intent(in)::phi(:) !< variable to be convected
@@ -287,8 +288,8 @@ contains
     findDispConvectUpWindScal(:)=vrst(1,:)
   end function
   
-  !> find the convection of vector phi due to the displacement of block surface using TVD scheme
-  !> \f[ \int_{V^{block}_{disp}} \mathbf{\Phi} dV \f]
+  !> find the convection of vector phi due to the displacement of CV surface using TVD scheme
+  !> \f[ \int_{V^{CV}_{disp}} \mathbf{\Phi} dV \f]
   function findDispConvectTVDVect(phi,bind,disp,grid,grad,limiter)
     use moduleGrid
     use moduleGridOperation
@@ -301,14 +302,15 @@ contains
     double precision,intent(in)::grad(DIMS,size(phi,1),size(phi,2)) !< gradient of phi
     procedure(modelLimiter),pointer,optional::limiter !< the flux limiter
     double precision findDispConvectTVDVect(size(phi,1),size(phi,2)) !< increment of phi
-    double precision dVolFracMax,phiTemp(size(phi,1),size(phi,2)),&
-    &                gradTemp(DIMS,size(phi,1),grid%nBlock),phiU(size(phi,1)),phiD(size(phi,1)),r,&
-    &                flowRate
+    double precision dVolFracMax,r,flowRate,gradTemp(DIMS,size(phi,1),size(phi,2)),&
+    &                phiTemp1(size(phi,1),size(phi,2)),phiTemp2(size(phi,1),size(phi,2))
     double precision,allocatable::dVol(:),dispIntf(:,:)
     double precision,parameter::LIM_DVOL_FRAC=0.2d0
     procedure(modelLimiter),pointer::lim
+    integer up,dn
     
     findDispConvectTVDVect(:,:)=0d0
+    dVolFracMax=0d0
     if(present(limiter))then
       lim=>limiter
     else
@@ -316,7 +318,57 @@ contains
     end if
     select case(bind)
     case(BIND_NODE)
-      !TODO
+      call grid%updateDualBlock()
+      allocate(dVol(grid%nEdge))
+      dispIntf=itplNode2Edge(disp,grid)
+      forall(i=1:grid%nEdge)
+        dVol(i)=dot_product(grid%EAreaVect(:,i),dispIntf(:,i))
+      end forall
+      do i=1,grid%nEdge
+        dVolFracMax=max(dVolFracMax,abs(dVol(i)/minval(grid%NodeVol(grid%Edge(i)%iNode(:)))))
+      end do
+      k=ceiling(dVolFracMax/LIM_DVOL_FRAC) ! number of sub-cycle steps
+      dispIntf(:,:)=dispIntf(:,:)/dble(k)
+      phiTemp1(:,:)=phi(:,:)
+      gradTemp(:,:,:)=grad(:,:,:)
+      do l=1,k
+        call grid%updateDualBlock()
+        if(l/=1)then
+          gradTemp=findGrad(phiTemp1,grid,BIND_NODE)
+        end if
+        forall(i=1:grid%nEdge)
+          dVol(i)=dot_product(grid%EAreaVect(:,i),dispIntf(:,i))
+        end forall
+        phiTemp2(:,:)=phiTemp1(:,:)
+        do i=1,grid%nEdge
+          m=grid%Edge(i)%iNode(1)
+          n=grid%Edge(i)%iNode(2)
+          if(dVol(i)>0d0)then
+            up=n
+            dn=m
+          else
+            up=m
+            dn=n
+          end if
+          do j=1,size(phi,1)
+            if(abs(phiTemp2(j,up)-phiTemp2(j,dn))>tiny(1d0))then
+              r=2d0*dot_product(gradTemp(:,j,up),grid%NodePos(:,dn)-grid%NodePos(:,up))&
+              &    /(phiTemp2(j,dn)-phiTemp2(j,up))-1d0
+              flowRate=dVol(i)*(phiTemp2(j,up)+lim(r)*(phiTemp2(j,dn)-phiTemp2(j,up))/2d0)
+            else
+              flowRate=dVol(i)*phiTemp2(j,up)
+            end if
+            findDispConvectTVDVect(j,m)=findDispConvectTVDVect(j,m)+flowRate
+            findDispConvectTVDVect(j,n)=findDispConvectTVDVect(j,n)-flowRate
+            phiTemp1(j,m)=phiTemp1(j,m)+flowRate/grid%NodeVol(m)
+            phiTemp1(j,n)=phiTemp1(j,n)-flowRate/grid%NodeVol(n)
+          end do
+        end do
+        call mvGrid(grid,disp/dble(k))
+      end do
+      call mvGrid(grid,-disp)
+      deallocate(dVol)
+      deallocate(dispIntf)
     case(BIND_BLOCK)
       call grid%updateIntfArea()
       call grid%updateIntfNorm()
@@ -327,13 +379,12 @@ contains
       forall(i=1:grid%nIntf)
         dVol(i)=grid%IntfArea(i)*dot_product(grid%IntfNorm(:,i),dispIntf(:,i))
       end forall
-      dVolFracMax=0d0
       do i=1,grid%nIntf
         dVolFracMax=max(dVolFracMax,abs(dVol(i)/minval(grid%BlockVol(grid%IntfNeibBlock(:,i)))))
       end do
       k=ceiling(dVolFracMax/LIM_DVOL_FRAC) ! number of sub-cycle steps
       dispIntf(:,:)=dispIntf(:,:)/dble(k)
-      phiTemp(:,:)=phi(:,:)
+      phiTemp1(:,:)=phi(:,:)
       gradTemp(:,:,:)=grad(:,:,:)
       do l=1,k
         call grid%updateIntfArea()
@@ -341,33 +392,34 @@ contains
         call grid%updateBlockPos()
         call grid%updateBlockVol()
         if(l/=1)then
-          gradTemp=findGrad(phiTemp,grid,BIND_BLOCK)
+          gradTemp=findGrad(phiTemp1,grid,BIND_BLOCK)
         end if
         forall(i=1:grid%nIntf)
           dVol(i)=grid%IntfArea(i)*dot_product(grid%IntfNorm(:,i),dispIntf(:,i))
         end forall
+        phiTemp2(:,:)=phiTemp1(:,:)
         do i=1,grid%nIntf
           m=grid%IntfNeibBlock(1,i)
           n=grid%IntfNeibBlock(2,i)
           if(dVol(i)>0d0)then
-            phiU(:)=phiTemp(:,n)
-            phiD(:)=phiTemp(:,m)
+            up=n
+            dn=m
           else
-            phiU(:)=phiTemp(:,m)
-            phiD(:)=phiTemp(:,n)
+            up=m
+            dn=n
           end if
           do j=1,size(phi,1)
-            if(abs(phiD(j)-phiU(j))>tiny(1d0))then
-              r=2d0*dot_product(gradTemp(:,j,n),grid%BlockPos(:,m)-grid%BlockPos(:,n))&
-              &    /(phiD(j)-phiU(j))-1d0
-              flowRate=dVol(i)*(phiU(j)+lim(r)*(phiD(j)-phiU(j))/2d0)
+            if(abs(phiTemp2(j,up)-phiTemp2(j,dn))>tiny(1d0))then
+              r=2d0*dot_product(gradTemp(:,j,up),grid%BlockPos(:,dn)-grid%BlockPos(:,up))&
+              &    /(phiTemp2(j,dn)-phiTemp2(j,up))-1d0
+              flowRate=dVol(i)*(phiTemp2(j,up)+lim(r)*(phiTemp2(j,dn)-phiTemp2(j,up))/2d0)
             else
-              flowRate=dVol(i)*phiU(j)
+              flowRate=dVol(i)*phiTemp2(j,up)
             end if
             findDispConvectTVDVect(j,m)=findDispConvectTVDVect(j,m)+flowRate
             findDispConvectTVDVect(j,n)=findDispConvectTVDVect(j,n)-flowRate
-            phiTemp(j,m)=phiTemp(j,m)+flowRate/grid%BlockVol(m)
-            phiTemp(j,n)=phiTemp(j,n)-flowRate/grid%BlockVol(n)
+            phiTemp1(j,m)=phiTemp1(j,m)+flowRate/grid%BlockVol(m)
+            phiTemp1(j,n)=phiTemp1(j,n)-flowRate/grid%BlockVol(n)
           end do
         end do
         call mvGrid(grid,disp/dble(k))
@@ -379,8 +431,8 @@ contains
     end select
   end function
   
-  !> find the convection of scalar phi due to the displacement of block surface using TVD scheme
-  !> \f[ \int_{V^{block}_{disp}} \Phi dV \f]
+  !> find the convection of scalar phi due to the displacement of CV surface using TVD scheme
+  !> \f[ \int_{V^{CV}_{disp}} \Phi dV \f]
   function findDispConvectTVDScal(phi,bind,disp,grid,grad,limiter)
     use moduleGrid
     double precision,intent(in)::phi(:) !< variable to be convected
