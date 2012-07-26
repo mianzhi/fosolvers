@@ -185,7 +185,8 @@ contains
     type(typeGrid),intent(inout)::grid !< the grid
     double precision,intent(in)::disp(DIMS,grid%nNode) !< node displacement
     double precision findDispConvectUpWindVect(size(phi,1),size(phi,2)) !< increment of phi
-    double precision dVolFracMax,flowRate(size(phi,1)),phiTemp(size(phi,1),size(phi,2))
+    double precision dVolFracMax,flowRate(size(phi,1)),phiTemp1(size(phi,1),size(phi,2)),&
+    &                phiTemp2(size(phi,1),size(phi,2))
     double precision,allocatable::dVol(:),dispIntf(:,:)
     double precision,parameter::LIM_DVOL_FRAC=0.2d0
     
@@ -204,24 +205,29 @@ contains
       end do
       k=ceiling(dVolFracMax/LIM_DVOL_FRAC) ! number of sub-cycle steps
       dispIntf(:,:)=dispIntf(:,:)/dble(k)
-      phiTemp(:,:)=phi(:,:)
+      forall(i=1:grid%nNode)
+        phiTemp1(:,i)=phi(:,i)*grid%NodeVol(i)
+      end forall
       do l=1,k
         call grid%updateDualBlock()
         forall(i=1:grid%nEdge)
           dVol(i)=dot_product(grid%EAreaVect(:,i),dispIntf(:,i))
         end forall
+        forall(i=1:grid%nNode)
+          phiTemp2(:,i)=phiTemp1(:,i)/grid%NodeVol(i)
+        end forall
         do i=1,grid%nEdge
           m=grid%Edge(i)%iNode(1)
           n=grid%Edge(i)%iNode(2)
           if(dVol(i)>0d0)then
-            flowRate(:)=dVol(i)*phiTemp(:,n)
+            flowRate(:)=dVol(i)*phiTemp2(:,n)
           else
-            flowRate(:)=dVol(i)*phiTemp(:,m)
+            flowRate(:)=dVol(i)*phiTemp2(:,m)
           end if
           findDispConvectUpWindVect(:,m)=findDispConvectUpWindVect(:,m)+flowRate(:)
           findDispConvectUpWindVect(:,n)=findDispConvectUpWindVect(:,n)-flowRate(:)
-          phiTemp(:,m)=phiTemp(:,m)+flowRate(:)/grid%NodeVol(m)
-          phiTemp(:,n)=phiTemp(:,n)-flowRate(:)/grid%NodeVol(n)
+          phiTemp1(:,m)=phiTemp1(:,m)+flowRate(:)
+          phiTemp1(:,n)=phiTemp1(:,n)-flowRate(:)
         end do
         call mvGrid(grid,disp/dble(k))
       end do
@@ -242,7 +248,9 @@ contains
       end do
       k=ceiling(dVolFracMax/LIM_DVOL_FRAC) ! number of sub-cycle steps
       dispIntf(:,:)=dispIntf(:,:)/dble(k)
-      phiTemp(:,:)=phi(:,:)
+      forall(i=1:grid%nBlock)
+        phiTemp1(:,i)=phi(:,i)*grid%BlockVol(i)
+      end forall
       do l=1,k
         call grid%updateIntfArea()
         call grid%updateIntfNorm()
@@ -250,18 +258,21 @@ contains
         forall(i=1:grid%nIntf)
           dVol(i)=grid%IntfArea(i)*dot_product(grid%IntfNorm(:,i),dispIntf(:,i))
         end forall
+        forall(i=1:grid%nBlock)
+          phiTemp2(:,i)=phiTemp1(:,i)/grid%BlockVol(i)
+        end forall
         do i=1,grid%nIntf
           m=grid%IntfNeibBlock(1,i)
           n=grid%IntfNeibBlock(2,i)
           if(dVol(i)>0d0)then
-            flowRate(:)=dVol(i)*phiTemp(:,n)
+            flowRate(:)=dVol(i)*phiTemp2(:,n)
           else
-            flowRate(:)=dVol(i)*phiTemp(:,m)
+            flowRate(:)=dVol(i)*phiTemp2(:,m)
           end if
           findDispConvectUpWindVect(:,m)=findDispConvectUpWindVect(:,m)+flowRate(:)
           findDispConvectUpWindVect(:,n)=findDispConvectUpWindVect(:,n)-flowRate(:)
-          phiTemp(:,m)=phiTemp(:,m)+flowRate(:)/grid%BlockVol(m)
-          phiTemp(:,n)=phiTemp(:,n)-flowRate(:)/grid%BlockVol(n)
+          phiTemp1(:,m)=phiTemp1(:,m)+flowRate(:)
+          phiTemp1(:,n)=phiTemp1(:,n)-flowRate(:)
         end do
         call mvGrid(grid,disp/dble(k))
       end do
@@ -329,7 +340,9 @@ contains
       end do
       k=ceiling(dVolFracMax/LIM_DVOL_FRAC) ! number of sub-cycle steps
       dispIntf(:,:)=dispIntf(:,:)/dble(k)
-      phiTemp1(:,:)=phi(:,:)
+      forall(i=1:grid%nNode)
+        phiTemp1(:,i)=phi(:,i)*grid%NodeVol(i)
+      end forall
       gradTemp(:,:,:)=grad(:,:,:)
       do l=1,k
         call grid%updateDualBlock()
@@ -339,7 +352,9 @@ contains
         forall(i=1:grid%nEdge)
           dVol(i)=dot_product(grid%EAreaVect(:,i),dispIntf(:,i))
         end forall
-        phiTemp2(:,:)=phiTemp1(:,:)
+        forall(i=1:grid%nNode)
+          phiTemp2(:,i)=phiTemp1(:,i)/grid%NodeVol(i)
+        end forall
         do i=1,grid%nEdge
           m=grid%Edge(i)%iNode(1)
           n=grid%Edge(i)%iNode(2)
@@ -360,8 +375,8 @@ contains
             end if
             findDispConvectTVDVect(j,m)=findDispConvectTVDVect(j,m)+flowRate
             findDispConvectTVDVect(j,n)=findDispConvectTVDVect(j,n)-flowRate
-            phiTemp1(j,m)=phiTemp1(j,m)+flowRate/grid%NodeVol(m)
-            phiTemp1(j,n)=phiTemp1(j,n)-flowRate/grid%NodeVol(n)
+            phiTemp1(j,m)=phiTemp1(j,m)+flowRate
+            phiTemp1(j,n)=phiTemp1(j,n)-flowRate
           end do
         end do
         call mvGrid(grid,disp/dble(k))
@@ -384,7 +399,9 @@ contains
       end do
       k=ceiling(dVolFracMax/LIM_DVOL_FRAC) ! number of sub-cycle steps
       dispIntf(:,:)=dispIntf(:,:)/dble(k)
-      phiTemp1(:,:)=phi(:,:)
+      forall(i=1:grid%nBlock)
+        phiTemp1(:,i)=phi(:,i)*grid%BlockVol(i)
+      end forall
       gradTemp(:,:,:)=grad(:,:,:)
       do l=1,k
         call grid%updateIntfArea()
@@ -397,7 +414,9 @@ contains
         forall(i=1:grid%nIntf)
           dVol(i)=grid%IntfArea(i)*dot_product(grid%IntfNorm(:,i),dispIntf(:,i))
         end forall
-        phiTemp2(:,:)=phiTemp1(:,:)
+        forall(i=1:grid%nBlock)
+          phiTemp2(:,i)=phiTemp1(:,i)/grid%BlockVol(i)
+        end forall
         do i=1,grid%nIntf
           m=grid%IntfNeibBlock(1,i)
           n=grid%IntfNeibBlock(2,i)
@@ -418,8 +437,8 @@ contains
             end if
             findDispConvectTVDVect(j,m)=findDispConvectTVDVect(j,m)+flowRate
             findDispConvectTVDVect(j,n)=findDispConvectTVDVect(j,n)-flowRate
-            phiTemp1(j,m)=phiTemp1(j,m)+flowRate/grid%BlockVol(m)
-            phiTemp1(j,n)=phiTemp1(j,n)-flowRate/grid%BlockVol(n)
+            phiTemp1(j,m)=phiTemp1(j,m)+flowRate
+            phiTemp1(j,n)=phiTemp1(j,n)-flowRate
           end do
         end do
         call mvGrid(grid,disp/dble(k))
