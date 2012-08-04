@@ -20,34 +20,33 @@ program test
     open(12,file='bin/gridGMSH5.msh',status='old')
     call readGMSH(12,grid)
     close(12)
-    call grid%updateBlockPos()
-    call grid%updateBlockVol()
+    call grid%updateDualBlock()
     allocate(disp(DIMS,grid%nNode))
-    allocate(v(grid%nBlock))
-    allocate(temp(grid%nBlock))
-    allocate(gradv(DIMS,grid%nBlock))
+    allocate(v(grid%nNode))
+    allocate(temp(grid%nNode))
+    allocate(gradv(DIMS,grid%nNode))
     disp(:,:)=0d0
     forall(i=1:grid%nNode)
       disp(1,i)=0.05d0-0.04d0*grid%NodePos(1,i)
     end forall
-    do i=1,grid%nBlock
-      v(i)=merge(100d0,000d0,grid%BlockPos(1,i)<0.9d0.and.grid%BlockPos(1,i)>0.7d0)
+    do i=1,grid%nNode
+      v(i)=merge(100d0,000d0,grid%NodePos(1,i)<0.9d0.and.grid%NodePos(1,i)>0.7d0)
     end do
     t=0d0
     open(13,file='rst.msh',status='replace')
     call writeGMSH(13,grid)
-    call writeGMSH(13,v,grid,BIND_BLOCK,'name1',0,t)
+    call writeGMSH(13,v,grid,BIND_NODE,'name1',0,t)
     call writeGMSH(13,0d0*disp,grid,BIND_NODE,'s',0,t)
     do i=1,10
       t=t+1d0
-      gradv=findGrad(v,grid,BIND_BLOCK)
-      temp=v*grid%BlockVol
-      temp=temp+findDispConvect(v,BIND_BLOCK,disp,grid,gradv,limiter=vanLeer)
+      gradv=findGrad(v,grid,BIND_NODE)
+      temp=v*grid%NodeVol
+      temp=temp+findDispConvect(v,BIND_NODE,disp,grid,gradv,limiter=vanLeer)
       call mvGrid(grid,disp)
-      call grid%updateBlockVol()
-      v=temp/grid%BlockVol
-      write(*,*),dot_product(v,grid%BlockVol)
-      call writeGMSH(13,v,grid,BIND_BLOCK,'name1',i,t)
+      call grid%updateDualBlock()
+      v=temp/grid%NodeVol
+      write(*,*),dot_product(v,grid%NodeVol)
+      call writeGMSH(13,v,grid,BIND_NODE,'name1',i,t)
       call writeGMSH(13,dble(i)*disp,grid,BIND_NODE,'s',i,t)
     end do
     close(13)

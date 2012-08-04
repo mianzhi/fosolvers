@@ -840,10 +840,10 @@ contains
             deallocate(NodeList)
           end do
           this%EAreaVect(:,i)=this%EAreaVect(:,i)&
-          &                   +find3PArea(quadPos(:,[1,2,3]))*unitVect(:)&
-          &                    *abs(dot_product(find3PNorm(quadPos(:,[1,2,3])),unitVect))&
-          &                   +find3PArea(quadPos(:,[1,3,4]))*unitVect(:)&
-          &                    *abs(dot_product(find3PNorm(quadPos(:,[1,3,4])),unitVect))
+          &                   +find3PArea(quadPos(:,[1,2,3]))*find3PNorm(quadPos(:,[1,2,3]))&
+          &                    *sign(1d0,dot_product(find3PNorm(quadPos(:,[1,2,3])),unitVect))&
+          &                   +find3PArea(quadPos(:,[1,3,4]))*find3PNorm(quadPos(:,[1,3,4]))&
+          &                    *sign(1d0,dot_product(find3PNorm(quadPos(:,[1,3,4])),unitVect))
         end do
       end do
       this%isUpDualBlock=.true.
