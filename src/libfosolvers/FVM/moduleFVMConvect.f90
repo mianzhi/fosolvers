@@ -346,15 +346,15 @@ contains
       gradTemp(:,:,:)=grad(:,:,:)
       do l=1,k
         call grid%updateDualBlock()
-        if(l/=1)then
-          gradTemp=findGrad(phiTemp1,grid,BIND_NODE)
-        end if
         forall(i=1:grid%nEdge)
           dVol(i)=dot_product(grid%EAreaVect(:,i),dispIntf(:,i))
         end forall
         forall(i=1:grid%nNode)
           phiTemp2(:,i)=phiTemp1(:,i)/grid%NodeVol(i)
         end forall
+        if(l/=1)then
+          gradTemp=findGrad(phiTemp2,grid,BIND_NODE)
+        end if
         do i=1,grid%nEdge
           m=grid%Edge(i)%iNode(1)
           n=grid%Edge(i)%iNode(2)
@@ -408,15 +408,15 @@ contains
         call grid%updateIntfNorm()
         call grid%updateBlockPos()
         call grid%updateBlockVol()
-        if(l/=1)then
-          gradTemp=findGrad(phiTemp1,grid,BIND_BLOCK)
-        end if
         forall(i=1:grid%nIntf)
           dVol(i)=grid%IntfArea(i)*dot_product(grid%IntfNorm(:,i),dispIntf(:,i))
         end forall
         forall(i=1:grid%nBlock)
           phiTemp2(:,i)=phiTemp1(:,i)/grid%BlockVol(i)
         end forall
+        if(l/=1)then
+          gradTemp=findGrad(phiTemp2,grid,BIND_BLOCK)
+        end if
         do i=1,grid%nIntf
           m=grid%IntfNeibBlock(1,i)
           n=grid%IntfNeibBlock(2,i)
