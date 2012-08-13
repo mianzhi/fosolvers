@@ -1,0 +1,81 @@
+!----------------------------------------------------------------------------- best with 100 columns
+
+!> global variables for foeuler
+module gVarEuler
+  use moduleGrid
+  public
+  
+  type(typeGrid)::grid !< the grid
+  double precision,allocatable::rho(:) !< density
+  double precision,allocatable::u(:,:) !< velocity
+  double precision,allocatable::p(:) !< pressure
+  double precision,allocatable::E(:) !< internal_energy+kinetic_energy
+  double precision,allocatable::rhou(:,:) !< momentum per unit volume
+  double precision,allocatable::rhoE(:) !< rho*E
+  double precision gamm !< gamma=c_p/c_v
+  double precision t !< current time
+  double precision dt !< time step size
+  double precision tFinal !< final time
+  integer iStep !< current time step number
+  integer nStep !< total number of time steps
+end module
+
+!> foeuler main program
+program foeuler
+  use moduleFileIO
+  use moduleGrid
+  use moduleFVMGrad
+  use moduleFVMConvect
+  use moduleMPIComm
+  use gVarEuler
+  
+  call initMPI()
+  if(pidMPI==0)then
+    ! read grid
+    open(12,file='bin/gridGMSH5.msh',status='old')
+    call readGMSH(12,grid)
+    close(12)
+    ! allocate storage
+    allocate(rho(grid%nBlock))
+    allocate(u(DIMS,grid%nNode))
+    allocate(p(grid%nBlock))
+    allocate(E(grid%nBlock))
+    allocate(rhou(DIMS,grid%nNode))
+    allocate(rhoE(grid%nBlock))
+    ! simulation control
+    dt=1d-6
+    dFinal=1d-4
+    nStep=ceiling(dFinal/dt)
+    ! initial value of variables
+    call grid%updateBlockPos()
+    gamm=1.4d0
+    u(:,:)=0d0
+    rhou(:,:)=0d0
+    forall(i=1:grid%nBlock)
+      rho(i)=merge(1d0,0.125d0,grid%BlockPos(1,i)<0.5d0)
+      p(i)=merge(1d5,1d4,grid%BlockPos(1,i)<0.5d0)
+      E(i)=p(i)/rho(i)/(gamm-1d0)
+      rhoE(i)=rho(i)*E(i)
+    end forall
+    t=0d0
+    ! write initial states
+    open(13,file='rstEuler.msh',status='replace')
+    call writeGMSH(13,grid)
+    call writeGMSH(13,rho,grid,BIND_BLOCK,'rho',0,t)
+    call writeGMSH(13,u,grid,BIND_NODE,'u',0,t)
+    call writeGMSH(13,p,grid,BIND_BLOCK,'p',0,t)
+    ! advance in time
+    do iStep=1,nStep
+      ! Lagrangian step
+      ! Euler rezoning
+      t=t+dt
+      ! write results
+      call writeGMSH(13,rho,grid,BIND_BLOCK,'rho',iStep,t)
+      call writeGMSH(13,u,grid,BIND_NODE,'u',iStep,t)
+      call writeGMSH(13,p,grid,BIND_BLOCK,'p',iStep,t)
+    end do
+    close(13)
+  else
+  end if
+  call finalMPI()
+end program
