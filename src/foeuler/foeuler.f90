@@ -120,12 +120,12 @@ program foeuler
         end do
       end do
       ! recover intensive state
-      rhoNode=1d0!TODO:itplBlock2Node(rho,grid)
+      rhoNode=itplBlock2Node(rho,grid)
       forall(i=1:grid%nNode)
         rhou(:,i)=tempMom(:,i)/grid%NodeVol(i)
         u(:,i)=rhou(:,i)/rhoNode(i)
       end forall
-      uBlock=0d0!TODO:itplNode2Block(u,grid)
+      uBlock=itplNode2Block(u,grid)
       forall(i=1:grid%nBlock)
         rhoE(i)=tempEnergy(i)/grid%BlockVol(i)
       end forall
@@ -134,12 +134,12 @@ program foeuler
       ! Euler rezoning
       call mvGrid(grid,-dt*u)
       ! recover state
-      rhoNode=1d0!TODO:itplBlock2Node(rho,grid)
+      rhoNode=itplBlock2Node(rho,grid)
       forall(i=1:grid%nNode)
         rhou(:,i)=tempMom(:,i)/grid%NodeVol(i)
         u(:,i)=rhou(:,i)/rhoNode(i)
       end forall
-      uBlock=0d0!TODO:itplNode2Block(u,grid)
+      uBlock=itplNode2Block(u,grid)
       forall(i=1:grid%nBlock)
         rhoE(i)=tempEnergy(i)/grid%BlockVol(i)
         E(i)=rhoE(i)/rho(i)

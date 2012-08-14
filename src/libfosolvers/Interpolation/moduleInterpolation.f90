@@ -4,6 +4,13 @@
 module moduleInterpolation
   private
   
+  !> interpolate from block to node
+  interface itplBlock2Node
+    module procedure::itplBlock2NodeVect
+    module procedure::itplBlock2NodeScal
+  end interface
+  public itplBlock2Node
+  
   !> interpolate from block to interface
   interface itplBlock2Intf
     module procedure::itplBCDVect
@@ -12,6 +19,13 @@ module moduleInterpolation
     module procedure::itplBCDCScal
   end interface
   public itplBlock2Intf
+  
+  !> interpolate from node to block
+  interface itplNode2Block
+    module procedure::itplNode2BlockVect
+    module procedure::itplNode2BlockScal
+  end interface
+  public itplNode2Block
   
   !> interpolate from node to edge
   interface itplNode2Edge
@@ -28,6 +42,48 @@ module moduleInterpolation
   public itplNode2Intf
   
 contains
+  
+  !> interpolate vector v within grid from block to node
+  function itplBlock2NodeVect(v,grid)
+    use moduleGrid
+    use moduleBasicDataStruct
+    double precision,intent(in)::v(:,:) !< block data to be interpolated
+    type(typeGrid),intent(inout)::grid !< grid on which v is defined
+    double precision,allocatable::itplBlock2NodeVect(:,:) !< interpolated data on node
+    double precision weight,weightTot,temp(size(v,1))
+    
+    call grid%updateBlockPos()
+    call grid%updateNodeNeib()
+    call reallocArr(itplBlock2NodeVect,size(v,1),grid%nNode)
+    do i=1,grid%nNode
+      weightTot=0d0
+      temp(:)=0d0
+      do j=1,size(grid%NodeNeibBlock(i)%dat)
+        k=grid%NodeNeibBlock(i)%dat(j)
+        weight=1d0/dot_product(grid%BlockPos(:,k)-grid%NodePos(:,i),&
+        &                      grid%BlockPos(:,k)-grid%NodePos(:,i))
+        weightTot=weightTot+weight
+        temp(:)=temp(:)+weight*v(:,k)
+      end do
+      itplBlock2NodeVect(:,i)=temp(:)/weightTot
+    end do
+  end function
+  
+  !> interpolate scalar v within grid from block to node
+  function itplBlock2NodeScal(v,grid)
+    use moduleGrid
+    use moduleBasicDataStruct
+    double precision,intent(in)::v(:) !< block data to be interpolated
+    type(typeGrid),intent(inout)::grid !< grid on which v is defined
+    double precision,allocatable::itplBlock2NodeScal(:) !< interpolated data on node
+    double precision vv(1,size(v))
+    double precision,allocatable::vrst(:,:)
+    
+    vv(1,:)=v(:)
+    vrst=itplBlock2NodeVect(vv,grid)
+    call reallocArr(itplBlock2NodeScal,size(vrst,2))
+    itplBlock2NodeScal(:)=vrst(1,:)
+  end function
   
   !> interpolate vector v within grid from block to interface using block center direction scheme
   function itplBCDVect(v,grid)
@@ -108,6 +164,36 @@ contains
     vrst=itplBCDCVect(vv,vgrad,grid)
     call reallocArr(itplBCDCScal,size(vrst,2))
     itplBCDCScal(:)=vrst(1,:)
+  end function
+  
+  !> interpolate vector v within grid from node to block
+  function itplNode2BlockVect(v,grid)
+    use moduleGrid
+    use moduleBasicDataStruct
+    double precision,intent(in)::v(:,:) !< node data to be interpolated
+    type(typeGrid),intent(inout)::grid !< grid on which v is defined
+    double precision,allocatable::itplNode2BlockVect(:,:) !< interpolated data on block
+    
+    call reallocArr(itplNode2BlockVect,size(v,1),grid%nBlock)
+    forall(i=1:grid%nBlock)
+      itplNode2BlockVect(:,i)=sum(v(:,grid%Block(i)%iNode(:)),2)/dble(grid%Block(i)%nNode)
+    end forall
+  end function
+  
+  !> interpolate scaler v within grid from node to block
+  function itplNode2BlockScal(v,grid)
+    use moduleGrid
+    use moduleBasicDataStruct
+    double precision,intent(in)::v(:) !< node data to be interpolated
+    type(typeGrid),intent(inout)::grid !< grid on which v is defined
+    double precision,allocatable::itplNode2BlockScal(:) !< interpolated data on block
+    double precision vv(1,size(v))
+    double precision,allocatable::vrst(:,:)
+    
+    vv(1,:)=v(:)
+    vrst=itplNode2BlockVect(vv,grid)
+    call reallocArr(itplNode2BlockScal,size(vrst,2))
+    itplNode2BlockScal(:)=vrst(1,:)
   end function
   
   !> interpolate vector v within grid from node to edge
