@@ -38,6 +38,9 @@ program foeuler
   double precision,allocatable::tempMass(:) !< temporary block mass
   double precision,allocatable::tempMom(:,:) !< temporary extensive node momentum
   double precision,allocatable::tempEnergy(:) !< temporary extensive block energy
+  double precision,allocatable::gradRho(:,:) !< gradient of rho
+  double precision,allocatable::gradRhou(:,:,:) !< gradient of rhou
+  double precision,allocatable::gradRhoE(:,:) !< gradient of rhoE
   double precision pWork !< pressure work done on block surface
   
   call initMPI()
@@ -61,6 +64,9 @@ program foeuler
     allocate(tempMass(grid%nBlock))
     allocate(tempMom(DIMS,grid%nNode))
     allocate(tempEnergy(grid%nBlock))
+    allocate(gradRho(DIMS,grid%nBlock))
+    allocate(gradRhou(DIMS,DIMS,grid%nNode))
+    allocate(gradRhoE(DIMS,grid%nBlock))
     ! simulation control
     dt=1d-5
     dFinal=0.0005d0
@@ -132,9 +138,12 @@ program foeuler
       rho(:)=tempMass(:)/grid%BlockVol(:)
       call mvGrid(grid,dt*u)
       ! Euler rezoning
-      tempMass=tempMass+findDispConvect(rho,BIND_BLOCK,-dt*u,grid)
-      tempMom=tempMom+findDispConvect(rhou,BIND_NODE,-dt*u,grid)
-      tempEnergy=tempEnergy+findDispConvect(rhoE,BIND_BLOCK,-dt*u,grid)
+      gradRho=findGrad(rho,grid,BIND_BLOCK)
+      gradRhou=findGrad(rhou,grid,BIND_NODE)
+      gradRhoE=findGrad(rhoE,grid,BIND_BLOCK)
+      tempMass=tempMass+findDispConvect(rho,BIND_BLOCK,-dt*u,grid,gradRho,limiter=vanLeer)
+      tempMom=tempMom+findDispConvect(rhou,BIND_NODE,-dt*u,grid,gradRhou,limiter=vanLeer)
+      tempEnergy=tempEnergy+findDispConvect(rhoE,BIND_BLOCK,-dt*u,grid,gradRhoE,limiter=vanLeer)
       call mvGrid(grid,-dt*u)
       ! recover state
       call grid%updateDualBlock()
