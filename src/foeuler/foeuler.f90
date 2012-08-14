@@ -62,8 +62,8 @@ program foeuler
     allocate(tempMom(DIMS,grid%nNode))
     allocate(tempEnergy(grid%nBlock))
     ! simulation control
-    dt=1d-6
-    dFinal=1d-4
+    dt=1d-5
+    dFinal=0.0005d0
     nStep=ceiling(dFinal/dt)
     ! initial value of variables
     call grid%updateBlockPos()
@@ -132,8 +132,13 @@ program foeuler
       rho(:)=tempMass(:)/grid%BlockVol(:)
       call mvGrid(grid,dt*u)
       ! Euler rezoning
+      tempMass=tempMass+findDispConvect(rho,BIND_BLOCK,-dt*u,grid)
+      tempMom=tempMom+findDispConvect(rhou,BIND_NODE,-dt*u,grid)
+      tempEnergy=tempEnergy+findDispConvect(rhoE,BIND_BLOCK,-dt*u,grid)
       call mvGrid(grid,-dt*u)
       ! recover state
+      call grid%updateDualBlock()
+      call grid%updateBlockVol()
       rhoNode=itplBlock2Node(rho,grid)
       forall(i=1:grid%nNode)
         rhou(:,i)=tempMom(:,i)/grid%NodeVol(i)
