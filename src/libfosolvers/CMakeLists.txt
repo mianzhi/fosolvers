@@ -3,6 +3,7 @@ SET(libfosolvers_src
   SimpleGeometry/moduleSimpleGeometry.f90
   SimpleSetLogic/moduleSimpleSetLogic.f90
   Grid/moduleGrid.f90
+  Grid/moduleGridInspection.f90
   Grid/moduleGridOperation.f90
   FileIO/moduleFileIO.f90
   Interpolation/moduleInterpolation.f90
