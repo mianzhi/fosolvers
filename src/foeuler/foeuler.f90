@@ -30,6 +30,7 @@ program foeuler
   use moduleFVMGrad
   use moduleFVMConvect
   use moduleMPIComm
+  use moduleCLIO
   use gVarEuler
   double precision,allocatable::rhoNode(:) !< density at node
   double precision,allocatable::uBlock(:,:) !< velocity at block
@@ -69,8 +70,8 @@ program foeuler
     allocate(gradRhoE(DIMS,grid%nBlock))
     ! simulation control
     dt=1d-5
-    dFinal=0.0005d0
-    nStep=ceiling(dFinal/dt)
+    tFinal=0.0005d0
+    nStep=ceiling(tFinal/dt)
     ! initial value of variables
     call grid%updateBlockPos()
     gamm=1.4d0
@@ -165,7 +166,9 @@ program foeuler
       call writeGMSH(13,rho,grid,BIND_BLOCK,'rho',iStep,t)
       call writeGMSH(13,u,grid,BIND_NODE,'u',iStep,t)
       call writeGMSH(13,p,grid,BIND_BLOCK,'p',iStep,t)
+      call showProg(t/tFinal)
     end do
+    write(*,*),''
     deallocate(rhoNode)
     deallocate(uBlock)
     deallocate(uIntf)

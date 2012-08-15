@@ -11,6 +11,7 @@ SET(libfosolvers_src
   FVM/moduleFVMDiffus.f90
   FVM/moduleFVMConvect.f90
   MultiProcessing/moduleMPIComm.f90
+  Misc/moduleCLIO.f90
 )
 ADD_LIBRARY(fosolvers STATIC ${libfosolvers_src})
 TARGET_LINK_LIBRARIES(fosolvers lapack)
