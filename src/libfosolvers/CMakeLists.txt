@@ -11,8 +11,16 @@ SET(libfosolvers_src
   FVM/moduleFVMDiffus.f90
   FVM/moduleFVMConvect.f90
   Condition/moduleCondition.f90
+  AlgebraicSolver/moduleNonlinearSolve.f90
   MultiProcessing/moduleMPIComm.f90
   Misc/moduleCLIO.f90
 )
+SET(libfosolvers_lib
+  sundials_fkinsol
+  sundials_fnvecserial
+  sundials_kinsol
+  sundials_nvecserial
+  lapack
+)
 ADD_LIBRARY(fosolvers STATIC ${libfosolvers_src})
-TARGET_LINK_LIBRARIES(fosolvers lapack)
+TARGET_LINK_LIBRARIES(fosolvers ${libfosolvers_lib})
