@@ -20,4 +20,6 @@ ADD_CUSTOM_COMMAND(
                                    ${PROJECT_BINARY_DIR}/bin/gridGMSH4.msh
   COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/gridGMSH5.msh
                                    ${PROJECT_BINARY_DIR}/bin/gridGMSH5.msh
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/condition1
+                                   ${PROJECT_BINARY_DIR}/bin/condition1
 )

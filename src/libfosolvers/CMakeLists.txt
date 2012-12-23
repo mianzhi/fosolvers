@@ -10,6 +10,7 @@ SET(libfosolvers_src
   FVM/moduleFVMGrad.f90
   FVM/moduleFVMDiffus.f90
   FVM/moduleFVMConvect.f90
+  Condition/moduleCondition.f90
   MultiProcessing/moduleMPIComm.f90
   Misc/moduleCLIO.f90
 )

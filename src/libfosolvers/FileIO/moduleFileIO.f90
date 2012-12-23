@@ -27,9 +27,12 @@ module moduleFileIO
   end interface
   public::writeGMSH
   
+  ! read condition
+  public::readCondition
+  
 contains
   
-  !> read general data  from opened file id into item
+  !> read general data from opened file id into item
   subroutine readGenDat(id,item)
     use moduleBasicDataStruct
     integer,intent(in)::id !< the file id
@@ -427,6 +430,56 @@ contains
     else
       call writeGMSHScalVectTens(id,RANK_TENS,v,grid,bind,vName)
     end if
+  end subroutine
+  
+  !> read general data from opened file id into condition
+  subroutine readCondition(id,condition)
+    use moduleBasicDataStruct
+    use moduleCondition
+    integer,intent(in)::id !< the file id
+    type(typeCondition),allocatable,intent(inout)::condition(:) !< resulting condition
+    integer,allocatable::pattern(:)
+    integer ierr
+    integer,parameter::DFLT_STR_LEN=400
+    character(DFLT_STR_LEN)::tempStr
+    
+    if(allocated(condition)) deallocate(condition)
+    ierr=0
+    rewind(id,iostat=ierr)
+    do while(ierr==0)
+      read(id,*,iostat=ierr),tempStr
+      if(tempStr(1:10)=='$Condition')then
+        call extendArr(pattern)
+        pattern(size(pattern))=0
+        do while(ierr==0)
+          read(id,*,iostat=ierr),tempStr
+          if(tempStr(1:4)=='$End')then
+            if(tempStr(1:13)=='$EndCondition')then
+              exit
+            end if
+            pattern(size(pattern))=pattern(size(pattern))+1
+          end if
+        end do
+      end if
+    end do
+    allocate(condition(size(pattern)))
+    
+    i=0
+    ierr=0
+    rewind(id,iostat=ierr)
+    do while(ierr==0)
+      read(id,'(a)',iostat=ierr),tempStr
+      if(tempStr(1:10)=='$Condition')then
+        i=i+1
+        m=index(tempStr,'(')
+        n=index(tempStr,')')
+        read(tempStr(m+1:n-1),*),condition(i)%Ent,condition(i)%bind
+        do j=1,pattern(i)
+          call readGenDat(id,condition(i)%dat)
+        end do
+      end if
+    end do
+    deallocate(pattern)
   end subroutine
   
 end module
