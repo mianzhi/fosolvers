@@ -3,9 +3,11 @@
 !> miscellaneous variables and utilities for fons
 module miscNS
   use moduleGrid
+  use moduleCondition
   public
   
   type(typeGrid)::grid !< the grid
+  type(typeCondition)::condition !< the simulation conditions
   double precision,allocatable::rho(:) !< density
   double precision,allocatable::u(:,:) !< velocity
   double precision,allocatable::p(:) !< pressure

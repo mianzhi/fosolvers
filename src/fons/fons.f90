@@ -28,10 +28,14 @@ program fons
   call readSim(11)
   close(11)
   ! read grid
-  open(12,file='bin/gridGMSH5.msh',status='old')
-  call readGMSH(12,grid)
+  open(11,file='bin/gridGMSH5.msh',status='old')
+  call readGMSH(11,grid)
   call grid%updateIntf()
-  close(12)
+  close(11)
+  ! read conditions
+  open(11,file='bin/cond',status='old')
+  call readCondition(11,condition)
+  close(11)
   ! allocate storage
   allocate(rho(grid%nBlock))
   allocate(u(DIMS,grid%nNode))
@@ -143,10 +147,12 @@ program fons
     rho(:)=tempMass(:)/grid%BlockVol(:)
     t=t+dt
     ! write results
-    iWrite=iWrite+1
-    call writeGMSH(13,rho,grid,BIND_BLOCK,'rho',iWrite,t)
-    call writeGMSH(13,u,grid,BIND_NODE,'u',iWrite,t)
-    call writeGMSH(13,p,grid,BIND_BLOCK,'p',iWrite,t)
+    if(t/tWrite>=iWrite)then
+      iWrite=iWrite+1
+      call writeGMSH(13,rho,grid,BIND_BLOCK,'rho',iWrite,t)
+      call writeGMSH(13,u,grid,BIND_NODE,'u',iWrite,t)
+      call writeGMSH(13,p,grid,BIND_BLOCK,'p',iWrite,t)
+    end if
     call showProg(t/tFinal)
   end do
   write(*,*),''

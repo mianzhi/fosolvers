@@ -6,4 +6,6 @@ ADD_CUSTOM_COMMAND(
   POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/sim
                                    ${PROJECT_BINARY_DIR}/bin/sim
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/cond
+                                   ${PROJECT_BINARY_DIR}/bin/cond
 )
