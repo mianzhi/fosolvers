@@ -1,24 +1,5 @@
 !----------------------------------------------------------------------------- best with 100 columns
 
-!> global variables for fons
-module gVarNS
-  use moduleGrid
-  public
-  
-  type(typeGrid)::grid !< the grid
-  double precision,allocatable::rho(:) !< density
-  double precision,allocatable::u(:,:) !< velocity
-  double precision,allocatable::p(:) !< pressure
-  double precision,allocatable::E(:) !< internal_energy+kinetic_energy
-  double precision,allocatable::rhou(:,:) !< momentum per unit volume
-  double precision,allocatable::rhoE(:) !< rho*E
-  double precision gamm !< gamma=c_p/c_v
-  double precision t !< current time
-  double precision dt !< time step size
-  double precision tFinal !< final time
-  integer iWrite !< index of result output snapshot
-end module
-
 !> fons main program
 program fons
   use moduleBasicDataStruct
@@ -29,7 +10,7 @@ program fons
   use moduleFVMGrad
   use moduleFVMConvect
   use moduleCLIO
-  use gVarNS
+  use miscNS
   double precision,allocatable::rhoNode(:) !< density at node
   double precision,allocatable::uBlock(:,:) !< velocity at block
   double precision,allocatable::uIntf(:,:) !< velocity at interface
@@ -42,6 +23,10 @@ program fons
   double precision,allocatable::gradRhoE(:,:) !< gradient of rhoE
   double precision pWork !< pressure work done on block surface
   
+  ! read simulation control file
+  open(11,file='bin/sim',status='old')
+  call readSim(11)
+  close(11)
   ! read grid
   open(12,file='bin/gridGMSH5.msh',status='old')
   call readGMSH(12,grid)
@@ -66,7 +51,6 @@ program fons
   allocate(gradRhoE(DIMS,grid%nBlock))
   ! simulation control
   dt=1d-5
-  tFinal=0.0005d0 !TODO: read simulation times
   ! initial value of variables
   call grid%updateBlockPos()
   gamm=1.4d0
