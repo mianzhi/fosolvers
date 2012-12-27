@@ -473,7 +473,7 @@ contains
         i=i+1
         m=index(tempStr,'(')
         n=index(tempStr,')')
-        read(tempStr(m+1:n-1),*),condition(i)%Ent,condition(i)%bind
+        read(tempStr(m+1:n-1),*),condition(i)%Ent
         do j=1,pattern(i)
           call readGenDat(id,condition(i)%dat)
         end do

@@ -7,7 +7,7 @@ module miscNS
   public
   
   type(typeGrid)::grid !< the grid
-  type(typeCondition)::condition !< the simulation conditions
+  type(typeCondition),allocatable::condition(:) !< the simulation conditions
   double precision,allocatable::rho(:) !< density
   double precision,allocatable::u(:,:) !< velocity
   double precision,allocatable::p(:) !< pressure

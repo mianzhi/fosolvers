@@ -1,14 +1,11 @@
-$Condition(10,20)
-$Const(name1)
+$Condition(10)No-slip Wall
+$Const(Wall_Heat_Flux)
 1d0
-$EndConst
-$Const(a_longer_name)
-2d0
 $EndConst
 $EndCondition
 
-$Condition(30,40)
-$Const(str)
+$Condition(30)No-slip Wall
+$Const(Wall_Temperature)
 3d0
 $EndConst
 $EndCondition

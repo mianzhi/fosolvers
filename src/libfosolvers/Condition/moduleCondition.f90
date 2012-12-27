@@ -8,7 +8,6 @@ module moduleCondition
   !> condition
   type,public::typeCondition
     integer Ent !< geometric entity associated with the condition
-    integer bind !< bind with node, line, facet or block
     type(typeGenDatLlist)::dat !< condition data
   contains
     !FIXME:final::purgeCondition

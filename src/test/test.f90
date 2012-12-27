@@ -37,8 +37,8 @@ program test
     
     open(13,file='bin/condition1',status='old')
     call readCondition(13,condition)
-    write(*,*),condition(1)%Ent,condition(1)%bind,condition(1)%dat%get('a_longer_name')
-    write(*,*),condition(2)%Ent,condition(2)%bind,condition(2)%dat%get('str')
+    write(*,*),condition(1)%Ent,condition(1)%dat%get('a_longer_name')
+    write(*,*),condition(2)%Ent,condition(2)%dat%get('str')
   else
   end if
   call finalMPI()

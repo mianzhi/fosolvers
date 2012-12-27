@@ -116,7 +116,7 @@ program fons
       rhou(:,i)=tempMom(:,i)/grid%NodeVol(i)
       u(:,i)=rhou(:,i)/rhoNode(i)
     end forall
-    uBlock=itplNode2Block(u,grid)
+    uBlock=itplNode2Block(u,grid) !FIXME: seems can be removed
     forall(i=1:grid%nBlock)
       rhoE(i)=tempEnergy(i)/grid%BlockVol(i)
     end forall
