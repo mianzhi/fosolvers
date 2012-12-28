@@ -16,9 +16,6 @@ program fons
   double precision,allocatable::uBlock(:,:) !< velocity at block
   double precision,allocatable::uIntf(:,:) !< velocity at interface
   double precision,allocatable::pIntf(:) !< pressure at interface
-  double precision,allocatable::tempMass(:) !< temporary block mass
-  double precision,allocatable::tempMom(:,:) !< temporary extensive node momentum
-  double precision,allocatable::tempEnergy(:) !< temporary extensive block energy
   double precision,allocatable::gradRho(:,:) !< gradient of rho
   double precision,allocatable::gradRhou(:,:,:) !< gradient of rhou
   double precision,allocatable::gradRhoE(:,:) !< gradient of rhoE
@@ -50,9 +47,9 @@ program fons
   allocate(uBlock(DIMS,grid%nBlock))
   allocate(uIntf(DIMS,grid%nIntf))
   allocate(pIntf(grid%nIntf))
-  allocate(tempMass(grid%nBlock))
-  allocate(tempMom(DIMS,grid%nNode))
-  allocate(tempEnergy(grid%nBlock))
+  allocate(Mass(grid%nBlock))
+  allocate(Mom(DIMS,grid%nNode))
+  allocate(Energy(grid%nBlock))
   allocate(gradRho(DIMS,grid%nBlock))
   allocate(gradRhou(DIMS,DIMS,grid%nNode))
   allocate(gradRhoE(DIMS,grid%nBlock))
@@ -79,11 +76,11 @@ program fons
   call writeGMSH(13,u,grid,BIND_NODE,'u',iWrite,t)
   call writeGMSH(13,p,grid,BIND_BLOCK,'p',iWrite,t)
   !FIXME:remove this testing block
-  u(:,:)=34d0
-  u1d(:)=1d0
+  u(:,:)=0d0
+  u1d(:)=0.1d0
   ProblemFunc=>resMom
   call solveNonlinear(u1d)
-  write(*,*),u1d(1:10)
+  write(*,*),u1d(1:100)
   !FIXME:remove the above testing block
   ! advance in time
   do while(t<tFinal)
@@ -93,15 +90,15 @@ program fons
     call grid%updateIntfArea()
     call grid%updateIntfNorm()
     ! Lagrangian step
-    tempMass(:)=rho(:)*grid%BlockVol(:)
+    Mass(:)=rho(:)*grid%BlockVol(:)
     forall(i=1:grid%nNode)
-      tempMom(:,i)=rhou(:,i)*grid%NodeVol(i)
+      Mom(:,i)=rhou(:,i)*grid%NodeVol(i)
     end forall
-    tempEnergy(:)=rhoE(:)*grid%BlockVol(:)
+    Energy(:)=rhoE(:)*grid%BlockVol(:)
+    
     do i=1,grid%nNode
       do j=1,size(grid%NodeNeibBlock(i)%dat)
-        tempMom(:,i)=tempMom(:,i)&
-        &            -dt*grid%NBAreaVect(i)%dat(:,j)*p(grid%NodeNeibBlock(i)%dat(j))
+        Mom(:,i)=Mom(:,i)-dt*grid%NBAreaVect(i)%dat(:,j)*p(grid%NodeNeibBlock(i)%dat(j))
       end do
     end do
     uIntf=itplNode2Intf(u,grid)
@@ -110,52 +107,51 @@ program fons
       m=grid%IntfNeibBlock(1,i)
       n=grid%IntfNeibBlock(2,i)
       pWork=dt*pIntf(i)*grid%IntfArea(i)*dot_product(grid%IntfNorm(:,i),uIntf(:,i))
-      tempEnergy(m)=tempEnergy(m)-pWork
-      tempEnergy(n)=tempEnergy(n)+pWork
+      Energy(m)=Energy(m)-pWork
+      Energy(n)=Energy(n)+pWork
     end do
     ! apply BC
     do i=1,grid%nFacet
       do j=1,grid%Facet(i)%nNode
         k=grid%Facet(i)%iNode(j)
-        tempMom(:,k)=tempMom(:,k)&
-        &            -grid%FacetNorm(:,i)*dot_product(grid%FacetNorm(:,i),tempMom(:,k))
+        Mom(:,k)=Mom(:,k)-grid%FacetNorm(:,i)*dot_product(grid%FacetNorm(:,i),Mom(:,k))
       end do
     end do
     ! recover intensive state
     rhoNode=itplBlock2Node(rho,grid)
     forall(i=1:grid%nNode)
-      rhou(:,i)=tempMom(:,i)/grid%NodeVol(i)
+      rhou(:,i)=Mom(:,i)/grid%NodeVol(i)
       u(:,i)=rhou(:,i)/rhoNode(i)
     end forall
     uBlock=itplNode2Block(u,grid) !FIXME: seems can be removed
     forall(i=1:grid%nBlock)
-      rhoE(i)=tempEnergy(i)/grid%BlockVol(i)
+      rhoE(i)=Energy(i)/grid%BlockVol(i)
     end forall
-    rho(:)=tempMass(:)/grid%BlockVol(:)
+    rho(:)=Mass(:)/grid%BlockVol(:)
     call mvGrid(grid,dt*u)
     ! Euler rezoning
     gradRho=findGrad(rho,grid,BIND_BLOCK)
     gradRhou=findGrad(rhou,grid,BIND_NODE)
     gradRhoE=findGrad(rhoE,grid,BIND_BLOCK)
-    tempMass=tempMass+findDispConvect(rho,BIND_BLOCK,-dt*u,grid,gradRho,limiter=vanLeer)
-    tempMom=tempMom+findDispConvect(rhou,BIND_NODE,-dt*u,grid,gradRhou,limiter=vanLeer)
-    tempEnergy=tempEnergy+findDispConvect(rhoE,BIND_BLOCK,-dt*u,grid,gradRhoE,limiter=vanLeer)
+    Mass=Mass+findDispConvect(rho,BIND_BLOCK,-dt*u,grid,gradRho,limiter=vanLeer)
+    Mom=Mom+findDispConvect(rhou,BIND_NODE,-dt*u,grid,gradRhou,limiter=vanLeer)
+    Energy=Energy+findDispConvect(rhoE,BIND_BLOCK,-dt*u,grid,gradRhoE,limiter=vanLeer)
     call mvGrid(grid,-dt*u)
     ! recover state
     call grid%updateDualBlock()
     call grid%updateBlockVol()
     rhoNode=itplBlock2Node(rho,grid)
     forall(i=1:grid%nNode)
-      rhou(:,i)=tempMom(:,i)/grid%NodeVol(i)
+      rhou(:,i)=Mom(:,i)/grid%NodeVol(i)
       u(:,i)=rhou(:,i)/rhoNode(i)
     end forall
     uBlock=itplNode2Block(u,grid)
     forall(i=1:grid%nBlock)
-      rhoE(i)=tempEnergy(i)/grid%BlockVol(i)
+      rhoE(i)=Energy(i)/grid%BlockVol(i)
       E(i)=rhoE(i)/rho(i)
       p(i)=(E(i)-dot_product(uBlock(:,i),uBlock(:,i))/2d0)*rho(i)*(gamm-1d0)
     end forall
-    rho(:)=tempMass(:)/grid%BlockVol(:)
+    rho(:)=Mass(:)/grid%BlockVol(:)
     t=t+dt
     ! write results
     if(t/tWrite>=iWrite)then
@@ -177,9 +173,9 @@ program fons
   deallocate(uBlock)
   deallocate(uIntf)
   deallocate(pIntf)
-  deallocate(tempMass)
-  deallocate(tempMom)
-  deallocate(tempEnergy)
+  deallocate(Mass)
+  deallocate(Mom)
+  deallocate(Energy)
   deallocate(gradRho)
   deallocate(gradRhou)
   deallocate(gradRhoE)

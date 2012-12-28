@@ -14,6 +14,9 @@ module miscNS
   double precision,allocatable::E(:) !< internal_energy+kinetic_energy
   double precision,allocatable::rhou(:,:) !< momentum per unit volume
   double precision,allocatable::rhoE(:) !< rho*E
+  double precision,allocatable::Mass(:) !< block mass
+  double precision,allocatable::Mom(:,:) !< extensive node momentum
+  double precision,allocatable::Energy(:) !< extensive block energy
   double precision gamm !< gamma=c_p/c_v
   double precision t !< current time
   double precision dt !< time step size
