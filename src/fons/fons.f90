@@ -9,6 +9,7 @@ program fons
   use moduleInterpolation
   use moduleFVMGrad
   use moduleFVMConvect
+  use moduleNonlinearSolve
   use moduleCLIO
   use miscNS
   double precision,allocatable::rhoNode(:) !< density at node
@@ -22,6 +23,8 @@ program fons
   double precision,allocatable::gradRhou(:,:,:) !< gradient of rhou
   double precision,allocatable::gradRhoE(:,:) !< gradient of rhoE
   double precision pWork !< pressure work done on block surface
+  external::resMom
+  double precision,allocatable::u1d(:) !< unwrapped velocity
   
   ! read simulation control file
   open(11,file='bin/sim',status='old')
@@ -53,6 +56,7 @@ program fons
   allocate(gradRho(DIMS,grid%nBlock))
   allocate(gradRhou(DIMS,DIMS,grid%nNode))
   allocate(gradRhoE(DIMS,grid%nBlock))
+  allocate(u1d(DIMS*grid%nNode))
   ! simulation control
   dt=1d-5
   ! initial value of variables
@@ -74,6 +78,13 @@ program fons
   call writeGMSH(13,rho,grid,BIND_BLOCK,'rho',iWrite,t)
   call writeGMSH(13,u,grid,BIND_NODE,'u',iWrite,t)
   call writeGMSH(13,p,grid,BIND_BLOCK,'p',iWrite,t)
+  !FIXME:remove this testing block
+  u(:,:)=34d0
+  u1d(:)=1d0
+  ProblemFunc=>resMom
+  call solveNonlinear(u1d)
+  write(*,*),u1d(1:10)
+  !FIXME:remove the above testing block
   ! advance in time
   do while(t<tFinal)
     call grid%updateDualBlock()
@@ -156,6 +167,12 @@ program fons
     call showProg(t/tFinal)
   end do
   write(*,*),''
+  deallocate(rho)
+  deallocate(u)
+  deallocate(p)
+  deallocate(E)
+  deallocate(rhou)
+  deallocate(rhoE)
   deallocate(rhoNode)
   deallocate(uBlock)
   deallocate(uIntf)
@@ -163,5 +180,9 @@ program fons
   deallocate(tempMass)
   deallocate(tempMom)
   deallocate(tempEnergy)
+  deallocate(gradRho)
+  deallocate(gradRhou)
+  deallocate(gradRhoE)
+  deallocate(u1d)
   close(13)
 end program
