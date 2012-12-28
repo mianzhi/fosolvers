@@ -76,8 +76,14 @@ program fons
   call writeGMSH(13,u,grid,BIND_NODE,'u',iWrite,t)
   call writeGMSH(13,p,grid,BIND_BLOCK,'p',iWrite,t)
   !FIXME:remove this testing block
-  u(:,:)=0d0
-  u1d(:)=0.1d0
+  call grid%updateDualBlock()
+  rho(:)=0.5d0
+  rhou(:,:)=34d0
+  forall(i=1:grid%nNode)
+    Mom(:,i)=rhou(:,i)*grid%NodeVol(i)
+  end forall
+  u1d(:)=1d0
+  p(:)=0d0
   ProblemFunc=>resMom
   call solveNonlinear(u1d)
   write(*,*),u1d(1:100)

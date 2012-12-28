@@ -29,13 +29,19 @@ function resMom(testU1d)
   forall(i=1:grid%nNode)
     testMom(:,i)=testU(:,i)*rhoNode(i)*grid%NodeVol(i)
   end forall
+  resMomWrapped(:,:)=-testMom(:,:)+Mom(:,:)
   do i=1,grid%nNode
     do j=1,size(grid%NodeNeibBlock(i)%dat)
-      resMomWrapped(:,i)=-testMom(:,i)+Mom(:,i)&
+      resMomWrapped(:,i)=resMomWrapped(:,i)&
       &                  -dt*grid%NBAreaVect(i)%dat(:,j)*p(grid%NodeNeibBlock(i)%dat(j))&
       &                  +dt*matmul(grid%NBAreaVect(i)%dat(:,j),tao(:,:,i))
     end do
   end do
-  !TODO:need to apply wall bc here
+  do i=1,grid%nNode
+    if(.false.)then!TODO:need to apply wall bc here
+      resMomWrapped(:,i)=-testMom(:,i)+[3d0,3d0,3d0]*rhoNode(i)*grid%NodeVol(i)
+      write(*,*),i,testMom(:,i),resMomWrapped(:,i)
+    end if
+  end do
   resMom=reshape(resMomWrapped,[DIMS*grid%nNode])
 end function
