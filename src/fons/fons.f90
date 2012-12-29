@@ -12,7 +12,6 @@ program fons
   use moduleNonlinearSolve
   use moduleCLIO
   use miscNS
-  double precision,allocatable::rhoNode(:) !< density at node
   double precision,allocatable::uBlock(:,:) !< velocity at block
   double precision,allocatable::uIntf(:,:) !< velocity at interface
   double precision,allocatable::pIntf(:) !< pressure at interface
@@ -36,7 +35,6 @@ program fons
   open(11,file='bin/cond',status='old')
   call readCondition(11,condition)
   close(11)
-  write(*,*),findCondition(condition,30,'Wall'),findCondition(condition,40,'Wall')
   ! allocate storage
   allocate(rho(grid%nBlock))
   allocate(u(DIMS,grid%nNode))
@@ -76,19 +74,6 @@ program fons
   call writeGMSH(13,rho,grid,BIND_BLOCK,'rho',iWrite,t)
   call writeGMSH(13,u,grid,BIND_NODE,'u',iWrite,t)
   call writeGMSH(13,p,grid,BIND_BLOCK,'p',iWrite,t)
-  !FIXME:remove this testing block
-  call grid%updateDualBlock()
-  rho(:)=0.5d0
-  rhou(:,:)=34d0
-  forall(i=1:grid%nNode)
-    Mom(:,i)=rhou(:,i)*grid%NodeVol(i)
-  end forall
-  u1d(:)=1d0
-  ProblemFunc=>resMom
-  call solveNonlinear(u1d)
-  write(*,*),u1d(1:100)
-  u=reshape(u1d,[3,grid%nNode])
-  !FIXME:remove the above testing block
   ! advance in time
   do while(t<tFinal)
     call grid%updateDualBlock()
@@ -102,12 +87,18 @@ program fons
       Mom(:,i)=rhou(:,i)*grid%NodeVol(i)
     end forall
     Energy(:)=rhoE(:)*grid%BlockVol(:)
-    
-    do i=1,grid%nNode
-      do j=1,size(grid%NodeNeibBlock(i)%dat)
-        Mom(:,i)=Mom(:,i)-dt*grid%NBAreaVect(i)%dat(:,j)*p(grid%NodeNeibBlock(i)%dat(j))
-      end do
-    end do
+    rhoNode=itplBlock2Node(rho,grid)
+    u1d(:)=reshape(u,[DIMS*grid%nNode])
+    if(maxval(abs(u1d))<=tiny(1d0))then
+      u1d(:)=1d0
+    end if
+    ProblemFunc=>resMom
+    call solveNonlinear(u1d)
+    u=reshape(u1d,[DIMS,grid%nNode])
+    forall(i=1:grid%nNode)
+      rhou(:,i)=u(:,i)*rhoNode(i)
+      Mom(:,i)=rhou(:,i)*grid%NodeVol(i)
+    end forall
     uIntf=itplNode2Intf(u,grid)
     pIntf=itplBlock2Intf(p,grid)
     do i=1,grid%nIntf

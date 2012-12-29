@@ -5,12 +5,13 @@ function resMom(testU1d)
   use moduleGrid
   use moduleFVMGrad
   use moduleInterpolation
+  use moduleCondition
   use miscNS
   double precision testU1d(:) !< the test velocity (unwrapped as 1d array)
   double precision resMom(size(testU1d)) !< the momentum residual function
   double precision testU(DIMS,size(testU1d)/DIMS),gradU(DIMS,DIMS,size(testU1d)/DIMS),&
   &                tao(DIMS,DIMS,size(testU1d)/DIMS),testMom(DIMS,size(testU1d)/DIMS),&
-  &                rhoNode(size(testU1d)/DIMS),resMomWrapped(DIMS,size(testU1d)/DIMS)
+  &                resMomWrapped(DIMS,size(testU1d)/DIMS)
   !FIXME:replace the local viscosities
   double precision visc,viscRate
   visc=1d0
@@ -25,7 +26,6 @@ function resMom(testU1d)
       tao(i,i,l)=tao(i,i,l)+viscRate*visc*sum([(gradU(j,j,l),j=1,DIMS)])
     end forall
   end forall
-  rhoNode=itplBlock2Node(rho,grid)
   forall(i=1:grid%nNode)
     testMom(:,i)=testU(:,i)*rhoNode(i)*grid%NodeVol(i)
   end forall
@@ -37,10 +37,12 @@ function resMom(testU1d)
       &                  +dt*matmul(grid%NBAreaVect(i)%dat(:,j),tao(:,:,i))
     end do
   end do
-  do i=1,grid%nNode
-    if(.false.)then!TODO:need to apply wall bc here
-      resMomWrapped(:,i)=-testMom(:,i)+[3d0,3d0,3d0]*rhoNode(i)*grid%NodeVol(i)
-      write(*,*),i,testMom(:,i),resMomWrapped(:,i)
+  do i=1,grid%nFacet
+    if(findCondition(condition,grid%Facet(i)%Ent,'Wall')>0)then
+      do j=1,grid%Facet(i)%nNode
+        k=grid%Facet(i)%iNode(j)
+        resMomWrapped(:,k)=-testMom(:,k)+[0d0,0d0,0d0]*rhoNode(k)*grid%NodeVol(k)
+      end do
     end if
   end do
   resMom=reshape(resMomWrapped,[DIMS*grid%nNode])
