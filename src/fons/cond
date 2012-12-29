@@ -1,10 +1,10 @@
-$Condition(10)No-slip Wall
+$Condition(10,Wall)
 $Const(Wall_Heat_Flux)
 1d0
 $EndConst
 $EndCondition
 
-$Condition(30)No-slip Wall
+$Condition(30,Wall)
 $Const(Wall_Temperature)
 3d0
 $EndConst

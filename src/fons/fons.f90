@@ -36,6 +36,7 @@ program fons
   open(11,file='bin/cond',status='old')
   call readCondition(11,condition)
   close(11)
+  write(*,*),findCondition(condition,30,'Wall'),findCondition(condition,40,'Wall')
   ! allocate storage
   allocate(rho(grid%nBlock))
   allocate(u(DIMS,grid%nNode))
@@ -83,10 +84,10 @@ program fons
     Mom(:,i)=rhou(:,i)*grid%NodeVol(i)
   end forall
   u1d(:)=1d0
-  p(:)=0d0
   ProblemFunc=>resMom
   call solveNonlinear(u1d)
   write(*,*),u1d(1:100)
+  u=reshape(u1d,[3,grid%nNode])
   !FIXME:remove the above testing block
   ! advance in time
   do while(t<tFinal)

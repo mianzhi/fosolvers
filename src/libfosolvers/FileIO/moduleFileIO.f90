@@ -442,6 +442,8 @@ contains
     integer ierr
     integer,parameter::DFLT_STR_LEN=400
     character(DFLT_STR_LEN)::tempStr
+    !TODO: change to character(:) (waiting new gcc)
+    character(:),allocatable::tempkey
     
     if(allocated(condition)) deallocate(condition)
     ierr=0
@@ -472,8 +474,18 @@ contains
       if(tempStr(1:10)=='$Condition')then
         i=i+1
         m=index(tempStr,'(')
-        n=index(tempStr,')')
+        n=index(tempStr,',')
         read(tempStr(m+1:n-1),*),condition(i)%Ent
+        m=n
+        n=index(tempStr,')')
+        l=n-m-1
+        call reallocArr(tempkey,l)
+        tempkey(1:l)=tempStr(m+1:n-1)
+        !TODO:remove this block, directly read to temp%key
+        allocate(condition(i)%key(l))
+        forall(j=1:l)
+          condition(i)%key(j)=tempkey(j:j)
+        end forall
         do j=1,pattern(i)
           call readGenDat(id,condition(i)%dat)
         end do
