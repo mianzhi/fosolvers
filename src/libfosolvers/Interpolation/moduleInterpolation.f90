@@ -22,6 +22,7 @@ module moduleInterpolation
   
   !> interpolate from node to block
   interface itplNode2Block
+    module procedure::itplNode2BlockMat
     module procedure::itplNode2BlockVect
     module procedure::itplNode2BlockScal
   end interface
@@ -164,6 +165,20 @@ contains
     vrst=itplBCDCVect(vv,vgrad,grid)
     call reallocArr(itplBCDCScal,size(vrst,2))
     itplBCDCScal(:)=vrst(1,:)
+  end function
+  
+  !> interpolate matrix v within grid from node to block
+  function itplNode2BlockMat(v,grid)
+    use moduleGrid
+    use moduleBasicDataStruct
+    double precision,intent(in)::v(:,:,:) !< node data to be interpolated
+    type(typeGrid),intent(inout)::grid !< grid on which v is defined
+    double precision,allocatable::itplNode2BlockMat(:,:,:) !< interpolated data on block
+    
+    call reallocArr(itplNode2BlockMat,size(v,1),size(v,2),grid%nBlock)
+    forall(i=1:grid%nBlock)
+      itplNode2BlockMat(:,:,i)=sum(v(:,:,grid%Block(i)%iNode(:)),3)/dble(grid%Block(i)%nNode)
+    end forall
   end function
   
   !> interpolate vector v within grid from node to block

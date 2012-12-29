@@ -43,6 +43,7 @@ module moduleBasicDataStruct
     module procedure::realloc2DIArr
     module procedure::realloc1DDArr
     module procedure::realloc2DDArr
+    module procedure::realloc3DDArr
     module procedure::reallocStr
     module procedure::realloc1DHtr1DIArr
     module procedure::realloc1DHtr2DDArr
@@ -265,6 +266,23 @@ contains
       end if
     else
       allocate(arr(m,n))
+    end if
+  end subroutine
+  
+  !> reallocate the 3D double allocatable array arr to be l by m by n
+  pure subroutine realloc3DDArr(arr,l,m,n)
+    double precision,allocatable,intent(inout)::arr(:,:,:) !< 3D double array to be reallocated
+    integer,intent(in)::l !< number of entries along 1st dimension
+    integer,intent(in)::m !< number of entries along 2nd dimension
+    integer,intent(in)::n !< number of entries along 3rd dimension
+    
+    if(allocated(arr))then
+      if(size(arr,1)/=l.or.size(arr,2)/=m.or.size(arr,3)/=n)then
+        deallocate(arr)
+        allocate(arr(l,m,n))
+      end if
+    else
+      allocate(arr(l,m,n))
     end if
   end subroutine
   
