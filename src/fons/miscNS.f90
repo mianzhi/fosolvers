@@ -21,9 +21,17 @@ module miscNS
   double precision,allocatable::Energy(:) !< extensive block energy
   double precision,allocatable::IEnergy(:) !< extensive block internal energy
   double precision,allocatable::rhoNode(:) !< density at node
+  double precision,allocatable::uBlock(:,:) !< velocity at block
+  double precision,allocatable::uIntf(:,:) !< velocity at interface
   double precision,allocatable::visc(:) !< dynamic viscosity
   double precision,allocatable::viscRate(:) !< viscosity rate lambda/mu
+  double precision,allocatable::thermK(:) !< thermal conductivity
   double precision,allocatable::tao(:,:,:) !< viscous stress tensor
+  double precision,allocatable::taoIntf(:,:,:) !< viscous stress tensor at interface
+  double precision,allocatable::gradRho(:,:) !< gradient of rho
+  double precision,allocatable::gradRhou(:,:,:) !< gradient of rhou
+  double precision,allocatable::gradRhoE(:,:) !< gradient of rhoE
+  double precision,allocatable::gradT(:,:) !< gradient of temperature
   double precision gamm !< gamma=c_p/c_v
   double precision t !< current time
   double precision dt !< time step size

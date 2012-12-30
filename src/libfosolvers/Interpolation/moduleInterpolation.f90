@@ -13,6 +13,7 @@ module moduleInterpolation
   
   !> interpolate from block to interface
   interface itplBlock2Intf
+    module procedure::itplBCDMat
     module procedure::itplBCDVect
     module procedure::itplBCDScal
     module procedure::itplBCDCVect
@@ -84,6 +85,28 @@ contains
     vrst=itplBlock2NodeVect(vv,grid)
     call reallocArr(itplBlock2NodeScal,size(vrst,2))
     itplBlock2NodeScal(:)=vrst(1,:)
+  end function
+  
+  !> interpolate matrix v within grid from block to interface using block center direction scheme
+  function itplBCDMat(v,grid)
+    use moduleGrid
+    use moduleBasicDataStruct
+    double precision,intent(in)::v(:,:,:) !< block data to be interpolated
+    type(typeGrid),intent(inout)::grid !< grid on which v is defined
+    double precision,allocatable::itplBCDMat(:,:,:) !< interpolated data on interface
+    double precision PF(DIMS),PS(DIMS),alpha
+    
+    call grid%updateIntfPos()
+    call grid%updateBlockPos()
+    call reallocArr(itplBCDMat,size(v,1),size(v,2),grid%nIntf)
+    do i=1,grid%nIntf
+      m=grid%IntfNeibBlock(1,i)
+      n=grid%IntfNeibBlock(2,i)
+      PF(:)=grid%BlockPos(:,n)-grid%BlockPos(:,m)
+      PS(:)=grid%IntfPos(:,i)-grid%BlockPos(:,m)
+      alpha=dot_product(PS,PF)/dot_product(PF,PF)
+      itplBCDMat(:,:,i)=(1d0-alpha)*v(:,:,m)+alpha*v(:,:,n)
+    end do
   end function
   
   !> interpolate vector v within grid from block to interface using block center direction scheme

@@ -3,7 +3,6 @@
 !> the momentum residual function (not coupled with pressure)
 function resMom(testU1d)
   use moduleGrid
-  use moduleFVMGrad
   use moduleInterpolation
   use moduleCondition
   use miscNS
@@ -45,10 +44,29 @@ end function
 !> the energy residual function (not includes pressure work)
 function resEnergy(testT)
   use moduleGrid
+  use moduleFVMGrad
+  use moduleFVMDiffus
   use moduleCondition
   use miscNS
   double precision testT(:) !< the test temperature
   double precision resEnergy(size(testT)) !< the energy residual function
+  double precision testEnergy(size(testT)),viscWork
   
-  resEnergy(:)=0d0
+  call grid%updateBlockVol()
+  call grid%updateIntfArea()
+  call grid%updateIntfNorm()
+  forall(i=1:grid%nBlock)
+    testEnergy(i)=(200d0/(gamm-1)*testT(i)+dot_product(uBlock(:,i),uBlock(:,i))/2d0)& !TODO:IE=IE(p,T)
+    &             *rho(i)*grid%BlockVol(i)
+  end forall
+  resEnergy(:)=-testEnergy(:)+Energy(:)
+  do i=1,grid%nIntf
+    m=grid%IntfNeibBlock(1,i)
+    n=grid%IntfNeibBlock(2,i)
+    viscWork=dt*grid%IntfArea(i)*dot_product(matmul(taoIntf(:,:,i),grid%IntfNorm(:,i)),uIntf(:,i))
+    resEnergy(m)=resEnergy(m)+viscWork
+    resEnergy(n)=resEnergy(n)-viscWork
+  end do
+  gradT=findGrad(testT,grid,BIND_BLOCK)
+  resEnergy=resEnergy+dt*findDiffus(thermK,BIND_BLOCK,testT,grid,gradT)
 end function

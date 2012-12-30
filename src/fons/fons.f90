@@ -12,14 +12,10 @@ program fons
   use moduleNonlinearSolve
   use moduleCLIO
   use miscNS
-  double precision,allocatable::uBlock(:,:) !< velocity at block
-  double precision,allocatable::uIntf(:,:) !< velocity at interface
   double precision,allocatable::pIntf(:) !< pressure at interface
-  double precision,allocatable::gradRho(:,:) !< gradient of rho
-  double precision,allocatable::gradRhou(:,:,:) !< gradient of rhou
-  double precision,allocatable::gradRhoE(:,:) !< gradient of rhoE
   double precision pWork !< pressure work done on block surface
   external::resMom
+  external::resEnergy
   double precision,allocatable::u1d(:) !< unwrapped velocity
   
   ! read simulation control file
@@ -55,9 +51,12 @@ program fons
   allocate(gradRho(DIMS,grid%nBlock))
   allocate(gradRhou(DIMS,DIMS,grid%nNode))
   allocate(gradRhoE(DIMS,grid%nBlock))
+  allocate(gradT(DIMS,grid%nBlock))
   allocate(visc(grid%nBlock))
   allocate(viscRate(grid%nBlock))
+  allocate(thermK(grid%nBlock))
   allocate(tao(DIMS,DIMS,grid%nBlock))
+  allocate(taoIntf(DIMS,DIMS,grid%nIntf))
   allocate(u1d(DIMS*grid%nNode))
   ! simulation control
   dt=1d-5
@@ -69,8 +68,8 @@ program fons
   forall(i=1:grid%nBlock)
     p(i)=merge(1d5,1d4,grid%BlockPos(1,i)<0.5d0)
     Temp(i)=500d0
-    rho(i)=p(i)/200d0/Temp(i) ! rho=rho(p,T), Ru=200
-    IE(i)=200d0*Temp(i)/(gamm-1d0) ! IE=IE(p,T), Ru=200
+    rho(i)=p(i)/200d0/Temp(i) !TODO:rho=rho(p,T), Ru=200
+    IE(i)=200d0*Temp(i)/(gamm-1d0) !TODO:IE=IE(p,T), Ru=200
     E(i)=IE(i) !zero velocity
     rhoE(i)=rho(i)*E(i)
   end forall
@@ -84,6 +83,7 @@ program fons
   Energy(:)=E(:)*Mass(:)
   visc(:)=1d-3
   viscRate(:)=-2d0/3d0
+  thermK(:)=1d-4
   t=0d0
   iWrite=0
   ! write initial states
@@ -92,6 +92,7 @@ program fons
   call writeGMSH(13,rho,grid,BIND_BLOCK,'rho',iWrite,t)
   call writeGMSH(13,u,grid,BIND_NODE,'u',iWrite,t)
   call writeGMSH(13,p,grid,BIND_BLOCK,'p',iWrite,t)
+  call writeGMSH(13,Temp,grid,BIND_BLOCK,'T',iWrite,t)
   ! advance in time
   do while(t<tFinal)
     call grid%updateDualBlock()
@@ -115,7 +116,20 @@ program fons
     end forall
     ! solve energy equation for temperature, exclude pressure work
     tao=findTao(u)
+    uBlock=itplNode2Block(u,grid)
     uIntf=itplNode2Intf(u,grid)
+    taoIntf=itplBlock2Intf(tao,grid)
+    ProblemFunc=>resEnergy
+    call solveNonlinear(Temp)
+    forall(i=1:grid%nBlock)
+      IE(i)=Temp(i)*200d0/(gamm-1) !TODO:IE=IE(p,T)
+      E(i)=IE(i)+dot_product(uBlock(:,i),uBlock(:,i))/2d0
+      rhoE(i)=rho(i)*E(i)
+      IEnergy(i)=IE(i)*Mass(i)
+      Energy(i)=E(i)*Mass(i)
+    end forall
+    ! correct the pressure
+    
     pIntf=itplBlock2Intf(p,grid)
     do i=1,grid%nIntf
       m=grid%IntfNeibBlock(1,i)
@@ -156,7 +170,7 @@ program fons
     forall(i=1:grid%nBlock)
       rhoE(i)=Energy(i)/grid%BlockVol(i)
       E(i)=rhoE(i)/rho(i)
-      p(i)=(E(i)-dot_product(uBlock(:,i),uBlock(:,i))/2d0)*rho(i)*(gamm-1d0) ! p=p(rho,T)
+      p(i)=(E(i)-dot_product(uBlock(:,i),uBlock(:,i))/2d0)*rho(i)*(gamm-1d0) !TODO:p=p(rho,T)
     end forall
     rho(:)=Mass(:)/grid%BlockVol(:)
     t=t+dt
@@ -166,6 +180,7 @@ program fons
       call writeGMSH(13,rho,grid,BIND_BLOCK,'rho',iWrite,t)
       call writeGMSH(13,u,grid,BIND_NODE,'u',iWrite,t)
       call writeGMSH(13,p,grid,BIND_BLOCK,'p',iWrite,t)
+      call writeGMSH(13,Temp,grid,BIND_BLOCK,'T',iWrite,t)
     end if
     call showProg(t/tFinal)
   end do
@@ -189,9 +204,12 @@ program fons
   deallocate(gradRho)
   deallocate(gradRhou)
   deallocate(gradRhoE)
+  deallocate(gradT)
   deallocate(visc)
   deallocate(viscRate)
+  deallocate(thermK)
   deallocate(tao)
+  deallocate(taoIntf)
   deallocate(u1d)
   close(13)
 end program
