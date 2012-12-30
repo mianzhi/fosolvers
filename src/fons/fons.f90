@@ -55,6 +55,9 @@ program fons
   allocate(gradRho(DIMS,grid%nBlock))
   allocate(gradRhou(DIMS,DIMS,grid%nNode))
   allocate(gradRhoE(DIMS,grid%nBlock))
+  allocate(visc(grid%nBlock))
+  allocate(viscRate(grid%nBlock))
+  allocate(tao(DIMS,DIMS,grid%nBlock))
   allocate(u1d(DIMS*grid%nNode))
   ! simulation control
   dt=1d-5
@@ -79,6 +82,8 @@ program fons
   end forall
   IEnergy(:)=IE(:)*Mass(:)
   Energy(:)=E(:)*Mass(:)
+  visc(:)=1d-3
+  viscRate(:)=-2d0/3d0
   t=0d0
   iWrite=0
   ! write initial states
@@ -109,6 +114,7 @@ program fons
       Mom(:,i)=rhou(:,i)*grid%NodeVol(i)
     end forall
     ! solve energy equation for temperature, exclude pressure work
+    tao=findTao(u)
     uIntf=itplNode2Intf(u,grid)
     pIntf=itplBlock2Intf(p,grid)
     do i=1,grid%nIntf
@@ -183,6 +189,9 @@ program fons
   deallocate(gradRho)
   deallocate(gradRhou)
   deallocate(gradRhoE)
+  deallocate(visc)
+  deallocate(viscRate)
+  deallocate(tao)
   deallocate(u1d)
   close(13)
 end program

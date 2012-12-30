@@ -9,26 +9,12 @@ function resMom(testU1d)
   use miscNS
   double precision testU1d(:) !< the test velocity (unwrapped as 1d array)
   double precision resMom(size(testU1d)) !< the momentum residual function
-  double precision testU(DIMS,size(testU1d)/DIMS),gradU(DIMS,DIMS,size(testU1d)/DIMS),&
-  &                testMom(DIMS,size(testU1d)/DIMS),resMomWrapped(DIMS,size(testU1d)/DIMS)
-  double precision,allocatable::gradUBlock(:,:,:),tao(:,:,:)
-  !FIXME:replace the local viscosities
-  double precision visc,viscRate
-  visc=1d-3
-  viscRate=-2d0/3d0
+  double precision testU(DIMS,size(testU1d)/DIMS),testMom(DIMS,size(testU1d)/DIMS),&
+  &                resMomWrapped(DIMS,size(testU1d)/DIMS)
   
   call grid%updateDualBlock()
   testU=reshape(testU1d,[DIMS,grid%nNode])
-  gradU=findGrad(testU,grid,BIND_NODE)
-  allocate(gradUBlock(DIMS,DIMS,grid%nBlock))
-  allocate(tao(DIMS,DIMS,grid%nBlock))
-  gradUBlock=itplNode2Block(gradU,grid)
-  forall(l=1:grid%nBlock)
-    tao(:,:,l)=visc*(gradUBlock(:,:,l)+transpose(gradUBlock(:,:,l)))
-    forall(i=1:DIMS)
-      tao(i,i,l)=tao(i,i,l)+viscRate*visc*sum([(gradUBlock(j,j,l),j=1,DIMS)])
-    end forall
-  end forall
+  tao=findTao(testU)
   forall(i=1:grid%nNode)
     testMom(:,i)=testU(:,i)*rhoNode(i)*grid%NodeVol(i)
   end forall
@@ -54,6 +40,15 @@ function resMom(testU1d)
     end if
   end do
   resMom=reshape(resMomWrapped,[DIMS*grid%nNode])
-  deallocate(gradUBlock)
-  deallocate(tao)
+end function
+
+!> the energy residual function (not includes pressure work)
+function resEnergy(testT)
+  use moduleGrid
+  use moduleCondition
+  use miscNS
+  double precision testT(:) !< the test temperature
+  double precision resEnergy(size(testT)) !< the energy residual function
+  
+  resEnergy(:)=0d0
 end function

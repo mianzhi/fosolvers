@@ -21,6 +21,9 @@ module miscNS
   double precision,allocatable::Energy(:) !< extensive block energy
   double precision,allocatable::IEnergy(:) !< extensive block internal energy
   double precision,allocatable::rhoNode(:) !< density at node
+  double precision,allocatable::visc(:) !< dynamic viscosity
+  double precision,allocatable::viscRate(:) !< viscosity rate lambda/mu
+  double precision,allocatable::tao(:,:,:) !< viscous stress tensor
   double precision gamm !< gamma=c_p/c_v
   double precision t !< current time
   double precision dt !< time step size
@@ -53,5 +56,29 @@ module miscNS
       end if
     end do
   end subroutine
+  
+  !> find the stress tensor field from given velocity field Uin
+  function findTao(Uin)
+    use moduleGrid
+    use moduleFVMGrad
+    use moduleInterpolation
+    double precision,intent(in)::Uin(:,:) !< the input velocity field (binding with nodes)
+    double precision,allocatable::findTao(:,:,:) !< the stress tensor
+    double precision,allocatable::gradU(:,:,:),gradUBlock(:,:,:)
+    
+    allocate(findTao(DIMS,DIMS,grid%nBlock))
+    allocate(gradU(DIMS,DIMS,grid%nNode))
+    allocate(gradUBlock(DIMS,DIMS,grid%nBlock))
+    gradU=findGrad(Uin,grid,BIND_NODE)
+    gradUBlock=itplNode2Block(gradU,grid)
+    forall(l=1:grid%nBlock)
+      findTao(:,:,l)=visc(l)*(gradUBlock(:,:,l)+transpose(gradUBlock(:,:,l)))
+      forall(i=1:DIMS)
+        findTao(i,i,l)=findTao(i,i,l)+viscRate(l)*visc(l)*sum([(gradUBlock(j,j,l),j=1,DIMS)])
+      end forall
+    end forall
+    deallocate(gradU)
+    deallocate(gradUBlock)
+  end function
   
 end module
