@@ -11,12 +11,15 @@ module miscNS
   double precision,allocatable::rho(:) !< density
   double precision,allocatable::u(:,:) !< velocity
   double precision,allocatable::p(:) !< pressure
-  double precision,allocatable::E(:) !< internal_energy+kinetic_energy
+  double precision,allocatable::Temp(:) !< temperature
+  double precision,allocatable::E(:) !< internal_energy and kinetic_energy
+  double precision,allocatable::IE(:) !< internal_energy
   double precision,allocatable::rhou(:,:) !< momentum per unit volume
   double precision,allocatable::rhoE(:) !< rho*E
   double precision,allocatable::Mass(:) !< block mass
   double precision,allocatable::Mom(:,:) !< extensive node momentum
   double precision,allocatable::Energy(:) !< extensive block energy
+  double precision,allocatable::IEnergy(:) !< extensive block internal energy
   double precision,allocatable::rhoNode(:) !< density at node
   double precision gamm !< gamma=c_p/c_v
   double precision t !< current time

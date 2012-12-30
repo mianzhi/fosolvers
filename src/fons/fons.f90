@@ -39,7 +39,9 @@ program fons
   allocate(rho(grid%nBlock))
   allocate(u(DIMS,grid%nNode))
   allocate(p(grid%nBlock))
+  allocate(Temp(grid%nBlock))
   allocate(E(grid%nBlock))
+  allocate(IE(grid%nBlock))
   allocate(rhou(DIMS,grid%nNode))
   allocate(rhoE(grid%nBlock))
   allocate(rhoNode(grid%nNode))
@@ -49,6 +51,7 @@ program fons
   allocate(Mass(grid%nBlock))
   allocate(Mom(DIMS,grid%nNode))
   allocate(Energy(grid%nBlock))
+  allocate(IEnergy(grid%nBlock))
   allocate(gradRho(DIMS,grid%nBlock))
   allocate(gradRhou(DIMS,DIMS,grid%nNode))
   allocate(gradRhoE(DIMS,grid%nBlock))
@@ -61,11 +64,21 @@ program fons
   u(:,:)=0d0
   rhou(:,:)=0d0
   forall(i=1:grid%nBlock)
-    rho(i)=merge(1d0,0.125d0,grid%BlockPos(1,i)<0.5d0)
     p(i)=merge(1d5,1d4,grid%BlockPos(1,i)<0.5d0)
-    E(i)=p(i)/rho(i)/(gamm-1d0)
+    Temp(i)=500d0
+    rho(i)=p(i)/200d0/Temp(i) ! rho=rho(p,T), Ru=200
+    IE(i)=200d0*Temp(i)/(gamm-1d0) ! IE=IE(p,T), Ru=200
+    E(i)=IE(i) !zero velocity
     rhoE(i)=rho(i)*E(i)
   end forall
+  call grid%updateDualBlock()
+  call grid%updateBlockVol()
+  Mass(:)=rho(:)*grid%BlockVol(:)
+  forall(i=1:grid%nNode)
+    Mom(:,i)=rhou(:,i)*grid%NodeVol(i)
+  end forall
+  IEnergy(:)=IE(:)*Mass(:)
+  Energy(:)=E(:)*Mass(:)
   t=0d0
   iWrite=0
   ! write initial states
@@ -82,11 +95,7 @@ program fons
     call grid%updateIntfArea()
     call grid%updateIntfNorm()
     ! Lagrangian step
-    Mass(:)=rho(:)*grid%BlockVol(:)
-    forall(i=1:grid%nNode)
-      Mom(:,i)=rhou(:,i)*grid%NodeVol(i)
-    end forall
-    Energy(:)=rhoE(:)*grid%BlockVol(:)
+    ! solve momentum equation for velocity using assumed pressure
     rhoNode=itplBlock2Node(rho,grid)
     u1d(:)=reshape(u,[DIMS*grid%nNode])
     if(maxval(abs(u1d))<=tiny(1d0))then
@@ -99,6 +108,7 @@ program fons
       rhou(:,i)=u(:,i)*rhoNode(i)
       Mom(:,i)=rhou(:,i)*grid%NodeVol(i)
     end forall
+    ! solve energy equation for temperature, exclude pressure work
     uIntf=itplNode2Intf(u,grid)
     pIntf=itplBlock2Intf(p,grid)
     do i=1,grid%nIntf
@@ -107,13 +117,6 @@ program fons
       pWork=dt*pIntf(i)*grid%IntfArea(i)*dot_product(grid%IntfNorm(:,i),uIntf(:,i))
       Energy(m)=Energy(m)-pWork
       Energy(n)=Energy(n)+pWork
-    end do
-    ! apply BC
-    do i=1,grid%nFacet
-      do j=1,grid%Facet(i)%nNode
-        k=grid%Facet(i)%iNode(j)
-        Mom(:,k)=Mom(:,k)-grid%FacetNorm(:,i)*dot_product(grid%FacetNorm(:,i),Mom(:,k))
-      end do
     end do
     ! recover intensive state
     rhoNode=itplBlock2Node(rho,grid)
@@ -147,7 +150,7 @@ program fons
     forall(i=1:grid%nBlock)
       rhoE(i)=Energy(i)/grid%BlockVol(i)
       E(i)=rhoE(i)/rho(i)
-      p(i)=(E(i)-dot_product(uBlock(:,i),uBlock(:,i))/2d0)*rho(i)*(gamm-1d0)
+      p(i)=(E(i)-dot_product(uBlock(:,i),uBlock(:,i))/2d0)*rho(i)*(gamm-1d0) ! p=p(rho,T)
     end forall
     rho(:)=Mass(:)/grid%BlockVol(:)
     t=t+dt
@@ -164,7 +167,9 @@ program fons
   deallocate(rho)
   deallocate(u)
   deallocate(p)
+  deallocate(Temp)
   deallocate(E)
+  deallocate(IE)
   deallocate(rhou)
   deallocate(rhoE)
   deallocate(rhoNode)
@@ -174,6 +179,7 @@ program fons
   deallocate(Mass)
   deallocate(Mom)
   deallocate(Energy)
+  deallocate(IEnergy)
   deallocate(gradRho)
   deallocate(gradRhou)
   deallocate(gradRhoE)
