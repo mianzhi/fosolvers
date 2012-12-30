@@ -55,6 +55,10 @@ function resEnergy(testT)
   call grid%updateBlockVol()
   call grid%updateIntfArea()
   call grid%updateIntfNorm()
+  call grid%updateFacetNeib()
+  call grid%updateFacetPos()
+  call grid%updateFacetArea()
+  call grid%updateFacetNorm()
   forall(i=1:grid%nBlock)
     testEnergy(i)=(200d0/(gamm-1)*testT(i)+dot_product(uBlock(:,i),uBlock(:,i))/2d0)& !TODO:IE=IE(p,T)
     &             *rho(i)*grid%BlockVol(i)
@@ -69,4 +73,17 @@ function resEnergy(testT)
   end do
   gradT=findGrad(testT,grid,BIND_BLOCK)
   resEnergy=resEnergy+dt*findDiffus(thermK,BIND_BLOCK,testT,grid,gradT)
+  do i=1,grid%nFacet
+    l=findCondition(condition,grid%Facet(i)%Ent,'Wall')
+    if(l>0)then
+      m=maxval(grid%FacetNeibBlock(:,i))
+      if(condition(l)%dat%test('Wall_Heat_Flux'))then
+        resEnergy(m)=resEnergy(m)+dt*grid%FacetArea(i)*condition(l)%dat%get('Wall_Heat_Flux',&
+        &                         [grid%FacetPos(1,i),grid%FacetPos(2,i),grid%FacetPos(3,i),t])
+      end if
+      if(condition(l)%dat%test('Wall_Temperature'))then
+        !TODO: wall temperature condition
+      end if
+    end if
+  end do
 end function

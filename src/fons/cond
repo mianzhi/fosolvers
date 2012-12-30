@@ -6,7 +6,7 @@ $EndCondition
 
 $Condition(15,Wall)
 $Const(Wall_Temperature)
-3d0
+300d0
 $EndConst
 $EndCondition
 
