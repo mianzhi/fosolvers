@@ -16,6 +16,7 @@ program fons
   double precision pWork !< pressure work done on block surface
   external::resMom
   external::resEnergy
+  external::resPressure
   double precision,allocatable::u1d(:) !< unwrapped velocity
   
   ! read simulation control file
@@ -128,8 +129,22 @@ program fons
       IEnergy(i)=IE(i)*Mass(i)
       Energy(i)=E(i)*Mass(i)
     end forall
-    ! correct the pressure
-    
+    ! remove from the momentum equation the effect of assumed pressure
+    do i=1,grid%nNode
+      do j=1,size(grid%NodeNeibBlock(i)%dat)
+        Mom(:,i)=Mom(:,i)+dt*grid%NBAreaVect(i)%dat(:,j)*p(grid%NodeNeibBlock(i)%dat(j))
+      end do
+    end do
+    ! couple pressure with fluid displacement, add pressure effects on momentum and energy
+    ProblemFunc=>resPressure
+    call solveNonlinear(p)
+    do i=1,grid%nNode
+      do j=1,size(grid%NodeNeibBlock(i)%dat)
+        Mom(:,i)=Mom(:,i)-dt*grid%NBAreaVect(i)%dat(:,j)*p(grid%NodeNeibBlock(i)%dat(j))
+        rhou(:,i)=Mom(:,i)/grid%NodeVol(i)
+        u(:,i)=rhou(:,i)/rhoNode(i)
+      end do
+    end do
     pIntf=itplBlock2Intf(p,grid)
     do i=1,grid%nIntf
       m=grid%IntfNeibBlock(1,i)
@@ -138,17 +153,13 @@ program fons
       Energy(m)=Energy(m)-pWork
       Energy(n)=Energy(n)+pWork
     end do
-    ! recover intensive state
-    rhoNode=itplBlock2Node(rho,grid)
-    forall(i=1:grid%nNode)
-      rhou(:,i)=Mom(:,i)/grid%NodeVol(i)
-      u(:,i)=rhou(:,i)/rhoNode(i)
-    end forall
-    uBlock=itplNode2Block(u,grid) !FIXME: seems can be removed
+    rhoE(:)=Energy(:)/grid%BlockVol(:)
+    E(:)=rhoE(:)/rho(:)
+    uBlock=itplNode2Block(u,grid)
     forall(i=1:grid%nBlock)
-      rhoE(i)=Energy(i)/grid%BlockVol(i)
+      IE(i)=E(i)-dot_product(uBlock(:,i),uBlock(:,i))/2d0
+      IEnergy(i)=IE(i)*Mass(i)
     end forall
-    rho(:)=Mass(:)/grid%BlockVol(:)
     call mvGrid(grid,dt*u)
     ! Euler rezoning
     gradRho=findGrad(rho,grid,BIND_BLOCK)
@@ -170,7 +181,10 @@ program fons
     forall(i=1:grid%nBlock)
       rhoE(i)=Energy(i)/grid%BlockVol(i)
       E(i)=rhoE(i)/rho(i)
-      p(i)=(E(i)-dot_product(uBlock(:,i),uBlock(:,i))/2d0)*rho(i)*(gamm-1d0) !TODO:p=p(rho,T)
+      IE(i)=E(i)-dot_product(uBlock(:,i),uBlock(:,i))/2d0
+      IEnergy(i)=IE(i)*Mass(i)
+      p(i)=IE(i)*rho(i)*(gamm-1d0) !TODO:p=p(rho,T)
+      Temp(i)=IE(i)*(gamm-1)/200d0 !TODO:T=T(IE,p)
     end forall
     rho(:)=Mass(:)/grid%BlockVol(:)
     t=t+dt

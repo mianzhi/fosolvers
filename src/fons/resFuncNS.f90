@@ -87,3 +87,13 @@ function resEnergy(testT)
     end if
   end do
 end function
+
+!> the pressure residual function
+function resPressure(testP)
+  use moduleGrid
+  use miscNS
+  double precision testP(:) !< the test pressure
+  double precision resPressure(size(testP)) !< the pressure residual function
+  
+  resPressure(:)=-testP(:)+p(:)
+end function
