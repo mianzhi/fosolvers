@@ -91,9 +91,37 @@ end function
 !> the pressure residual function
 function resPressure(testP)
   use moduleGrid
+  use moduleGridOperation
   use miscNS
   double precision testP(:) !< the test pressure
   double precision resPressure(size(testP)) !< the pressure residual function
+  double precision,allocatable::testU(:,:),tempVol(:)
   
-  resPressure(:)=-testP(:)+p(:)
+  allocate(testU(DIMS,grid%nNode))
+  allocate(tempVol(grid%nBlock))
+  tempVol(:)=grid%BlockVol(:)
+  do i=1,grid%nNode
+    do j=1,size(grid%NodeNeibBlock(i)%dat)
+      testU(:,i)=(Mom(:,i)-dt*grid%NBAreaVect(i)%dat(:,j)*p(grid%NodeNeibBlock(i)%dat(j)))&
+      &          /grid%NodeVol(i)/rhoNode(i)
+    end do
+  end do
+  do i=1,grid%nFacet
+    if(findCondition(condition,grid%Facet(i)%Ent,'Wall')>0)then
+      do j=1,grid%Facet(i)%nNode
+        k=grid%Facet(i)%iNode(j)
+        testU(:,k)=0d0
+      end do
+    end if
+  end do
+  call mvGrid(grid,dt*testU)
+  call grid%updateBlockVol()
+  do i=1,grid%nBlock
+    !write(*,*),i,testP(i),(gamm-1d0)*(IEnergy(i)+testP(i)*(tempVol(i)-grid%BlockVol(i)))/tempVol(i)
+  end do
+  resPressure(:)=-testP(:)+(gamm-1d0)*(IEnergy(:)+testP(:)*(tempVol(:)-grid%BlockVol(:)))/tempVol(:) !TODO:p=p(IE,v)
+  call mvGrid(grid,-dt*testU)
+  call grid%updateBlockVol()
+  deallocate(testU)
+  deallocate(tempVol)
 end function
