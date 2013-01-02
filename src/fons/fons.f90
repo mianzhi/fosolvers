@@ -12,7 +12,6 @@ program fons
   use moduleNonlinearSolve
   use moduleCLIO
   use miscNS
-  double precision,allocatable::pIntf(:) !< pressure at interface
   double precision pWork !< pressure work done on block surface
   external::resMom
   external::resEnergy
@@ -58,6 +57,7 @@ program fons
   allocate(thermK(grid%nBlock))
   allocate(tao(DIMS,DIMS,grid%nBlock))
   allocate(taoIntf(DIMS,DIMS,grid%nIntf))
+  allocate(oldP(grid%nBlock))
   allocate(u1d(DIMS*grid%nNode))
   ! simulation control
   dt=1d-5
@@ -136,6 +136,7 @@ program fons
       end do
     end do
     ! couple pressure with fluid displacement, add pressure effects on momentum and energy
+    oldP(:)=p(:)
     ProblemFunc=>resPressure
     call solveNonlinear(p)
     do i=1,grid%nNode
@@ -224,6 +225,7 @@ program fons
   deallocate(thermK)
   deallocate(tao)
   deallocate(taoIntf)
+  deallocate(oldP)
   deallocate(u1d)
   close(13)
 end program

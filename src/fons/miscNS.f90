@@ -23,11 +23,13 @@ module miscNS
   double precision,allocatable::rhoNode(:) !< density at node
   double precision,allocatable::uBlock(:,:) !< velocity at block
   double precision,allocatable::uIntf(:,:) !< velocity at interface
+  double precision,allocatable::pIntf(:) !< pressure at interface
   double precision,allocatable::visc(:) !< dynamic viscosity
   double precision,allocatable::viscRate(:) !< viscosity rate lambda/mu
   double precision,allocatable::thermK(:) !< thermal conductivity
   double precision,allocatable::tao(:,:,:) !< viscous stress tensor
   double precision,allocatable::taoIntf(:,:,:) !< viscous stress tensor at interface
+  double precision,allocatable::oldP(:) !< old pressure
   double precision,allocatable::gradRho(:,:) !< gradient of rho
   double precision,allocatable::gradRhou(:,:,:) !< gradient of rhou
   double precision,allocatable::gradRhoE(:,:) !< gradient of rhoE

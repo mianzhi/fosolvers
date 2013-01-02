@@ -17,6 +17,7 @@ function resMom(testU1d)
   forall(i=1:grid%nNode)
     testMom(:,i)=testU(:,i)*rhoNode(i)*grid%NodeVol(i)
   end forall
+  ! pressure force and viscous force
   resMomWrapped(:,:)=-testMom(:,:)+Mom(:,:)
   do i=1,grid%nBlock
     do j=1,grid%Block(i)%nNode
@@ -26,12 +27,15 @@ function resMom(testU1d)
           resMomWrapped(:,n)=resMomWrapped(:,n)&
           &                  -dt*grid%NBAreaVect(n)%dat(:,k)*p(i)&
           &                  +dt*matmul(grid%NBAreaVect(n)%dat(:,k),tao(:,:,i))
+          exit
         end if
       end do
     end do
   end do
+  ! boundary conditions
   do i=1,grid%nFacet
-    if(findCondition(condition,grid%Facet(i)%Ent,'Wall')>0)then
+    l=findCondition(condition,grid%Facet(i)%Ent,'Wall')
+    if(l>0)then
       do j=1,grid%Facet(i)%nNode
         k=grid%Facet(i)%iNode(j)
         resMomWrapped(:,k)=-testMom(:,k)+[0d0,0d0,0d0]*rhoNode(k)*grid%NodeVol(k)
@@ -63,6 +67,7 @@ function resEnergy(testT)
     testEnergy(i)=(200d0/(gamm-1)*testT(i)+dot_product(uBlock(:,i),uBlock(:,i))/2d0)& !TODO:IE=IE(p,T)
     &             *rho(i)*grid%BlockVol(i)
   end forall
+  ! work done by viscous force
   resEnergy(:)=-testEnergy(:)+Energy(:)
   do i=1,grid%nIntf
     m=grid%IntfNeibBlock(1,i)
@@ -71,8 +76,10 @@ function resEnergy(testT)
     resEnergy(m)=resEnergy(m)+viscWork
     resEnergy(n)=resEnergy(n)-viscWork
   end do
+  ! heat conduction
   gradT=findGrad(testT,grid,BIND_BLOCK)
   resEnergy=resEnergy+dt*findDiffus(thermK,BIND_BLOCK,testT,grid,gradT)
+  ! boundary conditions
   do i=1,grid%nFacet
     l=findCondition(condition,grid%Facet(i)%Ent,'Wall')
     if(l>0)then
@@ -100,10 +107,12 @@ function resPressure(testP)
   allocate(testU(DIMS,grid%nNode))
   allocate(tempVol(grid%nBlock))
   tempVol(:)=grid%BlockVol(:)
+  ! resolve velocity using momentum equation with pressure being tested
+  testU(:,:)=u(:,:)
   do i=1,grid%nNode
     do j=1,size(grid%NodeNeibBlock(i)%dat)
-      testU(:,i)=(Mom(:,i)-dt*grid%NBAreaVect(i)%dat(:,j)*p(grid%NodeNeibBlock(i)%dat(j)))&
-      &          /grid%NodeVol(i)/rhoNode(i)
+      testU(:,i)=testU(:,i)-dt*grid%NBAreaVect(i)%dat(:,j)*p(grid%NodeNeibBlock(i)%dat(j))&
+      &                     /grid%NodeVol(i)/rhoNode(i)
     end do
   end do
   do i=1,grid%nFacet
@@ -114,14 +123,12 @@ function resPressure(testP)
       end do
     end if
   end do
+  ! find pressure residual with moved grid
   call mvGrid(grid,dt*testU)
   call grid%updateBlockVol()
-  do i=1,grid%nBlock
-    !write(*,*),i,testP(i),(gamm-1d0)*(IEnergy(i)+testP(i)*(tempVol(i)-grid%BlockVol(i)))/tempVol(i)
-  end do
-  resPressure(:)=-testP(:)+(gamm-1d0)*(IEnergy(:)+testP(:)*(tempVol(:)-grid%BlockVol(:)))/tempVol(:) !TODO:p=p(IE,v)
+  resPressure(:)=-testP(:)+(gamm-1d0)*(IEnergy(:)+oldP(:)*(tempVol(:)-grid%BlockVol(:)))/tempVol(:) !TODO:p=p(IE,v)
   call mvGrid(grid,-dt*testU)
-  call grid%updateBlockVol()
+  grid%BlockVol(:)=tempVol(:)
   deallocate(testU)
   deallocate(tempVol)
 end function
