@@ -29,7 +29,11 @@ module miscNS
   double precision,allocatable::thermK(:) !< thermal conductivity
   double precision,allocatable::tao(:,:,:) !< viscous stress tensor
   double precision,allocatable::taoIntf(:,:,:) !< viscous stress tensor at interface
+  double precision,allocatable::oldU(:,:) !< old velocity
   double precision,allocatable::oldP(:) !< old pressure
+  double precision,allocatable::oldMom(:,:) !< old extensive momentum
+  double precision,allocatable::oldEnergy(:) !< old extensive energy
+  double precision,allocatable::preU(:,:) !< velocity of previous pressure coupling iteration
   double precision,allocatable::gradRho(:,:) !< gradient of rho
   double precision,allocatable::gradRhou(:,:,:) !< gradient of rhou
   double precision,allocatable::gradRhoE(:,:) !< gradient of rhoE

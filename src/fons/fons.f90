@@ -57,7 +57,11 @@ program fons
   allocate(thermK(grid%nBlock))
   allocate(tao(DIMS,DIMS,grid%nBlock))
   allocate(taoIntf(DIMS,DIMS,grid%nIntf))
+  allocate(oldU(DIMS,grid%nNode))
   allocate(oldP(grid%nBlock))
+  allocate(oldMom(DIMS,grid%nNode))
+  allocate(oldEnergy(grid%nBlock))
+  allocate(preU(DIMS,grid%nNode))
   allocate(u1d(DIMS*grid%nNode))
   ! simulation control
   dt=1d-5
@@ -102,65 +106,80 @@ program fons
     call grid%updateIntfArea()
     call grid%updateIntfNorm()
     ! Lagrangian step
-    ! solve momentum equation for velocity using assumed pressure
-    rhoNode=itplBlock2Node(rho,grid)
-    u1d(:)=reshape(u,[DIMS*grid%nNode])
-    if(maxval(abs(u1d))<=tiny(1d0))then
-      u1d(:)=1d0
-    end if
-    ProblemFunc=>resMom
-    call solveNonlinear(u1d)
-    u=reshape(u1d,[DIMS,grid%nNode])
-    forall(i=1:grid%nNode)
-      rhou(:,i)=u(:,i)*rhoNode(i)
-      Mom(:,i)=rhou(:,i)*grid%NodeVol(i)
-    end forall
-    ! solve energy equation for temperature, exclude pressure work
-    tao=findTao(u)
-    uBlock=itplNode2Block(u,grid)
-    uIntf=itplNode2Intf(u,grid)
-    taoIntf=itplBlock2Intf(tao,grid)
-    ProblemFunc=>resEnergy
-    call solveNonlinear(Temp)
-    forall(i=1:grid%nBlock)
-      IE(i)=Temp(i)*200d0/(gamm-1) !TODO:IE=IE(p,T)
-      E(i)=IE(i)+dot_product(uBlock(:,i),uBlock(:,i))/2d0
-      rhoE(i)=rho(i)*E(i)
-      IEnergy(i)=IE(i)*Mass(i)
-      Energy(i)=E(i)*Mass(i)
-    end forall
-    ! remove from the momentum equation the effect of assumed pressure
-    do i=1,grid%nNode
-      do j=1,size(grid%NodeNeibBlock(i)%dat)
-        Mom(:,i)=Mom(:,i)+dt*grid%NBAreaVect(i)%dat(:,j)*p(grid%NodeNeibBlock(i)%dat(j))
-      end do
-    end do
-    ! couple pressure with fluid displacement, add pressure effects on momentum and energy
+    preU(:,:)=u(:,:)
+    oldU(:,:)=u(:,:)
     oldP(:)=p(:)
-    ProblemFunc=>resPressure
-    call solveNonlinear(p)
-    do i=1,grid%nNode
-      do j=1,size(grid%NodeNeibBlock(i)%dat)
-        Mom(:,i)=Mom(:,i)-dt*grid%NBAreaVect(i)%dat(:,j)*p(grid%NodeNeibBlock(i)%dat(j))
-        rhou(:,i)=Mom(:,i)/grid%NodeVol(i)
-        u(:,i)=rhou(:,i)/rhoNode(i)
+    oldMom(:,:)=Mom(:,:)
+    oldEnergy(:)=Energy(:)
+    do l=1,10
+      ! solve momentum equation for velocity using assumed pressure
+      rhoNode=itplBlock2Node(rho,grid)
+      u1d(:)=reshape(u,[DIMS*grid%nNode])
+      if(maxval(abs(u1d))<=tiny(1d0))then
+        u1d(:)=1d0
+      end if
+      ProblemFunc=>resMom
+      call solveNonlinear(u1d)
+      u=reshape(u1d,[DIMS,grid%nNode])
+      forall(i=1:grid%nNode)
+        rhou(:,i)=u(:,i)*rhoNode(i)
+        Mom(:,i)=rhou(:,i)*grid%NodeVol(i)
+      end forall
+      ! solve energy equation for temperature, exclude pressure work
+      tao=findTao(u)
+      uBlock=itplNode2Block(u,grid)
+      uIntf=itplNode2Intf(u,grid)
+      taoIntf=itplBlock2Intf(tao,grid)
+      ProblemFunc=>resEnergy
+      call solveNonlinear(Temp)
+      forall(i=1:grid%nBlock)
+        IE(i)=Temp(i)*200d0/(gamm-1) !TODO:IE=IE(p,T)
+        E(i)=IE(i)+dot_product(uBlock(:,i),uBlock(:,i))/2d0
+        rhoE(i)=rho(i)*E(i)
+        IEnergy(i)=IE(i)*Mass(i)
+        Energy(i)=E(i)*Mass(i)
+      end forall
+      ! remove from the momentum equation the effect of assumed pressure
+      do i=1,grid%nNode
+        do j=1,size(grid%NodeNeibBlock(i)%dat)
+          Mom(:,i)=Mom(:,i)+dt*grid%NBAreaVect(i)%dat(:,j)*p(grid%NodeNeibBlock(i)%dat(j))
+        end do
       end do
+      ! couple pressure with fluid displacement, add pressure effects on momentum and energy
+      ProblemFunc=>resPressure
+      call solveNonlinear(p)
+      do i=1,grid%nNode
+        do j=1,size(grid%NodeNeibBlock(i)%dat)
+          Mom(:,i)=Mom(:,i)-dt*grid%NBAreaVect(i)%dat(:,j)*p(grid%NodeNeibBlock(i)%dat(j))
+          rhou(:,i)=Mom(:,i)/grid%NodeVol(i)
+          u(:,i)=rhou(:,i)/rhoNode(i)
+        end do
+      end do
+      pIntf=itplBlock2Intf(p,grid)
+      do i=1,grid%nIntf
+        m=grid%IntfNeibBlock(1,i)
+        n=grid%IntfNeibBlock(2,i)
+        pWork=dt*pIntf(i)*grid%IntfArea(i)*dot_product(grid%IntfNorm(:,i),uIntf(:,i))
+        Energy(m)=Energy(m)-pWork
+        Energy(n)=Energy(n)+pWork
+      end do
+      rhoE(:)=Energy(:)/grid%BlockVol(:)
+      E(:)=rhoE(:)/rho(:)
+      uBlock=itplNode2Block(u,grid)
+      forall(i=1:grid%nBlock)
+        IE(i)=E(i)-dot_product(uBlock(:,i),uBlock(:,i))/2d0
+        IEnergy(i)=IE(i)*Mass(i)
+      end forall
+      write(*,*),l,maxval(norm2(u(:,:)-preU(:,:),1))
+      if(maxval(norm2(u(:,:)-preU(:,:),1))<1d0)then
+        exit
+      else
+        preU(:,:)=u(:,:)
+        u(:,:)=oldU(:,:)
+        Mom(:,:)=oldMom(:,:)
+        Energy(:)=oldEnergy(:)
+      end if
     end do
-    pIntf=itplBlock2Intf(p,grid)
-    do i=1,grid%nIntf
-      m=grid%IntfNeibBlock(1,i)
-      n=grid%IntfNeibBlock(2,i)
-      pWork=dt*pIntf(i)*grid%IntfArea(i)*dot_product(grid%IntfNorm(:,i),uIntf(:,i))
-      Energy(m)=Energy(m)-pWork
-      Energy(n)=Energy(n)+pWork
-    end do
-    rhoE(:)=Energy(:)/grid%BlockVol(:)
-    E(:)=rhoE(:)/rho(:)
-    uBlock=itplNode2Block(u,grid)
-    forall(i=1:grid%nBlock)
-      IE(i)=E(i)-dot_product(uBlock(:,i),uBlock(:,i))/2d0
-      IEnergy(i)=IE(i)*Mass(i)
-    end forall
     call mvGrid(grid,dt*u)
     ! Euler rezoning
     gradRho=findGrad(rho,grid,BIND_BLOCK)
@@ -225,7 +244,11 @@ program fons
   deallocate(thermK)
   deallocate(tao)
   deallocate(taoIntf)
+  deallocate(oldU)
   deallocate(oldP)
+  deallocate(oldMom)
+  deallocate(oldEnergy)
+  deallocate(preU)
   deallocate(u1d)
   close(13)
 end program
