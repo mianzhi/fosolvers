@@ -82,6 +82,7 @@ program foflow
     oldP(:)=p(:)
     oldMom(:,:)=Mom(:,:)
     oldEnergy(:)=Energy(:)
+    preP(:)=p(:)
     do l=1,10
       ! solve momentum equation for velocity using assumed pressure
       rhoNode=itplBlock2Node(rho,grid)
@@ -147,6 +148,8 @@ program foflow
       else
         preU(:,:)=u(:,:)
         u(:,:)=oldU(:,:)
+        p(:)=P_RELAX_FACT*p(:)+(1d0-P_RELAX_FACT)*preP(:)
+        preP(:)=p(:)
         Mom(:,:)=oldMom(:,:)
         Energy(:)=oldEnergy(:)
       end if

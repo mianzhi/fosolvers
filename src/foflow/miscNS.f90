@@ -6,6 +6,8 @@ module miscNS
   use moduleCondition
   public
   
+  double precision,parameter::P_RELAX_FACT=0.8d0 !< pressure coupling relaxation factor
+  
   type(typeGrid)::grid !< the grid
   type(typeCondition),allocatable::condition(:) !< the simulation conditions
   double precision,allocatable::rho(:) !< density
@@ -34,6 +36,7 @@ module miscNS
   double precision,allocatable::oldMom(:,:) !< old extensive momentum
   double precision,allocatable::oldEnergy(:) !< old extensive energy
   double precision,allocatable::preU(:,:) !< velocity of previous pressure coupling iteration
+  double precision,allocatable::preP(:) !< pressure of previous pressure coupling iteration
   double precision,allocatable::gradRho(:,:) !< gradient of rho
   double precision,allocatable::gradRhou(:,:,:) !< gradient of rhou
   double precision,allocatable::gradRhoE(:,:) !< gradient of rhoE
@@ -79,6 +82,7 @@ module miscNS
     allocate(oldMom(DIMS,grid%nNode))
     allocate(oldEnergy(grid%nBlock))
     allocate(preU(DIMS,grid%nNode))
+    allocate(preP(grid%nBlock))
   end subroutine
   
   !> clear environment
@@ -113,6 +117,7 @@ module miscNS
     deallocate(oldMom)
     deallocate(oldEnergy)
     deallocate(preU)
+    deallocate(preP)
   end subroutine
   
   !> read opened simulation control file id
