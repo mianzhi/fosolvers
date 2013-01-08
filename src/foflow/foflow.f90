@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------------- best with 100 columns
 
-!> fons main program
-program fons
+!> foflow main program
+program foflow
   use moduleBasicDataStruct
   use moduleFileIO
   use moduleGrid
