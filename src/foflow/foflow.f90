@@ -38,23 +38,24 @@ program foflow
   dt=1d-5
   ! initial value of variables
   call grid%updateBlockPos()
-  gamm=1.4d0
+  call grid%updateDualBlock()
+  call grid%updateBlockVol()
+  gamm(:)=1.4d0
   u(:,:)=0d0
-  rhou(:,:)=0d0
   forall(i=1:grid%nBlock)
     p(i)=merge(1d5,1d4,grid%BlockPos(1,i)<0.5d0)
     Temp(i)=500d0
     rho(i)=p(i)/200d0/Temp(i) !TODO:rho=rho(p,T), Ru=200
-    IE(i)=200d0*Temp(i)/(gamm-1d0) !TODO:IE=IE(p,T), Ru=200
+    IE(i)=200d0*Temp(i)/(gamm(i)-1d0) !TODO:IE=IE(p,T), Ru=200
     E(i)=IE(i) !zero velocity
     rhoE(i)=rho(i)*E(i)
   end forall
-  call grid%updateDualBlock()
-  call grid%updateBlockVol()
-  Mass(:)=rho(:)*grid%BlockVol(:)
+  rhoNode=itplBlock2Node(rho,grid)
   forall(i=1:grid%nNode)
+    rhou(:,i)=u(:,i)*rhoNode(i)
     Mom(:,i)=rhou(:,i)*grid%NodeVol(i)
   end forall
+  Mass(:)=rho(:)*grid%BlockVol(:)
   IEnergy(:)=IE(:)*Mass(:)
   Energy(:)=E(:)*Mass(:)
   visc(:)=1d-3 !TODO: mu, k are functions of T,p
@@ -105,7 +106,7 @@ program foflow
       ProblemFunc=>resEnergy
       call solveNonlinear(Temp)
       forall(i=1:grid%nBlock)
-        IE(i)=Temp(i)*200d0/(gamm-1) !TODO:IE=IE(p,T)
+        IE(i)=Temp(i)*200d0/(gamm(i)-1d0) !TODO:IE=IE(p,T)
         E(i)=IE(i)+dot_product(uBlock(:,i),uBlock(:,i))/2d0
         rhoE(i)=rho(i)*E(i)
         IEnergy(i)=IE(i)*Mass(i)
@@ -177,8 +178,8 @@ program foflow
       E(i)=rhoE(i)/rho(i)
       IE(i)=E(i)-dot_product(uBlock(:,i),uBlock(:,i))/2d0
       IEnergy(i)=IE(i)*Mass(i)
-      p(i)=IE(i)*rho(i)*(gamm-1d0) !TODO:p=p(rho,T)
-      Temp(i)=IE(i)*(gamm-1)/200d0 !TODO:T=T(IE,p)
+      p(i)=IE(i)*rho(i)*(gamm(i)-1d0) !TODO:p=p(rho,T)
+      Temp(i)=IE(i)*(gamm(i)-1d0)/200d0 !TODO:T=T(IE,p)
     end forall
     rho(:)=Mass(:)/grid%BlockVol(:)
     t=t+dt

@@ -64,7 +64,7 @@ function resEnergy(testT)
   call grid%updateFacetArea()
   call grid%updateFacetNorm()
   forall(i=1:grid%nBlock)
-    testEnergy(i)=(200d0/(gamm-1)*testT(i)+dot_product(uBlock(:,i),uBlock(:,i))/2d0)& !TODO:IE=IE(p,T)
+    testEnergy(i)=(200d0/(gamm(i)-1d0)*testT(i)+dot_product(uBlock(:,i),uBlock(:,i))/2d0)& !TODO:IE=IE(p,T)
     &             *rho(i)*grid%BlockVol(i)
   end forall
   ! work done by viscous force
@@ -126,7 +126,7 @@ function resPressure(testP)
   ! find pressure residual with moved grid
   call mvGrid(grid,dt*testU)
   call grid%updateBlockVol()
-  resPressure(:)=-testP(:)+(gamm-1d0)*(IEnergy(:)+oldP(:)*(tempVol(:)-grid%BlockVol(:)))/tempVol(:) !TODO:p=p(IE,v)
+  resPressure(:)=-testP(:)+(gamm(:)-1d0)*(IEnergy(:)+oldP(:)*(tempVol(:)-grid%BlockVol(:)))/tempVol(:) !TODO:p=p(IE,v)
   call mvGrid(grid,-dt*testU)
   grid%BlockVol(:)=tempVol(:)
   deallocate(testU)

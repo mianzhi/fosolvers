@@ -29,6 +29,7 @@ module miscNS
   double precision,allocatable::visc(:) !< dynamic viscosity
   double precision,allocatable::viscRate(:) !< viscosity rate lambda/mu
   double precision,allocatable::thermK(:) !< thermal conductivity
+  double precision,allocatable::gamm(:) !< gamma=c_p/c_v
   double precision,allocatable::tao(:,:,:) !< viscous stress tensor
   double precision,allocatable::taoIntf(:,:,:) !< viscous stress tensor at interface
   double precision,allocatable::oldU(:,:) !< old velocity
@@ -41,7 +42,6 @@ module miscNS
   double precision,allocatable::gradRhou(:,:,:) !< gradient of rhou
   double precision,allocatable::gradRhoE(:,:) !< gradient of rhoE
   double precision,allocatable::gradT(:,:) !< gradient of temperature
-  double precision gamm !< gamma=c_p/c_v
   double precision t !< current time
   double precision dt !< time step size
   double precision tFinal !< final time
@@ -75,6 +75,7 @@ module miscNS
     allocate(visc(grid%nBlock))
     allocate(viscRate(grid%nBlock))
     allocate(thermK(grid%nBlock))
+    allocate(gamm(grid%nBlock))
     allocate(tao(DIMS,DIMS,grid%nBlock))
     allocate(taoIntf(DIMS,DIMS,grid%nIntf))
     allocate(oldU(DIMS,grid%nNode))
@@ -110,6 +111,7 @@ module miscNS
     deallocate(visc)
     deallocate(viscRate)
     deallocate(thermK)
+    deallocate(gamm)
     deallocate(tao)
     deallocate(taoIntf)
     deallocate(oldU)
