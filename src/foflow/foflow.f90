@@ -40,11 +40,18 @@ program foflow
   call grid%updateBlockPos()
   call grid%updateDualBlock()
   call grid%updateBlockVol()
-  gamm(:)=1.4d0
-  u(:,:)=0d0
+  l=findCondition(condition,0,'Initial_States')
+  forall(i=1:grid%nNode)
+    u(1,i)=condition(l)%dat%get('Initial_U',grid%NodePos(:,i))
+    u(2,i)=condition(l)%dat%get('Initial_V',grid%NodePos(:,i))
+    u(3,i)=condition(l)%dat%get('Initial_W',grid%NodePos(:,i))
+  end forall
   forall(i=1:grid%nBlock)
-    p(i)=merge(1d5,1d4,grid%BlockPos(1,i)<0.5d0)
-    Temp(i)=500d0
+    Temp(i)=condition(l)%dat%get('Initial_Temperature',grid%BlockPos(:,i))
+    p(i)=condition(l)%dat%get('Initial_Pressure',grid%BlockPos(:,i))
+  end forall
+  gamm(:)=1.4d0
+  forall(i=1:grid%nBlock)
     rho(i)=p(i)/200d0/Temp(i) !TODO:rho=rho(p,T), Ru=200
     IE(i)=200d0*Temp(i)/(gamm(i)-1d0) !TODO:IE=IE(p,T), Ru=200
     E(i)=IE(i) !zero velocity
