@@ -7,6 +7,7 @@ module miscNS
   public
   
   double precision,parameter::P_RELAX_FACT=0.8d0 !< pressure coupling relaxation factor
+  double precision,parameter::TOLERANCE_COUP=1d-4 !< tolerance of u-p coupling
   
   type(typeGrid)::grid !< the grid
   type(typeCondition),allocatable::condition(:) !< the simulation conditions
@@ -46,6 +47,7 @@ module miscNS
   double precision dt !< time step size
   double precision tFinal !< final time
   double precision tWrite !< interval of result output
+  double precision errCoup !< error of u-p coupling
   integer iWrite !< index of result output snapshot
   
   contains

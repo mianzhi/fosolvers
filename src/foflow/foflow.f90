@@ -150,8 +150,13 @@ program foflow
         IE(i)=E(i)-dot_product(uBlock(:,i),uBlock(:,i))/2d0
         IEnergy(i)=IE(i)*Mass(i)
       end forall
-      write(*,*),l,maxval(norm2(u(:,:)-preU(:,:),1))
-      if(maxval(norm2(u(:,:)-preU(:,:),1))<1d0)then
+      if(norm2(u(:,:))>tiny(1d0))then
+        errCoup=norm2(u(:,:)-preU(:,:))/norm2(u(:,:))
+      else
+        errCoup=norm2(u(:,:)-preU(:,:))
+      end if
+      write(*,*),l,errCoup
+      if(errCoup<TOLERANCE_COUP)then
         exit
       else
         preU(:,:)=u(:,:)
