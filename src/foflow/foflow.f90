@@ -91,7 +91,7 @@ program foflow
     oldMom(:,:)=Mom(:,:)
     oldEnergy(:)=Energy(:)
     preP(:)=p(:)
-    do l=1,10
+    do iCoup=1,10
       ! solve momentum equation for velocity using assumed pressure
       rhoNode=itplBlock2Node(rho,grid)
       u1d(:)=reshape(u,[DIMS*grid%nNode])
@@ -124,6 +124,17 @@ program foflow
         do j=1,size(grid%NodeNeibBlock(i)%dat)
           Mom(:,i)=Mom(:,i)+dt*grid%NBAreaVect(i)%dat(:,j)*p(grid%NodeNeibBlock(i)%dat(j))
         end do
+        if(allocated(grid%NodeNeibFacet(i)%dat))then
+          do j=1,size(grid%NodeNeibFacet(i)%dat)
+            k=grid%NodeNeibFacet(i)%dat(j)
+            l=findCondition(condition,grid%Facet(k)%Ent,'Inlet')
+            if(l>0)then
+              if(condition(l)%dat%test('Inlet_Pressure'))then
+                Mom(:,i)=Mom(:,i)!TODO:remove the boundary pressure
+              end if
+            end if
+          end do
+        end if
       end do
       ! couple pressure with fluid displacement, add pressure effects on momentum and energy
       ProblemFunc=>resPressure
@@ -131,6 +142,19 @@ program foflow
       do i=1,grid%nNode
         do j=1,size(grid%NodeNeibBlock(i)%dat)
           Mom(:,i)=Mom(:,i)-dt*grid%NBAreaVect(i)%dat(:,j)*p(grid%NodeNeibBlock(i)%dat(j))
+        end do
+        if(allocated(grid%NodeNeibFacet(i)%dat))then
+          do j=1,size(grid%NodeNeibFacet(i)%dat)
+            k=grid%NodeNeibFacet(i)%dat(j)
+            l=findCondition(condition,grid%Facet(k)%Ent,'Inlet')
+            if(l>0)then
+              if(condition(l)%dat%test('Inlet_Pressure'))then
+                Mom(:,i)=Mom(:,i)!TODO:add the boundary pressure
+              end if
+            end if
+          end do
+        end if
+        do j=1,size(grid%NodeNeibBlock(i)%dat)
           rhou(:,i)=Mom(:,i)/grid%NodeVol(i)
           u(:,i)=rhou(:,i)/rhoNode(i)
         end do
@@ -142,6 +166,15 @@ program foflow
         pWork=dt*pIntf(i)*grid%IntfArea(i)*dot_product(grid%IntfNorm(:,i),uIntf(:,i))
         Energy(m)=Energy(m)-pWork
         Energy(n)=Energy(n)+pWork
+      end do
+      do i=1,grid%nFacet
+        l=findCondition(condition,grid%Facet(i)%Ent,'Inlet')
+        if(l>0)then
+          if(condition(l)%dat%test('Inlet_Pressure'))then
+            m=maxval(grid%FacetNeibBlock(:,i))
+            !TODO:add the boundary pressure work
+          end if
+        end if
       end do
       rhoE(:)=Energy(:)/grid%BlockVol(:)
       E(:)=rhoE(:)/rho(:)
@@ -155,7 +188,7 @@ program foflow
       else
         errCoup=norm2(u(:,:)-preU(:,:))
       end if
-      write(*,*),l,errCoup
+      write(*,*),iCoup,errCoup
       if(errCoup<TOLERANCE_COUP)then
         exit
       else

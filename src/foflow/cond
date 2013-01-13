@@ -56,3 +56,20 @@ $Const(Wall_Heat_Flux)
 $EndConst
 $EndCondition
 
+$Condition(6,Inlet)
+$Const(Inlet_Pressure)
+2d5
+$EndConst
+$Const(Inlet_Temperature)
+300d0
+$EndConst
+$EndCondition
+
+$Condition(28,Inlet)
+$Const(Inlet_Pressure)
+2d5
+$EndConst
+$Const(Inlet_Temperature)
+300d0
+$EndConst
+$EndCondition

@@ -34,6 +34,20 @@ function resMom(testU1d)
   end do
   ! boundary conditions
   do i=1,grid%nFacet
+    l=findCondition(condition,grid%Facet(i)%Ent,'Inlet')
+    if(l>0)then
+      if(condition(l)%dat%test('Inlet_U'))then
+        do j=1,grid%Facet(i)%nNode
+          k=grid%Facet(i)%iNode(j)
+          resMomWrapped(:,k)=-testMom(:,k)+[0d0,0d0,0d0]*rhoNode(k)*grid%NodeVol(k)!TODO:apply predefined velocity
+        end do
+      else if(condition(l)%dat%test('Inlet_Pressure'))then
+        do j=1,grid%Facet(i)%nNode
+          k=grid%Facet(i)%iNode(j)
+          resMomWrapped(:,k)=resMomWrapped(:,k)!TODO:apply boundary pressure effect
+        end do
+      end if
+    end if
     l=findCondition(condition,grid%Facet(i)%Ent,'Wall')
     if(l>0)then
       do j=1,grid%Facet(i)%nNode
@@ -116,7 +130,22 @@ function resPressure(testP)
     end do
   end do
   do i=1,grid%nFacet
-    if(findCondition(condition,grid%Facet(i)%Ent,'Wall')>0)then
+    l=findCondition(condition,grid%Facet(i)%Ent,'Inlet')
+    if(l>0)then
+      if(condition(l)%dat%test('Inlet_U'))then
+        do j=1,grid%Facet(i)%nNode
+          k=grid%Facet(i)%iNode(j)
+          !TODO:apply predefined velocity
+        end do
+      else if(condition(l)%dat%test('Inlet_Pressure'))then
+        do j=1,grid%Facet(i)%nNode
+          k=grid%Facet(i)%iNode(j)
+          !TODO:apply boundary pressure effect
+        end do
+      end if
+    end if
+    l=findCondition(condition,grid%Facet(i)%Ent,'Wall')
+    if(l>0)then
       do j=1,grid%Facet(i)%nNode
         k=grid%Facet(i)%iNode(j)
         testU(:,k)=0d0

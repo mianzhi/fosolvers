@@ -48,6 +48,7 @@ module miscNS
   double precision tFinal !< final time
   double precision tWrite !< interval of result output
   double precision errCoup !< error of u-p coupling
+  integer iCoup !< index of current u-p coupling iteration
   integer iWrite !< index of result output snapshot
   
   contains
