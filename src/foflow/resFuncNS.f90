@@ -95,6 +95,11 @@ function resEnergy(testT)
   resEnergy=resEnergy+dt*findDiffus(thermK,BIND_BLOCK,testT,grid,gradT)
   ! boundary conditions
   do i=1,grid%nFacet
+    l=findCondition(condition,grid%Facet(i)%Ent,'Inlet')
+    if(l>0)then
+      m=maxval(grid%FacetNeibBlock(:,i))
+      resEnergy(m)=resEnergy(m)!TODO:heat diffusion from upstream
+    end if
     l=findCondition(condition,grid%Facet(i)%Ent,'Wall')
     if(l>0)then
       m=maxval(grid%FacetNeibBlock(:,i))
