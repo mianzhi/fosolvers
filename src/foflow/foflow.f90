@@ -183,6 +183,7 @@ program foflow
         IE(i)=E(i)-dot_product(uBlock(:,i),uBlock(:,i))/2d0
         IEnergy(i)=IE(i)*Mass(i)
       end forall
+      ! Evaluate error and further coupling if necessary
       if(norm2(u(:,:))>tiny(1d0))then
         errCoup=norm2(u(:,:)-preU(:,:))/norm2(u(:,:))
       else

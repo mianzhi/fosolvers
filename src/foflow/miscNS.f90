@@ -136,12 +136,12 @@ module miscNS
     rewind(id,iostat=ierr)
     do while(ierr==0)
       read(id,*,iostat=ierr),tempStr
-      if(tempStr(1:15)=='$SimulationTime')then
+      if(tempStr(1:16)=='$Simulation_Time')then
         m=index(tempStr,'(')
         n=index(tempStr,')')
         read(tempStr(m+1:n-1),*),tFinal
       end if
-      if(tempStr(1:16)=='$RstTimeInterval')then
+      if(tempStr(1:18)=='$Rst_Time_Interval')then
         m=index(tempStr,'(')
         n=index(tempStr,')')
         read(tempStr(m+1:n-1),*),tWrite
