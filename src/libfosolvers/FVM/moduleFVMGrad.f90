@@ -17,12 +17,12 @@ module moduleFVMGrad
 contains
   
   !> find gradient of vector field v on grid
-  function findGradVect(v,grid,bind)
+  function findGradVect(v,bind,grid)
     use moduleGrid
     use moduleSimpleSetLogic
     double precision,intent(in)::v(:,:) !< vector data
-    type(typeGrid),intent(inout)::grid !< grid on which v is defined
     integer,intent(in)::bind !< bind with node/block
+    type(typeGrid),intent(inout)::grid !< grid on which v is defined
     double precision::findGradVect(DIMS,size(v,1),size(v,2)) !< the gradient of v
     integer,allocatable::lNeib(:)
     integer nEq,rank,iwork(50),er
@@ -92,16 +92,16 @@ contains
   end function
   
   !> find gradient of scalar field v on grid
-  function findGradScal(v,grid,bind)
+  function findGradScal(v,bind,grid)
     use moduleGrid
     double precision,intent(in)::v(:) !< scalar data
-    type(typeGrid),intent(inout)::grid !< grid on which v is defined
     integer,intent(in)::bind !< bind with node/block
+    type(typeGrid),intent(inout)::grid !< grid on which v is defined
     double precision::findGradScal(DIMS,size(v)) !< the gradient of v
     double precision vv(1,size(v)),vrst(DIMS,1,size(v))
     
     vv(1,:)=v(:)
-    vrst=findGradVect(vv,grid,bind)
+    vrst=findGradVect(vv,bind,grid)
     findGradScal(:,:)=vrst(:,1,:)
   end function
   

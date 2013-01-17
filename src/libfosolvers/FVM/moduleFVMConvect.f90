@@ -353,7 +353,7 @@ contains
           phiTemp2(:,i)=phiTemp1(:,i)/grid%NodeVol(i)
         end forall
         if(l/=1)then
-          gradTemp=findGrad(phiTemp2,grid,BIND_NODE)
+          gradTemp=findGrad(phiTemp2,BIND_NODE,grid)
         end if
         do i=1,grid%nEdge
           m=grid%Edge(i)%iNode(1)
@@ -415,7 +415,7 @@ contains
           phiTemp2(:,i)=phiTemp1(:,i)/grid%BlockVol(i)
         end forall
         if(l/=1)then
-          gradTemp=findGrad(phiTemp2,grid,BIND_BLOCK)
+          gradTemp=findGrad(phiTemp2,BIND_BLOCK,grid)
         end if
         do i=1,grid%nIntf
           m=grid%IntfNeibBlock(1,i)

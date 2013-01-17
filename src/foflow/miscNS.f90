@@ -161,7 +161,7 @@ module miscNS
     allocate(findTao(DIMS,DIMS,grid%nBlock))
     allocate(gradU(DIMS,DIMS,grid%nNode))
     allocate(gradUBlock(DIMS,DIMS,grid%nBlock))
-    gradU=findGrad(Uin,grid,BIND_NODE)
+    gradU=findGrad(Uin,BIND_NODE,grid)
     gradUBlock=itplNode2Block(gradU,grid)
     forall(l=1:grid%nBlock)
       findTao(:,:,l)=visc(l)*(gradUBlock(:,:,l)+transpose(gradUBlock(:,:,l)))

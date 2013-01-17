@@ -203,9 +203,9 @@ program foflow
     end do
     call mvGrid(grid,dt*u)
     ! Euler rezoning
-    gradRho=findGrad(rho,grid,BIND_BLOCK)
-    gradRhou=findGrad(rhou,grid,BIND_NODE)
-    gradRhoE=findGrad(rhoE,grid,BIND_BLOCK)
+    gradRho=findGrad(rho,BIND_BLOCK,grid)
+    gradRhou=findGrad(rhou,BIND_NODE,grid)
+    gradRhoE=findGrad(rhoE,BIND_BLOCK,grid)
     Mass=Mass+findDispConvect(rho,BIND_BLOCK,-dt*u,grid,gradRho,limiter=vanLeer)
     Mom=Mom+findDispConvect(rhou,BIND_NODE,-dt*u,grid,gradRhou,limiter=vanLeer)
     Energy=Energy+findDispConvect(rhoE,BIND_BLOCK,-dt*u,grid,gradRhoE,limiter=vanLeer)

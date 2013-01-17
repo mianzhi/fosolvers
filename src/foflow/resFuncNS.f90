@@ -91,7 +91,7 @@ function resEnergy(testT)
     resEnergy(n)=resEnergy(n)-viscWork
   end do
   ! heat conduction
-  gradT=findGrad(testT,grid,BIND_BLOCK)
+  gradT=findGrad(testT,BIND_BLOCK,grid)
   resEnergy=resEnergy+dt*findDiffus(thermK,BIND_BLOCK,testT,grid,gradT)
   ! boundary conditions
   do i=1,grid%nFacet
