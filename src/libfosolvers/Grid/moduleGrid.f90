@@ -767,6 +767,7 @@ contains
     double precision quadPos(DIMS,QUAD_NODE_NUM),unitVect(DIMS)
     
     if(.not.this%isUpDualBlock)then
+      call this%updateNodeNeib()
       call this%updateBlockPos()
       call this%updateBlockVol()
       call this%updateFacetArea()
