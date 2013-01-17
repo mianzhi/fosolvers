@@ -5,7 +5,7 @@ module moduleFVMGrad
   private
   
   ! constants
-  integer,parameter::GRAD_MIN_NEIB=4 !< minimum number of neighbor data sets to find gradient
+  integer,parameter::GRAD_MIN_NEIB=6 !< minimum number of neighbor data sets to find gradient
   
   !> generic find gradient
   interface findGrad
@@ -87,7 +87,8 @@ contains
         end if
         nEq=size(lNeib)+size(lFacet)
         do while(nEq<GRAD_MIN_NEIB) ! include more data
-          do j=1,nEq
+          n=size(lNeib)
+          do j=1,n
             call applUnion(lNeib,grid%BlockNeibBlock(lNeib(j))%dat(:))
           end do
           call applComplement(lNeib,[i,0])
