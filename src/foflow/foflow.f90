@@ -203,31 +203,13 @@ program foflow
     end do
     call mvGrid(grid,dt*u)
     ! Euler rezoning
-    ! Boundary convection
-    disp(:,:)=0d0
-    do i=1,grid%nFacet
-      l=findCondition(condition,grid%Facet(i)%Ent,'Inlet')
-      if(l>0)then
-        disp(:,grid%Facet(i)%iNode(:))=-dt*u(:,grid%Facet(i)%iNode(:))
-      end if
-    end do
-    !TODO:boundary convection
-    call mvGrid(grid,disp)
-    ! rezoning of inner nodes
-    disp(:,:)=-dt*u(:,:)
-    do i=1,grid%nFacet
-      l=findCondition(condition,grid%Facet(i)%Ent,'Inlet')
-      if(l>0)then
-        disp(:,grid%Facet(i)%iNode(:))=0d0
-      end if
-    end do
     gradRho=findGrad(rho,grid,BIND_BLOCK)
     gradRhou=findGrad(rhou,grid,BIND_NODE)
     gradRhoE=findGrad(rhoE,grid,BIND_BLOCK)
-    Mass=Mass+findDispConvect(rho,BIND_BLOCK,disp,grid,gradRho,limiter=vanLeer)
-    Mom=Mom+findDispConvect(rhou,BIND_NODE,disp,grid,gradRhou,limiter=vanLeer)
-    Energy=Energy+findDispConvect(rhoE,BIND_BLOCK,disp,grid,gradRhoE,limiter=vanLeer)
-    call mvGrid(grid,disp)
+    Mass=Mass+findDispConvect(rho,BIND_BLOCK,-dt*u,grid,gradRho,limiter=vanLeer)
+    Mom=Mom+findDispConvect(rhou,BIND_NODE,-dt*u,grid,gradRhou,limiter=vanLeer)
+    Energy=Energy+findDispConvect(rhoE,BIND_BLOCK,-dt*u,grid,gradRhoE,limiter=vanLeer)
+    call mvGrid(grid,-dt*u)
     ! recover state
     call grid%updateDualBlock()
     call grid%updateBlockVol()

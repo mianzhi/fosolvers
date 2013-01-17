@@ -43,7 +43,6 @@ module miscNS
   double precision,allocatable::gradRhou(:,:,:) !< gradient of rhou
   double precision,allocatable::gradRhoE(:,:) !< gradient of rhoE
   double precision,allocatable::gradT(:,:) !< gradient of temperature
-  double precision,allocatable::disp(:,:) !< displacement of nodes used in Euler rezoning
   double precision t !< current time
   double precision dt !< time step size
   double precision tFinal !< final time
@@ -88,7 +87,6 @@ module miscNS
     allocate(oldEnergy(grid%nBlock))
     allocate(preU(DIMS,grid%nNode))
     allocate(preP(grid%nBlock))
-    allocate(disp(DIMS,grid%nNode))
   end subroutine
   
   !> clear environment
@@ -125,7 +123,6 @@ module miscNS
     deallocate(oldEnergy)
     deallocate(preU)
     deallocate(preP)
-    deallocate(disp)
   end subroutine
   
   !> read opened simulation control file id
