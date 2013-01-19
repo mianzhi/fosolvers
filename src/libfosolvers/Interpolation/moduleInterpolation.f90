@@ -11,6 +11,13 @@ module moduleInterpolation
   end interface
   public itplBlock2Node
   
+  !> interpolate from block to facet
+  interface itplBlock2Facet
+    module procedure::itplBlock2FacetVect
+    module procedure::itplBlock2FacetScal
+  end interface
+  public itplBlock2Facet
+  
   !> interpolate from block to interface
   interface itplBlock2Intf
     module procedure::itplBCDMat
@@ -28,6 +35,13 @@ module moduleInterpolation
     module procedure::itplNode2BlockScal
   end interface
   public itplNode2Block
+  
+  !> interpolate from node to facet
+  interface itplNode2Facet
+    module procedure::itplNode2FacetVect
+    module procedure::itplNode2FacetScal
+  end interface
+  public itplNode2Facet
   
   !> interpolate from node to edge
   interface itplNode2Edge
@@ -85,6 +99,37 @@ contains
     vrst=itplBlock2NodeVect(vv,grid)
     call reallocArr(itplBlock2NodeScal,size(vrst,2))
     itplBlock2NodeScal(:)=vrst(1,:)
+  end function
+  
+  !> interpolate vector v within grid from block to facet
+  function itplBlock2FacetVect(v,grid)
+    use moduleGrid
+    use moduleBasicDataStruct
+    double precision,intent(in)::v(:,:) !< block data to be interpolated
+    type(typeGrid),intent(inout)::grid !< grid on which v is defined
+    double precision,allocatable::itplBlock2FacetVect(:,:) !< interpolated data on Facet
+    
+    call grid%updateFacetNeib()
+    call reallocArr(itplBlock2FacetVect,size(v,1),grid%nFacet)
+    forall(i=1:grid%nFacet)
+      itplBlock2FacetVect(:,i)=v(:,maxval(grid%FacetNeibBlock(:,i)))
+    end forall
+  end function
+  
+  !> interpolate scalar v within grid from block to facet
+  function itplBlock2FacetScal(v,grid)
+    use moduleGrid
+    use moduleBasicDataStruct
+    double precision,intent(in)::v(:) !< block data to be interpolated
+    type(typeGrid),intent(inout)::grid !< grid on which v is defined
+    double precision,allocatable::itplBlock2FacetScal(:) !< interpolated data on facet
+    double precision vv(1,size(v))
+    double precision,allocatable::vrst(:,:)
+    
+    vv(1,:)=v(:)
+    vrst=itplBlock2FacetVect(vv,grid)
+    call reallocArr(itplBlock2FacetScal,size(vrst,2))
+    itplBlock2FacetScal(:)=vrst(1,:)
   end function
   
   !> interpolate matrix v within grid from block to interface using block center direction scheme
@@ -232,6 +277,36 @@ contains
     vrst=itplNode2BlockVect(vv,grid)
     call reallocArr(itplNode2BlockScal,size(vrst,2))
     itplNode2BlockScal(:)=vrst(1,:)
+  end function
+  
+  !> interpolate vector v within grid from node to facet
+  function itplNode2FacetVect(v,grid)
+    use moduleGrid
+    use moduleBasicDataStruct
+    double precision,intent(in)::v(:,:) !< node data to be interpolated
+    type(typeGrid),intent(inout)::grid !< grid on which v is defined
+    double precision,allocatable::itplNode2FacetVect(:,:) !< interpolated data on facet
+    
+    call reallocArr(itplNode2FacetVect,size(v,1),grid%nFacet)
+    forall(i=1:grid%nFacet)
+      itplNode2FacetVect(:,i)=sum(v(:,grid%Facet(i)%iNode(:)),2)/dble(grid%Facet(i)%nNode)
+    end forall
+  end function
+  
+  !> interpolate scaler v within grid from node to facet
+  function itplNode2FacetScal(v,grid)
+    use moduleGrid
+    use moduleBasicDataStruct
+    double precision,intent(in)::v(:) !< node data to be interpolated
+    type(typeGrid),intent(inout)::grid !< grid on which v is defined
+    double precision,allocatable::itplNode2FacetScal(:) !< interpolated data on facet
+    double precision vv(1,size(v))
+    double precision,allocatable::vrst(:,:)
+    
+    vv(1,:)=v(:)
+    vrst=itplNode2FacetVect(vv,grid)
+    call reallocArr(itplNode2FacetScal,size(vrst,2))
+    itplNode2FacetScal(:)=vrst(1,:)
   end function
   
   !> interpolate vector v within grid from node to edge
