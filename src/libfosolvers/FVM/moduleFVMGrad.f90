@@ -129,15 +129,12 @@ contains
     type(typeGrid),intent(inout)::grid !< grid on which v is defined
     double precision,intent(in),optional::FacetVal(grid%nFacet) !< scalar data on facet
     double precision::findGradScal(DIMS,size(v)) !< the gradient of v
-    double precision vv(1,size(v)),vrst(DIMS,1,size(v))
-    double precision,allocatable::vFacetVal(:,:)
+    double precision vv(1,size(v)),vFacetVal(1,grid%nFacet),vrst(DIMS,1,size(v))
     
     vv(1,:)=v(:)
     if(present(FacetVal))then
-      allocate(vFacetVal(1,size(FacetVal)))
       vFacetVal(1,:)=FacetVal(:)
       vrst=findGradVect(vv,bind,grid,vFacetVal)
-      deallocate(vFacetVal)
     else
       vrst=findGradVect(vv,bind,grid)
     end if
