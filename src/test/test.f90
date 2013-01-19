@@ -15,7 +15,7 @@ program test
   use moduleNonlinearSolve
   use moduleMPIComm
   type(typeGrid)::grid
-  double precision,allocatable::u(:),uF(:),gradU(:,:)
+  double precision,allocatable::u(:),uF(:),gradU(:,:),v(:),gamm(:)
   
   call initMPI()
   if(pidMPI==0)then
@@ -25,13 +25,17 @@ program test
     allocate(u(grid%nBlock))
     allocate(uF(grid%nFacet))
     allocate(gradU(DIMS,grid%nBlock))
+    allocate(v(grid%nBlock))
+    allocate(gamm(grid%nBlock))
     call grid%updateBlockPos()
-    u(:)=grid%BlockPos(1,:)
-    uF(:)=0d0
+    u(:)=0d0
+    uF(:)=1d0
     gradU=findGrad(u,BIND_BLOCK,grid,FacetVal=uF)
+    gamm=1d0
+    v=findDiffus(gamm,BIND_BLOCK,u,grid,gradU,FacetVal=uF)
     open(13,file='rstTest.msh',status='replace')
     call writeGMSH(13,grid)
-    call writeGMSH(13,gradU,grid,BIND_BLOCK,'u',0,0d0)
+    call writeGMSH(13,v,grid,BIND_BLOCK,'v',0,0d0)
     close(13)
   else
   end if

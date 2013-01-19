@@ -17,15 +17,16 @@ contains
   
   !> find diffusion driven by vector v through interface using orthogonal scheme
   !> \f[ \int_{intf} \Gamma \nabla \mathbf{v} \cdot \hat{n} dA \f]
-  function findDiffusORTHVect(gamm,gammbind,v,grid)
+  function findDiffusORTHVect(gamm,gammbind,v,grid,FacetVal)
     use moduleGrid
     use moduleInterpolation
     double precision,intent(in)::gamm(:) !< the diffusivity
     integer,intent(in)::gammbind !< bind diffusivity with node/block/interface
     double precision,intent(in)::v(:,:) !< the vector which drives the diffusion
     type(typeGrid),intent(inout)::grid !< the grid on which v is defined
+    double precision,intent(in),optional::FacetVal(size(v,1),grid%nFacet) !< v on facet
     double precision findDiffusORTHVect(size(v,1),grid%nBlock) !< increment due to diffusion
-    double precision flowRate(size(v,1))
+    double precision flowRate(size(v,1)),gammFacet(grid%nFacet)
     double precision,allocatable::gammIntf(:)
     
     call grid%updateIntfPos()
@@ -51,27 +52,51 @@ contains
       findDiffusORTHVect(:,n)=findDiffusORTHVect(:,n)-flowRate(:)
     end do
     deallocate(gammIntf)
+    if(present(FacetVal).and.gammbind/=BIND_INTF)then
+      call grid%updateFacetNeib()
+      call grid%updateFacetPos()
+      call grid%updateFacetArea()
+      select case(gammbind)
+      case(BIND_NODE)
+        gammFacet(:)=itplNode2Facet(gamm,grid)
+      case(BIND_BLOCK)
+        gammFacet(:)=itplBlock2Facet(gamm,grid)
+      case default
+      end select
+      do i=1,grid%nFacet
+        m=maxval(grid%FacetNeibBlock(:,i))
+        flowRate(:)=gammFacet(i)*(FacetVal(:,i)-v(:,m))*grid%FacetArea(i)&
+        &           /norm2(grid%FacetPos(:,i)-grid%BlockPos(:,m))
+        findDiffusORTHVect(:,m)=findDiffusORTHVect(:,m)+flowRate(:)
+      end do
+    end if
   end function
   
   !> find diffusion driven by scalar v through interface using orthogonal scheme
   !> \f[ \int_{intf} \Gamma \nabla v \cdot \hat{n} dA \f]
-  function findDiffusORTHScal(gamm,gammbind,v,grid)
+  function findDiffusORTHScal(gamm,gammbind,v,grid,FacetVal)
     use moduleGrid
     double precision,intent(in)::gamm(:) !< the diffusivity
     integer,intent(in)::gammbind !< bind diffusivity with node/block/interface
     double precision,intent(in)::v(:) !< the scalar which drives the diffusion
     type(typeGrid),intent(inout)::grid !< the grid on which v is defined
+    double precision,intent(in),optional::FacetVal(grid%nFacet) !< v on facet
     double precision findDiffusORTHScal(grid%nBlock) !< increment due to diffusion
-    double precision vv(1,size(v)),vrst(1,grid%nBlock)
+    double precision vv(1,size(v)),vFacetVal(1,grid%nFacet),vrst(1,grid%nBlock)
     
     vv(1,:)=v(:)
-    vrst=findDiffusORTHVect(gamm,gammbind,vv,grid)
+    if(present(FacetVal))then
+      vFacetVal(1,:)=FacetVal(:)
+      vrst=findDiffusORTHVect(gamm,gammbind,vv,grid,vFacetVal)
+    else
+      vrst=findDiffusORTHVect(gamm,gammbind,vv,grid)
+    end if
     findDiffusORTHScal(:)=vrst(1,:)
   end function
   
   !> find diffusion driven by vector v through interface using surface decomposition scheme
   !> \f[ \int_{intf} \Gamma \nabla \mathbf{v} \cdot \hat{n} dA \f]
-  function findDiffusSDVect(gamm,gammbind,v,grid,grad)
+  function findDiffusSDVect(gamm,gammbind,v,grid,grad,FacetVal)
     use moduleGrid
     use moduleInterpolation
     double precision,intent(in)::gamm(:) !< the diffusivity
@@ -79,10 +104,11 @@ contains
     double precision,intent(in)::v(:,:) !< the vector which drives the diffusion
     type(typeGrid),intent(inout)::grid !< the grid on which v is defined
     double precision,intent(in)::grad(DIMS,size(v,1),size(v,2)) !< the gradient of v
+    double precision,intent(in),optional::FacetVal(size(v,1),grid%nFacet) !< v on facet
     double precision findDiffusSDVect(size(v,1),grid%nBlock) !< increment due to diffusion
-    double precision flowRate(size(v,1)),dPF,sf(DIMS),tf(DIMS),rf(DIMS),Afs
-    double precision,allocatable::gradIntf(:,:,:)
-    double precision,allocatable::gammIntf(:)
+    double precision flowRate(size(v,1)),dPF,sf(DIMS),tf(DIMS),rf(DIMS),Afs,dPS,disp(DIMS),&
+    &                gradBlock(size(grad,1),size(grad,2),grid%nBlock),gammFacet(grid%nFacet)
+    double precision,allocatable::gradIntf(:,:,:),gammIntf(:)
     
     call grid%updateIntfPos()
     call grid%updateIntfArea()
@@ -122,23 +148,55 @@ contains
     end do
     deallocate(gradIntf)
     deallocate(gammIntf)
+    if(present(FacetVal).and.gammbind/=BIND_INTF)then
+      call grid%updateFacetNeib()
+      call grid%updateFacetPos()
+      call grid%updateFacetArea()
+      call grid%updateFacetNorm()
+      select case(gammbind)
+      case(BIND_NODE)
+        gradBlock(:,:,:)=itplNode2Block(grad,grid)
+        gammFacet(:)=itplNode2Facet(gamm,grid)
+      case(BIND_BLOCK)
+        gradBlock(:,:,:)=grad(:,:,:)
+        gammFacet(:)=itplBlock2Facet(gamm,grid)
+      case default
+      end select
+      do i=1,grid%nFacet
+        m=maxval(grid%FacetNeibBlock(:,i))
+        disp(:)=grid%FacetPos(:,i)-grid%BlockPos(:,m)
+        dPS=dot_product(disp,grid%FacetNorm(:,i))
+        disp(:)=disp(:)-grid%FacetNorm(:,i)*dPS
+        dPS=abs(dPS)
+        flowRate(:)=gammFacet(i)*(FacetVal(:,i)-(v(:,m)+matmul(disp(:),gradBlock(:,:,m))))&
+        &           *grid%FacetArea(i)/dPS
+        findDiffusSDVect(:,m)=findDiffusSDVect(:,m)+flowRate(:)
+      end do
+    end if
   end function
   
   !> find diffusion driven by scalar v through interface using surface decomposition scheme
   !> \f[ \int_{intf} \Gamma \nabla v \cdot \hat{n} dA \f]
-  function findDiffusSDScal(gamm,gammbind,v,grid,grad)
+  function findDiffusSDScal(gamm,gammbind,v,grid,grad,FacetVal)
     use moduleGrid
     double precision,intent(in)::gamm(:) !< the diffusivity
     integer,intent(in)::gammbind !< bind diffusivity with node/block/interface
     double precision,intent(in)::v(:) !< the scalar which drives the diffusion
     type(typeGrid),intent(inout)::grid !< the grid on which v is defined
     double precision,intent(in)::grad(DIMS,size(v)) !< the gradient of v
+    double precision,intent(in),optional::FacetVal(grid%nFacet) !< v on facet
     double precision findDiffusSDScal(grid%nBlock) !< increment due to diffusion
-    double precision vv(1,size(v)),vgrad(DIMS,1,size(v)),vrst(1,grid%nBlock)
+    double precision vv(1,size(v)),vgrad(DIMS,1,size(v)),vFacetVal(1,grid%nFacet),&
+    &                vrst(1,grid%nBlock)
     
     vv(1,:)=v(:)
     vgrad(:,1,:)=grad(:,:)
-    vrst=findDiffusSDVect(gamm,gammbind,vv,grid,grad)
+    if(present(FacetVal))then
+      vFacetVal(1,:)=FacetVal(:)
+      vrst=findDiffusSDVect(gamm,gammbind,vv,grid,grad,vFacetVal)
+    else
+      vrst=findDiffusSDVect(gamm,gammbind,vv,grid,grad)
+    end if
     findDiffusSDScal(:)=vrst(1,:)
   end function
   
