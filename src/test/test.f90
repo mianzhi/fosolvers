@@ -7,6 +7,7 @@ program test
   use moduleGrid
   use moduleGridInspection
   use moduleGridOperation
+  use moduleGrid1D
   use moduleFVMGrad
   use moduleFVMDiffus
   use moduleFVMConvect
@@ -15,10 +16,15 @@ program test
   use moduleNonlinearSolve
   use moduleMPIComm
   type(typeGrid)::grid
+  type(typeGrid1D)::grid1d
   double precision,allocatable::u(:),uF(:),gradU(:,:),v(:),gamm(:)
   
   call initMPI()
   if(pidMPI==0)then
+    call grid1d%genUniform(1d0,2d0,10)
+    write(*,*),grid1d%nNode,grid1d%nCell
+    write(*,*),grid1d%NodePos
+    write(*,*),grid1d%CellPos
     open(12,file='bin/gridGMSH5.msh',status='old')
     call readGMSH(12,grid)
     close(12)

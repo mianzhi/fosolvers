@@ -5,6 +5,7 @@ SET(libfosolvers_src
   Grid/moduleGrid.f90
   Grid/moduleGridInspection.f90
   Grid/moduleGridOperation.f90
+  Grid1D/moduleGrid1D.f90
   FileIO/moduleFileIO.f90
   Interpolation/moduleInterpolation.f90
   FVM/moduleFVMGrad.f90
