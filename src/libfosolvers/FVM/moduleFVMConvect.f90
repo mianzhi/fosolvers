@@ -6,10 +6,13 @@ module moduleFVMConvect
   
   !> find convection through interface
   interface findConvect
+    ! schemes for 3-D unstructured grid
     module procedure findConvectUpWindScal
     module procedure findConvectUpWindVect
     module procedure findConvectTVDScal
     module procedure findConvectTVDVect
+    ! schemes for 1-D grid
+    module procedure findConvect1DTVDScal
   end interface
   public findConvect
   
@@ -172,6 +175,84 @@ contains
       vrst=findConvectTVDVect(vphi,u,ubind,grid,vgrad)
     end if
     findConvectTVDScal(:)=vrst(1,:)
+  end function
+  
+  !> find the convection of vector phi driven by velocity u through node using TVD scheme
+  !> \f[ u\mathbf{\Phi} \f]
+  function findConvect1DTVDVect(phi,u,ubind,grid,phix,limiter)
+    use moduleGrid1D
+    use moduleInterpolation
+    double precision,intent(in)::phi(:,:) !< variable to be convected
+    double precision,intent(in)::u(:) !< velocity which drives the convection
+    integer,intent(in)::ubind !< bind velocity with node/cell
+    type(typeGrid1D),intent(inout)::grid !< the grid
+    double precision,intent(in)::phix(size(phi,1),size(phi,2)) !< x derivative of phi
+    procedure(modelLimiter),pointer,optional::limiter !< the flux limiter
+    double precision findConvect1DTVDVect(size(phi,1),grid%nCell) !< increment due to convection
+    double precision r,flowRate
+    double precision,allocatable::uNode(:)
+    integer up,dn
+    procedure(modelLimiter),pointer::lim
+    
+    findConvect1DTVDVect(:,:)=0d0
+    allocate(uNode(grid%nNode))
+    select case(ubind)
+    case(BIND_NODE)
+      uNode(:)=u(:)
+    case(BIND_CELL)
+      uNode=itplCell2Node(u,grid)
+    case default
+    end select
+    if(present(limiter))then
+      lim=>limiter
+    else
+      lim=>vanLeerLimiter
+    end if
+    do i=2,grid%nNode-1
+      m=NlC(i)
+      n=NrC(i)
+      if(uNode(i)>0d0)then
+        up=m
+        dn=n
+      else
+        up=n
+        dn=m
+      end if
+      do j=1,size(phi,1)
+        if(abs(phi(j,up)-phi(j,dn))>tiny(1d0))then
+          r=2d0*phix(j,up)*(grid%CellPos(dn)-grid%CellPos(up))&
+          &    /(phi(j,dn)-phi(j,up))-1d0
+          flowRate=-uNode(i)*(phi(j,up)+lim(r)*(phi(j,dn)-phi(j,up))/2d0)
+        else
+          flowRate=-uNode(i)*phi(j,up)
+        end if
+        findConvect1DTVDVect(j,m)=findConvect1DTVDVect(j,m)+flowRate
+        findConvect1DTVDVect(j,n)=findConvect1DTVDVect(j,n)-flowRate
+      end do
+    end do
+  end function
+  
+  !> find the convection of scalar phi driven by velocity u through node using TVD scheme
+  !> \f[ u\Phi \f]
+  function findConvect1DTVDScal(phi,u,ubind,grid,phix,limiter)
+    use moduleGrid1D
+    double precision,intent(in)::phi(:) !< variable to be convected
+    double precision,intent(in)::u(:) !< velocity which drives the convection
+    integer,intent(in)::ubind !< bind velocity with node/cell
+    type(typeGrid1D),intent(inout)::grid !< the grid
+    double precision,intent(in)::phix(size(phi)) !< x derivative of phi
+    procedure(modelLimiter),pointer,optional::limiter !< the flux limiter
+    double precision findConvect1DTVDScal(grid%nCell) !< increment due to convection
+    double precision vphi(1,size(phi)),vphix(1,size(phi)),vrst(1,grid%nCell)
+    
+    vphi(1,:)=phi(:)
+    vphix(1,:)=phix(:)
+    if(present(limiter))then
+      vrst=findConvect1DTVDVect(vphi,u,ubind,grid,vphix,limiter=limiter)
+    else
+      vrst=findConvect1DTVDVect(vphi,u,ubind,grid,vphix)
+    end if
+    findConvect1DTVDScal(:)=vrst(1,:)
   end function
   
   !> find the convection of vector phi due to the displacement of CV surface using upwind scheme

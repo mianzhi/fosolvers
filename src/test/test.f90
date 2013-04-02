@@ -15,34 +15,27 @@ program test
   use moduleCondition
   use moduleNonlinearSolve
   use moduleMPIComm
-  type(typeGrid)::grid
-  type(typeGrid1D)::grid1d
-  double precision,allocatable::u(:),uF(:),gradU(:,:),v(:),gamm(:)
+  type(typeGrid1D)::grid
+  double precision,allocatable::u(:),gradU(:),v(:)
   
   call initMPI()
   if(pidMPI==0)then
-    call grid1d%genUniform(1d0,2d0,10)
-    write(*,*),grid1d%nNode,grid1d%nCell
-    write(*,*),grid1d%NodePos
-    write(*,*),grid1d%CellPos
-    open(12,file='bin/gridGMSH5.msh',status='old')
-    call readGMSH(12,grid)
-    close(12)
-    allocate(u(grid%nBlock))
-    allocate(uF(grid%nFacet))
-    allocate(gradU(DIMS,grid%nBlock))
-    allocate(v(grid%nBlock))
-    allocate(gamm(grid%nBlock))
-    call grid%updateBlockPos()
+    call grid%genUniform(1d0,2d0,10)
+    allocate(u(grid%nCell))
+    allocate(gradU(grid%nCell))
+    allocate(v(grid%nCell))
+    v(:)=1d0
     u(:)=0d0
-    uF(:)=1d0
-    gradU=findGrad(u,BIND_BLOCK,grid,FacetVal=uF)
-    gamm=1d0
-    v=findDiffus(gamm,BIND_BLOCK,u,grid,gradU,FacetVal=uF)
-    open(13,file='rstTest.msh',status='replace')
-    call writeGMSH(13,grid)
-    call writeGMSH(13,v,grid,BIND_BLOCK,'v',0,0d0)
-    close(13)
+    u(1)=1d0
+    do l=1,10
+      gradU(:)=0d0
+      gradU(2:grid%nCell-1)=(u(3:grid%nCell)-u(1:grid%nCell-2))/0.2d0
+      gradU(1)=(u(2)-u(1))/0.1d0
+      gradU(10)=(u(10)-u(9))/0.1d0
+      u=u+0.05d0/0.1d0*findConvect(u,v,BIND_CELL,grid,gradU)
+      u(1)=1d0
+    end do
+    write(*,*),u
   else
   end if
   call finalMPI()
