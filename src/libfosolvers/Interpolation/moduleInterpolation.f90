@@ -57,6 +57,13 @@ module moduleInterpolation
   end interface
   public itplNode2Intf
   
+  !> interpolate from cell to node (1-D)
+  interface itplCell2Node
+    module procedure::itplCell2NodeVect
+    module procedure::itplCell2NodeScal
+  end interface
+  public itplCell2Node
+  
 contains
   
   !> interpolate vector v within grid from block to node
@@ -369,6 +376,40 @@ contains
     vrst=itplNode2IntfVect(vv,grid)
     call reallocArr(itplNode2IntfScal,size(vrst,2))
     itplNode2IntfScal(:)=vrst(1,:)
+  end function
+  
+  !> interpolate vector v within grid from cell to node (1-D)
+  function itplCell2NodeVect(v,grid)
+    use moduleGrid1D
+    use moduleBasicDataStruct
+    double precision,intent(in)::v(:,:) !< cell data to be interpolated
+    type(typeGrid1D),intent(in)::grid !< grid on which v is defined
+    double precision,allocatable::itplCell2NodeVect(:,:) !< interpolated data on node
+    
+    call reallocArr(itplCell2NodeVect,size(v,1),grid%nNode)
+    forall(i=2:grid%nNode-1)
+      itplCell2NodeVect(:,i)=(v(:,NlC(i))*(grid%CellPos(NrC(i))-grid%NodePos(i))&
+      &                       +v(:,NrC(i))*(grid%NodePos(i)-grid%CellPos(NlC(i))))&
+      &                      /(grid%CellPos(NrC(i))-grid%CellPos(NlC(i)))
+    end forall
+    itplCell2NodeVect(:,1)=v(:,NrC(1))
+    itplCell2NodeVect(:,grid%nNode)=v(:,NlC(grid%nNode))
+  end function
+  
+  !> interpolate scaler v within grid from cell to node (1-D)
+  function itplCell2NodeScal(v,grid)
+    use moduleGrid1D
+    use moduleBasicDataStruct
+    double precision,intent(in)::v(:) !< cell data to be interpolated
+    type(typeGrid1D),intent(in)::grid !< grid on which v is defined
+    double precision,allocatable::itplCell2NodeScal(:) !< interpolated data on node
+    double precision vv(1,size(v))
+    double precision,allocatable::vrst(:,:)
+    
+    vv(1,:)=v(:)
+    vrst=itplCell2NodeVect(vv,grid)
+    call reallocArr(itplCell2NodeScal,size(vrst,2))
+    itplCell2NodeScal(:)=vrst(1,:)
   end function
   
 end module
