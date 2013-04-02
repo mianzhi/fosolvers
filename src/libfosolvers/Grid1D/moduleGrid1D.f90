@@ -4,6 +4,10 @@
 module moduleGrid1D
   private
   
+  ! constants
+  integer,parameter,public::BIND_NODE=1 !< bind with node
+  integer,parameter,public::BIND_CELL=2 !< bind with cell
+  
   !> 1-dimensional grid data and procedures
   type,public::typeGrid1D
     integer::nNode !< number of nodes
@@ -14,8 +18,18 @@ module moduleGrid1D
     procedure,public::init=>initGrid1D
     procedure,public::clear=>clearGrid1D
     !FIXME:final::purgeGrid1D
-    procedure,public::genUniform=>genUniformGrid1D
+    procedure,public::genUniform
   end type
+  
+  ! public procedures
+  public::ClN
+  public::CrN
+  public::ClC
+  public::CrC
+  public::NlC
+  public::NrC
+  public::NlN
+  public::NrN
   
 contains
   
@@ -44,7 +58,7 @@ contains
   end subroutine
   
   !> generate uniform grid
-  elemental subroutine genUniformGrid1D(this,boundL,boundR,nCell)
+  elemental subroutine genUniform(this,boundL,boundR,nCell)
     class(typeGrid1D),intent(inout)::this !< this grid
     double precision,intent(in)::boundL !< left bound
     double precision,intent(in)::boundR !< right bound
@@ -63,5 +77,69 @@ contains
       this%CellPos(i)=this%NodePos(i)+h/2d0
     end do
   end subroutine
+  
+  !> cell left node
+  elemental function ClN(n)
+    integer,intent(in)::n !< cell index
+    integer ClN !< result
+    
+    ClN=n
+  end function
+  
+  !> cell right node
+  elemental function CrN(n)
+    integer,intent(in)::n !< cell index
+    integer CrN !< result
+    
+    CrN=n+1
+  end function
+  
+  !> cell left cell
+  elemental function ClC(n)
+    integer,intent(in)::n !< cell index
+    integer ClC !< result
+    
+    ClC=n-1
+  end function
+  
+  !> cell right cell
+  elemental function CrC(n)
+    integer,intent(in)::n !< cell index
+    integer CrC !< result
+    
+    CrC=n+1
+  end function
+  
+  !> node left cell
+  elemental function NlC(n)
+    integer,intent(in)::n !< node index
+    integer NlC !< result
+    
+    NlC=n-1
+  end function
+  
+  !> node right cell
+  elemental function NrC(n)
+    integer,intent(in)::n !< node index
+    integer NrC !< result
+    
+    NrC=n
+  end function
+  
+  !> node left node
+  elemental function NlN(n)
+    integer,intent(in)::n !< node index
+    integer NlN !< result
+    
+    NlN=n-1
+  end function
+  
+  !> node right node
+  elemental function NrN(n)
+    integer,intent(in)::n !< node index
+    integer NrN !< result
+    
+    NrN=n+1
+  end function
   
 end module
