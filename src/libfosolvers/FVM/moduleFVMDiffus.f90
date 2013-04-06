@@ -6,10 +6,14 @@ module moduleFVMDiffus
   
   !> find diffusion through interface
   interface findDiffus
+    ! schemes for 3-D unstructured grid
     module procedure findDiffusORTHScal
     module procedure findDiffusORTHVect
     module procedure findDiffusSDScal
     module procedure findDiffusSDVect
+    ! schemes for 1-D grid
+    module procedure findDiffus1DScal
+    module procedure findDiffus1DVect
   end interface
   public findDiffus
   
@@ -198,6 +202,51 @@ contains
       vrst=findDiffusSDVect(gamm,gammbind,vv,grid,grad)
     end if
     findDiffusSDScal(:)=vrst(1,:)
+  end function
+  
+  !> find diffusion driven by vector v through node
+  !> \f[ \frac{\partial}{\partial x}\left(\Gamma \frac{\partial \mathbf{v}}{\partial x}\right) \f]
+  function findDiffus1DVect(gamm,gammbind,v,grid)
+    use moduleGrid1D
+    use moduleInterpolation
+    double precision,intent(in)::gamm(:) !< the diffusivity
+    integer,intent(in)::gammbind !< bind diffusivity with node/cell
+    double precision,intent(in)::v(:,:) !< the vector which drives the diffusion
+    type(typeGrid1D),intent(inout)::grid !< the grid
+    double precision findDiffus1DVect(size(v,1),grid%nCell) !< increment due to diffusion
+    double precision flowRate(size(v,1)),gammNode(grid%nNode)
+    
+    findDiffus1DVect(:,:)=0d0
+    select case(gammbind)
+    case(BIND_NODE)
+      gammNode(:)=gamm(:)
+    case(BIND_CELL)
+      gammNode=itplCell2Node(gamm,grid)
+    case default
+    end select
+    do i=2,grid%nNode-1
+      m=NlC(i)
+      n=NrC(i)
+      flowRate=gammNode(i)*(v(:,m)-v(:,n))/abs(grid%CellPos(m)-grid%CellPos(n))
+      findDiffus1DVect(:,m)=findDiffus1DVect(:,m)-flowRate(:)
+      findDiffus1DVect(:,n)=findDiffus1DVect(:,n)+flowRate(:)
+    end do
+  end function
+  
+  !> find diffusion driven by scalar v through node
+  !> \f[ \frac{\partial}{\partial x}\left(\Gamma \frac{\partial v}{\partial x}\right) \f]
+  function findDiffus1DScal(gamm,gammbind,v,grid)
+    use moduleGrid1D
+    double precision,intent(in)::gamm(:) !< the diffusivity
+    integer,intent(in)::gammbind !< bind diffusivity with node/cell
+    double precision,intent(in)::v(:) !< the scalar which drives the diffusion
+    type(typeGrid1D),intent(inout)::grid !< the grid
+    double precision findDiffus1DScal(grid%nCell) !< increment due to diffusion
+    double precision vv(1,size(v)),vrst(1,grid%nCell)
+    
+    vv(1,:)=v(:)
+    vrst=findDiffus1DVect(gamm,gammbind,vv,grid)
+    findDiffus1DScal(:)=vrst(1,:)
   end function
   
 end module
