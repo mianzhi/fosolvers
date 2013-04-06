@@ -13,6 +13,7 @@ module moduleFVMConvect
     module procedure findConvectTVDVect
     ! schemes for 1-D grid
     module procedure findConvect1DTVDScal
+    module procedure findConvect1DTVDVect
   end interface
   public findConvect
   
@@ -189,13 +190,11 @@ contains
     double precision,intent(in)::phix(size(phi,1),size(phi,2)) !< x derivative of phi
     procedure(modelLimiter),pointer,optional::limiter !< the flux limiter
     double precision findConvect1DTVDVect(size(phi,1),grid%nCell) !< increment due to convection
-    double precision r,flowRate
-    double precision,allocatable::uNode(:)
+    double precision r,flowRate,uNode(grid%nNode)
     integer up,dn
     procedure(modelLimiter),pointer::lim
     
     findConvect1DTVDVect(:,:)=0d0
-    allocate(uNode(grid%nNode))
     select case(ubind)
     case(BIND_NODE)
       uNode(:)=u(:)
