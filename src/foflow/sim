@@ -1,2 +1,2 @@
-$Simulation_Time(5d-4)
+$Simulation_Time(10d-4)
 $Rst_Time_Interval(1d-5)

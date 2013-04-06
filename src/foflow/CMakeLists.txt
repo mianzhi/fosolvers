@@ -1,5 +1,5 @@
-SET(fons_src foflow.f90 miscNS.f90 resFuncNS.f90)
-ADD_EXECUTABLE(foflow ${fons_src})
+SET(foflow_src foflow.f90 miscNS.f90 resFuncNS.f90)
+ADD_EXECUTABLE(foflow ${foflow_src})
 TARGET_LINK_LIBRARIES(foflow fosolvers)
 ADD_CUSTOM_COMMAND(
   TARGET foflow

@@ -1,6 +1,6 @@
 !----------------------------------------------------------------------------- best with 100 columns
 
-!> miscellaneous variables and utilities for fons
+!> miscellaneous variables and utilities for foflow
 module miscNS
   use moduleGrid
   use moduleCondition
