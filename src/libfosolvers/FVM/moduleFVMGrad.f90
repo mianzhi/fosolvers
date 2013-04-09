@@ -9,8 +9,12 @@ module moduleFVMGrad
   
   !> generic find gradient
   interface findGrad
+    ! schemes for 3-D unstructured grid
     module procedure::findGradScal
     module procedure::findGradVect
+    ! schemes for 1-D grid
+    module procedure::findGrad1DScal
+    module procedure::findGrad1DVect
   end interface
   public findGrad
   
@@ -139,6 +143,55 @@ contains
       vrst=findGradVect(vv,bind,grid)
     end if
     findGradScal(:,:)=vrst(:,1,:)
+  end function
+  
+  !> find derivative of vector v along x
+  function findGrad1DVect(v,bind,grid)
+    use moduleGrid1D
+    double precision,intent(in)::v(:,:) !< vector data
+    integer,intent(in)::bind !< bind with node/cell
+    type(typeGrid1D),intent(inout)::grid !< grid on which v is defined
+    double precision findGrad1DVect(size(v,1),size(v,2)) !< the result
+    
+    select case(bind)
+    case(BIND_NODE)
+      forall(i=2:grid%nNode-1)
+        findGrad1DVect(:,i)=((grid%NodePos(i)-grid%NodePos(i-1))&
+        &                    *(v(:,i+1)-v(:,i))/(grid%NodePos(i+1)-grid%NodePos(i))&
+        &                   +(grid%NodePos(i+1)-grid%NodePos(i))&
+        &                    *(v(:,i)-v(:,i-1))/(grid%NodePos(i)-grid%NodePos(i-1)))&
+        &                   /(grid%NodePos(i+1)-grid%NodePos(i-1))
+      end forall
+      findGrad1DVect(:,1)=(v(:,2)-v(:,1))/(grid%NodePos(2)-grid%NodePos(1))
+      findGrad1DVect(:,grid%nNode)=(v(:,grid%nNode)-v(:,grid%nNode-1))&
+      &                            /(grid%NodePos(grid%nNode)-grid%NodePos(grid%nNode-1))
+    case(BIND_CELL)
+      forall(i=2:grid%nCell-1)
+        findGrad1DVect(:,i)=((grid%CellPos(i)-grid%CellPos(i-1))&
+        &                    *(v(:,i+1)-v(:,i))/(grid%CellPos(i+1)-grid%CellPos(i))&
+        &                   +(grid%CellPos(i+1)-grid%CellPos(i))&
+        &                    *(v(:,i)-v(:,i-1))/(grid%CellPos(i)-grid%CellPos(i-1)))&
+        &                   /(grid%CellPos(i+1)-grid%CellPos(i-1))
+      end forall
+      findGrad1DVect(:,1)=(v(:,2)-v(:,1))/(grid%CellPos(2)-grid%CellPos(1))
+      findGrad1DVect(:,grid%nCell)=(v(:,grid%nCell)-v(:,grid%nCell-1))&
+      &                            /(grid%CellPos(grid%nCell)-grid%CellPos(grid%nCell-1))
+    case default
+    end select
+  end function
+  
+  !> find derivative of scalar v along x
+  function findGrad1DScal(v,bind,grid)
+    use moduleGrid1D
+    double precision,intent(in)::v(:) !< scalar data
+    integer,intent(in)::bind !< bind with node/cell
+    type(typeGrid1D),intent(inout)::grid !< grid on which v is defined
+    double precision findGrad1DScal(size(v)) !< the result
+    double precision vv(1,size(v)),vrst(1,size(v))
+    
+    vv(1,:)=v(:)
+    vrst=findGrad1DVect(vv,bind,grid)
+    findGrad1DScal(:)=vrst(1,:)
   end function
   
 end module
