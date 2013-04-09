@@ -22,6 +22,8 @@ module miscBurn1D
   double precision,allocatable::Mom(:) !< extensive cell momentum
   double precision,allocatable::Energy(:) !< extensive cell energy
   double precision,allocatable::IEnergy(:) !< extensive cell internal energy
+  double precision,allocatable::rhox(:) !< derivative of rho along x
+  double precision gamm
   
 contains
   
@@ -40,6 +42,7 @@ contains
     allocate(Mom(grid%nCell))
     allocate(Energy(grid%nCell))
     allocate(IEnergy(grid%nCell))
+    allocate(rhox(grid%nCell))
   end subroutine
   
   !> clear environment
@@ -57,6 +60,7 @@ contains
     deallocate(Mom)
     deallocate(Energy)
     deallocate(IEnergy)
+    deallocate(rhox)
   end subroutine
   
 end module
