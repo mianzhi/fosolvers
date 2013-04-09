@@ -14,6 +14,7 @@ module moduleGrid1D
     double precision,allocatable::NodePos(:) !< node position
     integer::nCell !< number of cells
     double precision,allocatable::CellPos(:) !< cell position
+    double precision,allocatable::CellWidth(:) !< cell width
   contains
     procedure,public::init=>initGrid1D
     procedure,public::clear=>clearGrid1D
@@ -48,6 +49,7 @@ contains
     
     if(allocated(this%NodePos)) deallocate(this%NodePos)
     if(allocated(this%CellPos)) deallocate(this%CellPos)
+    if(allocated(this%CellWidth)) deallocate(this%CellWidth)
   end subroutine
   
   !> destructor of typeGrid1D
@@ -71,11 +73,13 @@ contains
     h=(boundR-boundL)/dble(nCell)
     allocate(this%NodePos(this%nNode))
     allocate(this%CellPos(this%nCell))
+    allocate(this%CellWidth(this%nCell))
     this%NodePos(1)=boundL
     do i=1,this%nCell
       this%NodePos(i+1)=this%NodePos(i)+h
       this%CellPos(i)=this%NodePos(i)+h/2d0
     end do
+    this%CellWidth(:)=h
   end subroutine
   
   !> cell left node
