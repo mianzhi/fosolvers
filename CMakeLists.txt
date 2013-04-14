@@ -4,9 +4,9 @@ ENABLE_LANGUAGE(Fortran)
 
 # compiler & linker arguments
 SET(CMAKE_Fortran_COMPILER mpif90)
-SET(CMAKE_Fortran_FLAGS "-Wall -Ofast -fopenmp")
-SET(CMAKE_EXE_LINKER_FLAGS "-Wall -Ofast -fopenmp")
-SET(CMAKE_SHARED_LINKER_FLAGS "-Wall -Ofast -fopenmp")
+SET(CMAKE_Fortran_FLAGS "-Wall -Wextra -Ofast -fopenmp")
+SET(CMAKE_EXE_LINKER_FLAGS "-Wall -Wextra -Ofast -fopenmp")
+SET(CMAKE_SHARED_LINKER_FLAGS "-Wall -Wextra -Ofast -fopenmp")
 
 # module, executable & lib output directories
 SET(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/include)
