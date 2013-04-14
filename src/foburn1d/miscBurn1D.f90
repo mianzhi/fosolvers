@@ -23,7 +23,15 @@ module miscBurn1D
   double precision,allocatable::Energy(:) !< extensive cell energy
   double precision,allocatable::IEnergy(:) !< extensive cell internal energy
   double precision,allocatable::rhox(:) !< derivative of rho along x
-  double precision gamm
+  double precision,allocatable::rhoux(:) !< derivative of rhou along x
+  double precision,allocatable::rhoEx(:) !< derivative of rhoE along x
+  double precision,allocatable::pNode(:) !< p at node
+  double precision,allocatable::uCell(:) !< u at cell
+  double precision,allocatable::rhoNode(:) !< rho at node
+  double precision gamm !< ratio of heat capacities
+  double precision Dm !< mass diffusivity
+  double precision nu !< kinematic viscosity
+  double precision alpha !< thermal diffusivity
   
 contains
   
@@ -31,18 +39,23 @@ contains
   subroutine setEnv()
     allocate(rho(grid%nCell))
     allocate(Y(grid%nCell))
-    allocate(u(grid%nCell))
+    allocate(u(grid%nNode))
     allocate(p(grid%nCell))
     allocate(Temp(grid%nCell))
     allocate(E(grid%nCell))
     allocate(IE(grid%nCell))
-    allocate(rhou(grid%nCell))
+    allocate(rhou(grid%nNode))
     allocate(rhoE(grid%nCell))
     allocate(Mass(grid%nCell))
-    allocate(Mom(grid%nCell))
+    allocate(Mom(grid%nNode))
     allocate(Energy(grid%nCell))
     allocate(IEnergy(grid%nCell))
     allocate(rhox(grid%nCell))
+    allocate(rhoux(grid%nNode))
+    allocate(rhoEx(grid%nCell))
+    allocate(pNode(grid%nNode))
+    allocate(uCell(grid%nCell))
+    allocate(rhoNode(grid%nNode))
   end subroutine
   
   !> clear environment
@@ -61,6 +74,11 @@ contains
     deallocate(Energy)
     deallocate(IEnergy)
     deallocate(rhox)
+    deallocate(rhoux)
+    deallocate(rhoEx)
+    deallocate(pNode)
+    deallocate(uCell)
+    deallocate(rhoNode)
   end subroutine
   
 end module
