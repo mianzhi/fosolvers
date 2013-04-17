@@ -22,9 +22,11 @@ module miscBurn1D
   double precision,allocatable::Mom(:) !< extensive cell momentum
   double precision,allocatable::Energy(:) !< extensive cell energy
   double precision,allocatable::IEnergy(:) !< extensive cell internal energy
+  double precision,allocatable::burnR(:) !< burn rate
   double precision,allocatable::rhox(:) !< derivative of rho along x
   double precision,allocatable::rhoux(:) !< derivative of rhou along x
   double precision,allocatable::rhoEx(:) !< derivative of rhoE along x
+  double precision,allocatable::Yx(:) !< derivative of Y along x
   double precision,allocatable::pNode(:) !< p at node
   double precision,allocatable::uCell(:) !< u at cell
   double precision,allocatable::rhoNode(:) !< rho at node
@@ -50,9 +52,11 @@ contains
     allocate(Mom(grid%nNode))
     allocate(Energy(grid%nCell))
     allocate(IEnergy(grid%nCell))
+    allocate(burnR(grid%nCell))
     allocate(rhox(grid%nCell))
     allocate(rhoux(grid%nNode))
     allocate(rhoEx(grid%nCell))
+    allocate(Yx(grid%nCell))
     allocate(pNode(grid%nNode))
     allocate(uCell(grid%nCell))
     allocate(rhoNode(grid%nNode))
@@ -73,9 +77,11 @@ contains
     deallocate(Mom)
     deallocate(Energy)
     deallocate(IEnergy)
+    deallocate(burnR)
     deallocate(rhox)
     deallocate(rhoux)
     deallocate(rhoEx)
+    deallocate(Yx)
     deallocate(pNode)
     deallocate(uCell)
     deallocate(rhoNode)
