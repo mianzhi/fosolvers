@@ -21,6 +21,7 @@ module moduleGrid1D
     procedure,public::clear=>clearGrid1D
     !FIXME:final::purgeGrid1D
     procedure,public::genUniform
+    procedure,public::update=>updateGrid1D
   end type
   
   ! public procedures
@@ -74,18 +75,28 @@ contains
     this%nCell=nCell
     h=(boundR-boundL)/dble(nCell)
     allocate(this%NodePos(this%nNode))
-    allocate(this%CellPos(this%nCell))
-    allocate(this%CellWidth(this%nCell))
-    allocate(this%NodeWidth(this%nNode))
     this%NodePos(1)=boundL
     do i=1,this%nCell
       this%NodePos(i+1)=this%NodePos(i)+h
-      this%CellPos(i)=this%NodePos(i)+h/2d0
     end do
-    this%CellWidth(:)=h
-    this%NodeWidth(:)=h
-    this%NodeWidth(1)=h/2d0
-    this%NodeWidth(this%nNode)=h/2d0
+    call this%update()
+  end subroutine
+  
+  !> update the auxiliary data of this grid
+  elemental subroutine updateGrid1D(this)
+    use moduleBasicDataStruct
+    class(typeGrid1D),intent(inout)::this !< this grid
+    
+    call reallocArr(this%CellPos,this%nCell)
+    call reallocArr(this%CellWidth,this%nCell)
+    call reallocArr(this%NodeWidth,this%nNode)
+    this%NodeWidth(:)=0d0
+    do i=1,this%nCell
+      this%CellPos(i)=(this%NodePos(ClN(i))+this%NodePos(CrN(i)))/2d0
+      this%CellWidth(i)=abs(this%NodePos(CrN(i))-this%NodePos(ClN(i)))
+      this%NodeWidth(ClN(i))=this%NodeWidth(ClN(i))+this%CellWidth(i)/2d0
+      this%NodeWidth(CrN(i))=this%NodeWidth(CrN(i))+this%CellWidth(i)/2d0
+    end do
   end subroutine
   
   !> cell left node
