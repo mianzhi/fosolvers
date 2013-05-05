@@ -9,6 +9,8 @@ module miscBurn1D
   double precision t !< current time
   double precision dt !< time step size
   double precision tFinal !< simulation time
+  double precision tWrite !< time to write result
+  double precision dtWrite !< interval between writing result
   double precision width !< width of the domain
   double precision,allocatable::rho(:) !< density
   double precision,allocatable::Y(:) !< mass fraction of reactant
@@ -47,6 +49,15 @@ contains
     deallocate(Temp)
     deallocate(burnR)
     deallocate(Mass)
+  end subroutine
+  
+  !> write rst
+  subroutine writeRst()
+    write(*,*),''
+    write(*,*),t,p
+    do i=1,grid%nCell,1
+      write(*,'(10g13.5)'),grid%CellPos(i),Temp(i),Y(i),burnR(i)
+    end do
   end subroutine
   
 end module
