@@ -55,7 +55,7 @@ contains
   subroutine writeRst()
     write(*,*),''
     write(*,*),t,p
-    do i=1,grid%nCell,1
+    do i=180,grid%nCell-230,1
       write(*,'(10g13.5)'),grid%CellPos(i),Temp(i),Y(i),burnR(i)
     end do
   end subroutine

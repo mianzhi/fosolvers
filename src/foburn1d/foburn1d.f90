@@ -15,9 +15,9 @@ program foburn1d
   call setEnv()
   t=0d0
   dt=1d-7
-  tFinal=2d-3
-  tWrite=0d0
-  dtWrite=0.5d-3
+  tFinal=1d-1
+  tWrite=1d0
+  dtWrite=5d-4
   ! initial state
   gamm=1.4d0
   mw=30d-3 ![kg/mol]
@@ -56,6 +56,11 @@ program foburn1d
     call grid%update()
     rho(:)=Mass(:)/grid%CellWidth(:)
     t=t+dt
+    if(Y(250)<0.01d0)then
+      call writeRst()
+      write(*,*),t
+      stop
+    end if
     if(t>=tWrite)then
       call writeRst()
       tWrite=tWrite+dtWrite
