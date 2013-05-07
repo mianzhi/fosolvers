@@ -16,7 +16,7 @@ program foburn1d
   t=0d0
   dt=1d-7
   tFinal=1d-1
-  tWrite=1d0
+  tWrite=0d0
   dtWrite=5d-4
   ! initial state
   gamm=1.4d0
@@ -39,9 +39,12 @@ program foburn1d
     ! diffusion and burn
     burnR(:)=1d11*(Y(:)*rho(:)/mw)**2d0*exp(-1.8d4/Temp(:))
     burnR(:)=min(burnR(:),Y(:)*rho(:)/mw/dt)
-    Temp(:)=Temp(:)+dt*findDiffus(alpha/rho(:)*1.2d0,BIND_CELL,Temp,grid)/grid%CellWidth(:)
+    Temp(:)=(Temp(:)*Cp*rho(:)*grid%CellWidth(:)&
+    &        +dt*findDiffus(alpha*Cp*1.2d0*[(1d0,i=1,grid%nCell)],BIND_CELL,Temp,grid))&
+    &       /rho(:)/Cp/grid%CellWidth(:)
     Temp(:)=Temp(:)+dt*Q/Cp*burnR(:)/rho(:)
-    Y(:)=Y(:)+dt*findDiffus(Dm*[(1d0,i=1,grid%nCell)],BIND_CELL,Y,grid)/grid%CellWidth(:)
+    Y(:)=(Y(:)*rho(:)*grid%CellWidth(:)+dt*findDiffus(Dm*rho(:),BIND_CELL,Y,grid))&
+    &    /rho(:)/grid%CellWidth(:)
     Y(:)=Y(:)-dt*mw*burnR(:)/rho(:)
     Y(:)=max(0d0,Y(:))
     ! move gas
@@ -56,9 +59,9 @@ program foburn1d
     call grid%update()
     rho(:)=Mass(:)/grid%CellWidth(:)
     t=t+dt
-    if(Y(250)<0.01d0)then
-      call writeRst()
-      write(*,*),t
+    if(Y(1)<0.001d0)then
+      !call writeRst()
+      !write(*,*),t
       stop
     end if
     if(t>=tWrite)then
