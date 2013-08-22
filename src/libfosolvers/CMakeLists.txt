@@ -14,6 +14,7 @@ SET(libfosolvers_src
   Condition/moduleCondition.f90
   AlgebraicSolver/moduleNonlinearSolve.f90
   MultiProcessing/moduleMPIComm.f90
+  SpatialHashing/moduleSpatialHashing.f90
   Misc/moduleCLIO.f90
 )
 SET(libfosolvers_lib
