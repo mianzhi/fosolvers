@@ -16,6 +16,8 @@ module moduleSpatialHashing
   contains
     procedure,public::hash=>hashSHT
     procedure,public::lookup=>lookupSHT
+    procedure,public::fill=>fillSHT
+    procedure,public::findNeib=>findNeibSHT
     !FIXME:final::purgeSHT
   end type
   
@@ -43,6 +45,39 @@ contains
       call reallocArr(lookupSHT,size(this%list(ind(1),ind(2),ind(3))%dat))
       lookupSHT(:)=this%list(ind(1),ind(2),ind(3))%dat(:)
     end if
+  end function
+  
+  !> fill the SHT with a list of coordinates, use roughly m boxes
+  pure subroutine fillSHT(this,pos,m)
+    class(typeSHT),intent(inout)::this !< this SHT
+    double precision,intent(in)::pos(:,:) !< the list of coordinates
+    integer,intent(in)::m !< rough number of boxes
+    double precision lwh(DIMS)
+    integer ind(DIMS)
+    
+    this%BoundBox(:,1)=minval(pos,2)
+    this%BoundBox(:,2)=maxval(pos,2)
+    lwh(:)=this%BoundBox(:,2)-this%BoundBox(:,1)
+    this%SideLength=(product(lwh)/dble(m))**(1d0/3d0)
+    if(allocated(this%list)) deallocate(this%list)
+    allocate(this%list(0:ceiling(lwh(1)/this%SideLength)+1,&
+    &                  0:ceiling(lwh(2)/this%SideLength)+1,&
+    &                  0:ceiling(lwh(3)/this%SideLength)+1))
+    do i=1,size(pos,2)
+      ind=this%hash(pos(:,i))
+      call pushArr(this%list(ind(1),ind(2),ind(3))%dat,i)
+    end do
+  end subroutine
+  
+  !> find a list of neighbor points using SHT
+  pure function findNeibSHT(this,pos)
+    class(typeSHT),intent(in)::this !< this SHT
+    double precision,intent(in)::pos(DIMS) !< the reference position
+    integer,allocatable::findNeibSHT(:) !< the list of neighbor points
+    integer ind(DIMS)
+    
+    ind=this%hash(pos(:))
+    findNeibSHT=this%lookup(ind)
   end function
   
   !> destructor of SHT

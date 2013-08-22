@@ -18,22 +18,24 @@ program test
   use moduleSpatialHashing
   type(typeSHT)::sht
   integer,allocatable::rst(:)
+  double precision pos(3,1000)
   
   call initMPI()
   if(pidMPI==0)then
-    allocate(sht%list(3,3,3))
-    sht%SideLength=1d0
-    sht%BoundBox(:,1)=1.3d0
-    sht%BoundBox(:,2)=3.8d0
-    do i=1,3
-      do j=1,3
-        do k=1,3
-          call pushArr(sht%list(i,j,k)%dat,i*100+j*10+k)
+    l=0
+    do i=1,10
+      do j=1,10
+        do k=1,10
+          l=l+1
+          pos(:,l)=dble([i,j,k])
         end do
       end do
     end do
-    rst=sht%lookup(sht%hash([1.5d0,2.5d0,3.5d0]))
-    write(*,*),rst
+    call sht%fill(pos,300)
+    rst=sht%findNeib([4d0,7d0,8d0])
+    do i=1,size(rst)
+      write(*,*),pos(:,rst(i))
+    end do
   else
   end if
   call finalMPI()
