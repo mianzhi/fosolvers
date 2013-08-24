@@ -23,6 +23,7 @@ module moduleSpatialHashing
   
   !> public procedures
   public::hashSHT
+  public::findNearestSHT
   
 contains
   
@@ -112,6 +113,37 @@ contains
     type(typeSHT),intent(inout)::this !< this SHT
     
     if(allocated(this%list)) deallocate(this%list)
+  end subroutine
+  
+  !> find the nearest np points using SHT
+  pure subroutine findNearestSHT(pos,sht,ref,np,ind,dist)
+    double precision,intent(in)::pos(:,:) !< the list of positions
+    type(typeSHT),intent(in)::sht !< spatial hash table
+    double precision,intent(in)::ref(DIMS) !< reference position
+    integer,intent(in)::np !< number of points
+    integer,intent(out)::ind(np) !< indexes of nearest points
+    double precision,intent(out)::dist(np) !< distances between nearest points and reference
+    integer,allocatable::candidates(:)
+    double precision temp
+    
+    candidates=sht%findNeib(ref,np)
+    ind(:)=0
+    dist(:)=huge(1d0)
+    do i=1,size(candidates)
+      temp=norm2(pos(:,candidates(i))-ref(:))
+      do j=1,np
+        if(temp<dist(j))then
+          if(j<np)then
+            ind(j+1:np)=ind(j:np-1)
+            dist(j+1:np)=dist(j:np-1)
+          end if
+          ind(j)=candidates(i)
+          dist(j)=temp
+          exit
+        end if
+      end do
+    end do
+    deallocate(candidates)
   end subroutine
   
 end module

@@ -17,8 +17,8 @@ program test
   use moduleMPIComm
   use moduleSpatialHashing
   type(typeSHT)::sht
-  integer,allocatable::rst(:)
-  double precision pos(3,1000)
+  integer rst(10)
+  double precision pos(3,1000),dist(10)
   
   call initMPI()
   if(pidMPI==0)then
@@ -32,9 +32,9 @@ program test
       end do
     end do
     call sht%fill(pos,3000)
-    rst=sht%findNeib([4d0,7d0,8d0],10)
+    call findNearestSHT(pos,sht,[3d0,6d0,7d0],10,rst,dist)
     do i=1,size(rst)
-      write(*,*),pos(:,rst(i))
+      write(*,*),rst(i),dist(i)
     end do
   else
   end if
