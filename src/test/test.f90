@@ -31,8 +31,8 @@ program test
         end do
       end do
     end do
-    call sht%fill(pos,300)
-    rst=sht%findNeib([4d0,7d0,8d0])
+    call sht%fill(pos,3000)
+    rst=sht%findNeib([4d0,7d0,8d0],10)
     do i=1,size(rst)
       write(*,*),pos(:,rst(i))
     end do
