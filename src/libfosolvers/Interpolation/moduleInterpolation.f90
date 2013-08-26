@@ -414,18 +414,16 @@ contains
       sigma=dist(NP)/2d0
       A(:,:)=0d0
       do j=1,NP
-        do k=j,NP
+        forall(k=j:NP)
           A(k,j)=exp(-norm2(s1(:,ind(j))-s1(:,ind(k)))**2d0/2d0/sigma**2d0)
-        end do
+        end forall
         A(NP+1,j)=1d0
         A(NP+2:NEQ,j)=s1(:,ind(j))
       end do
       B(:,:)=0d0
       B(1:NP,:)=transpose(v(:,ind(:)))
       call DSYSV('Lower',NEQ,m,A,NEQ,piv,B,NEQ,work,LWORK,ierr)
-      do j=1,NP
-        phi(j)=exp(-norm2(s2(:,i)-s1(:,ind(j)))**2d0/2d0/sigma**2d0)
-      end do
+      phi(1:NP)=exp(-dist(:)**2d0/2d0/sigma**2d0)
       phi(NP+1)=1d0
       phi(NP+2:NEQ)=s2(:,i)
       itplScat2ScatVect(:,i)=matmul(phi,B)
