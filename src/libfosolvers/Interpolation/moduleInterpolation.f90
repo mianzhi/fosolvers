@@ -57,6 +57,13 @@ module moduleInterpolation
   end interface
   public itplNode2Intf
   
+  !> interpolate from scatter to scatter
+  interface itplScat2Scat
+    module procedure::itplScat2ScatVect
+    module procedure::itplScat2ScatScal
+  end interface
+  public itplScat2Scat
+  
   !> interpolate from cell to node (1-D)
   interface itplCell2Node
     module procedure::itplCell2NodeVect
@@ -383,6 +390,64 @@ contains
     vrst=itplNode2IntfVect(vv,grid)
     call reallocArr(itplNode2IntfScal,size(vrst,2))
     itplNode2IntfScal(:)=vrst(1,:)
+  end function
+  
+  !> interpolate vector v from scatter s1 to scatter s2 with linearly augmented RBF
+  function itplScat2ScatVect(v,s1,sht,s2)
+    use moduleSpatialHashing
+    use moduleBasicDataStruct
+    double precision,intent(in)::v(:,:) !< scatter data to be interpolated
+    double precision,intent(in)::s1(DIMS,size(v,2)) !< source scatter
+    type(typeSHT),intent(in)::sht !< hash table of source scatter
+    double precision,intent(in)::s2(:,:) !< target scatter
+    double precision,allocatable::itplScat2ScatVect(:,:) !< interpolated data on target scatter
+    integer,parameter::NP=10
+    integer,parameter::NEQ=NP+1+DIMS
+    integer,parameter::LWORK=896
+    integer ind(NEQ),piv(NEQ),ierr
+    double precision dist(NP),A(NEQ,NEQ),B(NEQ,size(v,1)),work(LWORK),phi(NEQ),sigma
+    
+    m=size(v,1)
+    call reallocArr(itplScat2ScatVect,m,size(s2,2))
+    do i=1,size(s2,2)
+      call findNearestSHT(s1,sht,s2(:,i),NP,ind,dist)
+      sigma=dist(NP)/2d0
+      A(:,:)=0d0
+      do j=1,NP
+        do k=j,NP
+          A(k,j)=exp(-norm2(s1(:,ind(j))-s1(:,ind(k)))**2d0/2d0/sigma**2d0)
+        end do
+        A(NP+1,j)=1d0
+        A(NP+2:NEQ,j)=s1(:,ind(j))
+      end do
+      B(:,:)=0d0
+      B(1:NP,:)=transpose(v(:,ind(:)))
+      call DSYSV('Lower',NEQ,m,A,NEQ,piv,B,NEQ,work,LWORK,ierr)
+      do j=1,NP
+        phi(j)=exp(-norm2(s2(:,i)-s1(:,ind(j)))**2d0/2d0/sigma**2d0)
+      end do
+      phi(NP+1)=1d0
+      phi(NP+2:NEQ)=s2(:,i)
+      itplScat2ScatVect(:,i)=matmul(phi,B)
+    end do
+  end function
+  
+  !> interpolate scaler v from scatter s1 to scatter s2
+  function itplScat2ScatScal(v,s1,sht,s2)
+    use moduleSpatialHashing
+    use moduleBasicDataStruct
+    double precision,intent(in)::v(:) !< scatter data to be interpolated
+    double precision,intent(in)::s1(DIMS,size(v)) !< source scatter
+    type(typeSHT),intent(in)::sht !< hash table of source scatter
+    double precision,intent(in)::s2(:,:) !< target scatter
+    double precision,allocatable::itplScat2ScatScal(:) !< interpolated data on target scatter
+    double precision vv(1,size(v))
+    double precision,allocatable::vrst(:,:)
+    
+    vv(1,:)=v(:)
+    vrst=itplScat2ScatVect(vv,s1,sht,s2)
+    call reallocArr(itplScat2ScatScal,size(vrst,2))
+    itplScat2ScatScal(:)=vrst(1,:)
   end function
   
   !> interpolate vector v within grid from cell to node (1-D)
