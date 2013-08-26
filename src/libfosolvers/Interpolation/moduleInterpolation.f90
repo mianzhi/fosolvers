@@ -284,7 +284,7 @@ contains
     end forall
   end function
   
-  !> interpolate scaler v within grid from node to block
+  !> interpolate scalar v within grid from node to block
   function itplNode2BlockScal(v,grid)
     use moduleGrid
     use moduleBasicDataStruct
@@ -314,7 +314,7 @@ contains
     end forall
   end function
   
-  !> interpolate scaler v within grid from node to facet
+  !> interpolate scalar v within grid from node to facet
   function itplNode2FacetScal(v,grid)
     use moduleGrid
     use moduleBasicDataStruct
@@ -345,7 +345,7 @@ contains
     end forall
   end function
   
-  !> interpolate scaler v within grid from node to edge
+  !> interpolate scalar v within grid from node to edge
   function itplNode2EdgeScal(v,grid)
     use moduleGrid
     use moduleBasicDataStruct
@@ -376,7 +376,7 @@ contains
     end forall
   end function
   
-  !> interpolate scaler v within grid from node to interface
+  !> interpolate scalar v within grid from node to interface
   function itplNode2IntfScal(v,grid)
     use moduleGrid
     use moduleBasicDataStruct
@@ -432,7 +432,7 @@ contains
     end do
   end function
   
-  !> interpolate scaler v from scatter s1 to scatter s2
+  !> interpolate scalar v from scatter s1 to scatter s2
   function itplScat2ScatScal(v,s1,sht,s2)
     use moduleSpatialHashing
     use moduleBasicDataStruct
@@ -468,7 +468,7 @@ contains
     itplCell2NodeVect(:,grid%nNode)=v(:,NlC(grid%nNode))
   end function
   
-  !> interpolate scaler v within grid from cell to node (1-D)
+  !> interpolate scalar v within grid from cell to node (1-D)
   function itplCell2NodeScal(v,grid)
     use moduleGrid1D
     use moduleBasicDataStruct
@@ -498,7 +498,7 @@ contains
     end forall
   end function
   
-  !> interpolate scaler v within grid from node to cell (1-D)
+  !> interpolate scalar v within grid from node to cell (1-D)
   function itplNode2CellScal(v,grid)
     use moduleGrid1D
     use moduleBasicDataStruct
