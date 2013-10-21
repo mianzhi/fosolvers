@@ -404,7 +404,7 @@ contains
     integer,parameter::NP=10
     integer,parameter::NEQ=NP+1+DIMS
     integer,parameter::LWORK=896
-    integer ind(NEQ),piv(NEQ),ierr
+    integer ind(NP),piv(NEQ),ierr
     double precision dist(NP),A(NEQ,NEQ),B(NEQ,size(v,1)),work(LWORK),phi(NEQ),sigma
     
     m=size(v,1)
