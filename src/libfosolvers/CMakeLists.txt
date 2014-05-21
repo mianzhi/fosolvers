@@ -1,5 +1,6 @@
 SET(libfosolvers_src
-  
+  otGrid/otGrid.f90
+  otGrid/otree.c
 )
 
 SET(libfosolvers_lib

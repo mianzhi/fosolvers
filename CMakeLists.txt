@@ -1,10 +1,12 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 PROJECT(FOSolverS)
-ENABLE_LANGUAGE(Fortran)
+ENABLE_LANGUAGE(Fortran C)
 
 # compiler & linker arguments
 SET(CMAKE_Fortran_COMPILER mpif90)
 SET(CMAKE_Fortran_FLAGS "-Wall -Wextra -Ofast -fopenmp")
+SET(CMAKE_C_COMPILER mpicc)
+SET(CMAKE_C_FLAGS "-Wall -Wextra -Ofast -fopenmp -std=c11")
 SET(CMAKE_EXE_LINKER_FLAGS "-Wall -Wextra -Ofast -fopenmp")
 SET(CMAKE_SHARED_LINKER_FLAGS "-Wall -Wextra -Ofast -fopenmp")
 
