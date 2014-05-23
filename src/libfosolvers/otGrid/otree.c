@@ -281,6 +281,9 @@ void genConn(node *root, long id[], int lvl[], int neib[][N_FACE])
       for(int k=0;k<N_FACE;k++){
         node *pn=NULL;
         getNode(root,neibId(i,k),&pn);
+        while(pn->p!=NULL && pn->c[0]!=NULL){
+          pn=pn->c[0];
+        }
         neib[j][k]=pn->v;
       }
       j++;
