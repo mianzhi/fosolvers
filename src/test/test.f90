@@ -1,11 +1,11 @@
 !----------------------------------------------------------------------------- best with 100 columns
 
 program test
-  integer,external::otGrid1
-  integer,external::otGrid2
+  integer,external::otGrid1,otGrid2,polyX1
   
   call try('otGrid1',otGrid1)
   call try('otGrid2',otGrid2)
+  call try('polyX1',polyX1)
   
 contains
   

@@ -2,6 +2,7 @@ SET(test_src
   test.f90
   otGrid1.f90
   otGrid2.f90
+  polyX1.f90
 )
 
 ADD_EXECUTABLE(test ${test_src})
