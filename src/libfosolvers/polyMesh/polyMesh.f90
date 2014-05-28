@@ -14,10 +14,13 @@ module modPolyMesh
   
   !> polygon surface mesh type
   type,extends(polyX),public::polyMesh
+    logical::isUp !< if auxiliary data is updated
     double precision,allocatable::a(:) !< surface area
+    double precision,allocatable::n(:,:) !< normal vector
   contains
     procedure,public::init=>initPolyMesh
     procedure,public::clear=>clearPolyMesh
+    procedure,public::up=>upPolyMesh
     !FIXME:final::purgePolyMesh
   end type
   
@@ -32,6 +35,8 @@ contains
     
     call this%polyX%init(nN,nE,m)
     allocate(this%a(nE))
+    allocate(this%n(DIMS,nE))
+    this%isUp=.false.
   end subroutine
   
   !> clear this polyMesh
@@ -40,6 +45,21 @@ contains
     
     call this%polyX%clear()
     if(allocated(this%a)) deallocate(this%a)
+    if(allocated(this%n)) deallocate(this%n)
+  end subroutine
+  
+  !> update this polyMesh
+  elemental subroutine upPolyMesh(this)
+    use modGeometry
+    class(polyMesh),intent(inout)::this !< this polyMesh
+    
+    if(.not.this%isUp)then
+      forall(i=1:this%nE)
+        this%a(i)=a3p(this%pN(:,this%iNE(:,i)))
+        this%n(:,i)=n3p(this%pN(:,this%iNE(:,i)))
+      end forall
+      this%isUp=.true.
+    end if
   end subroutine
   
   !> destructor of polyMesh

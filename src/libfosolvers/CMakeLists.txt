@@ -6,6 +6,7 @@ SET(libfosolvers_src
   polyMesh/polyMesh.f90
   fileIO/fileIO.f90
   fileIO/GTS.f90
+  geometry/geometry.f90
 )
 
 SET(libfosolvers_lib
