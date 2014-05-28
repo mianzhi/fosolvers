@@ -4,6 +4,8 @@ SET(libfosolvers_src
   polyX/polyX.f90
   polyGrid/polyGrid.f90
   polyMesh/polyMesh.f90
+  fileIO/fileIO.f90
+  fileIO/GTS.f90
 )
 
 SET(libfosolvers_lib
