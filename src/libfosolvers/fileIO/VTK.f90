@@ -54,6 +54,7 @@ contains
   !> translate the shape type of VTK
   subroutine transShape(t,n)
     use modPolyMesh,only:TRI,TRI_N,QUAD,QUAD_N
+    use modPolyGrid,only:TET,TET_N,HEX,HEX_N
     integer,intent(inout)::t !< shape type
     integer,intent(out)::n !< number of nodes
     
@@ -61,9 +62,15 @@ contains
     case(5)
       t=TRI
       n=TRI_N
-    case(6)
+    case(9)
       t=QUAD
       n=QUAD_N
+    case(10)
+      t=TET
+      n=TET_N
+    case(12)
+      t=HEX
+      n=HEX_N
     case default
       t=0
       n=0

@@ -48,6 +48,15 @@ contains
     n3p(:)=c(:)/norm2(c)
   end function
   
+  !> find the normal vector of a quadrilateral
+  pure function n4p(p)
+    double precision,intent(in)::p(DIMS,4) !< positions of the 4 vertices
+    double precision n4p(DIMS) !< normal vector of the quadrilateral
+    
+    n4p(:)=n3p(p(:,[1,2,3]))+n3p(p(:,[3,4,1]))
+    n4p(:)=n4p(:)/norm2(n4p)
+  end function
+  
   !> find the volume of a tetrahedron
   pure function v4p(p)
     double precision,intent(in)::p(DIMS,4) !< positions of the 4 vertices

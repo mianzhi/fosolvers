@@ -4,6 +4,7 @@ SET(test_src
   otGrid2.f90
   polyX1.f90
   polyMesh1.f90
+  polyGrid1.f90
   readGTS1.f90
   readVTK1.f90
 )

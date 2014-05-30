@@ -54,10 +54,19 @@ contains
     class(polyMesh),intent(inout)::this !< this polyMesh
     
     if(.not.this%isUp)then
-      forall(i=1:this%nE)
-        this%a(i)=a3p(this%pN(:,this%iNE(:,i)))
-        this%n(:,i)=n3p(this%pN(:,this%iNE(:,i)))
-      end forall
+      do i=1,this%nE
+        select case(this%sE(i))
+        case(TRI)
+          this%a(i)=a3p(this%pN(:,this%iNE(:,i)))
+          this%n(:,i)=n3p(this%pN(:,this%iNE(:,i)))
+        case(QUAD)
+          this%a(i)=a4p(this%pN(:,this%iNE(:,i)))
+          this%n(:,i)=n4p(this%pN(:,this%iNE(:,i)))
+        case default
+          this%a(i)=0d0
+          this%n(:,i)=0d0
+        end select
+      end do
       this%isUp=.true.
     end if
   end subroutine
