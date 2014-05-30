@@ -5,6 +5,7 @@ SET(test_src
   polyX1.f90
   polyMesh1.f90
   readGTS1.f90
+  readVTK1.f90
 )
 
 ADD_EXECUTABLE(test ${test_src})
