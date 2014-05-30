@@ -14,7 +14,7 @@ function polyMesh1()
   if(any(abs(mesh%n-reshape([0d0,0d0,-1d0,&
   &  -0.81649720746616528d0,0.47140365723169048d0,0.33333301988933012d0,&
   &  0.81649720746616528d0,0.47140365723169048d0,0.33333301988933012d0,&
-  &  0.d0,-0.94280905929685954d0,0.33333328322831940d0],shape(mesh%iNE)))>tiny(1d0)))then
+  &  0.d0,-0.94280905929685954d0,0.33333328322831940d0],shape(mesh%iNE)))>1d-14))then
     polyMesh1=polyMesh1+1
   end if
   if(.not.norm2(matmul(mesh%n,mesh%a))<=1d-14)then

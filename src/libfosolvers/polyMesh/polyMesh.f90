@@ -10,7 +10,7 @@ module modPolyMesh
   integer,public,parameter::TRI=10 !< triangle
   integer,public,parameter::TRI_N=3 !< 3 nodes per triangle
   integer,public,parameter::QUAD=11 !< quadrilateral
-  integer,public,parameter::QUAD_N=3 !< 3 nodes per quadrilateral
+  integer,public,parameter::QUAD_N=4 !< 4 nodes per quadrilateral
   
   !> polygon surface mesh type
   type,extends(polyX),public::polyMesh
