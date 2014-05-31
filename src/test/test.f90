@@ -3,7 +3,7 @@
 program test
   integer,external::otGrid1,otGrid2,&
   &                 polyX1,polyMesh1,polyGrid1,&
-  &                 readGTS1,readVTK1
+  &                 readGTS1,readVTK1,writeVTK1
   
   call try('otGrid1',otGrid1)
   call try('otGrid2',otGrid2)
@@ -12,6 +12,10 @@ program test
   call try('polyGrid1',polyGrid1)
   call try('readGTS1',readGTS1)
   call try('readVTK1',readVTK1)
+  call try('writeVTK1',writeVTK1)
+  
+  write(*,'(a)'),'check md5 of output files:'
+  call system('md5sum -c sums.md5')
   
 contains
   

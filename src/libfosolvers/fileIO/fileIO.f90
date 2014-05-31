@@ -4,13 +4,23 @@
 module modFileIO
   public
   
-  ! read VTK from fid into a generic object
+  !> read VTK from fid into a generic object
   interface readVTK
-    ! read into polyX
+    !> read into polyX
     subroutine readVTKPolyX(fid,poly)
       use modPolyX
       integer,intent(in)::fid !< file id
       class(polyX),intent(inout)::poly !< result
+    end subroutine
+  end interface
+  
+  !> write VTK into fid from a generic object
+  interface writeVTK
+    !> write VTK into fid from poly
+    subroutine writeVTKPolyX(fid,poly)
+      use modPolyX
+      integer,intent(in)::fid !< file id
+      class(polyX),intent(in)::poly !< source
     end subroutine
   end interface
   
