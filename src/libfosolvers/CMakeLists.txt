@@ -8,6 +8,7 @@ SET(libfosolvers_src
   fileIO/GTS.f90
   fileIO/VTK.f90
   geometry/geometry.f90
+  cellPair/cellPair.f90
 )
 
 SET(libfosolvers_lib
