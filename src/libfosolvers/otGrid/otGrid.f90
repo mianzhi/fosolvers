@@ -15,7 +15,7 @@ module modOtGrid
     double precision::p0(DIMS) !< minimum coordinate
     double precision::h0 !< edge length of the root
     type(c_ptr),private::otree !< pointer to the c octree root node
-    integer::nCell !< number of cells
+    integer::nC !< number of cells
     integer(c_long),allocatable::oid(:) !< octal ids
     integer,allocatable::lvl(:) !< tree levels
     integer,allocatable::neib(:,:) !< neighbor lists
@@ -114,10 +114,10 @@ contains
     this%h0=h
     this%otree=ot_init()
     call ot_grow(this%otree,l)
-    this%nCell=ot_nLf(this%otree)
-    allocate(this%oid(this%nCell))
-    allocate(this%lvl(this%nCell))
-    allocate(this%neib(N_FACE,this%nCell))
+    this%nC=ot_nLf(this%otree)
+    allocate(this%oid(this%nC))
+    allocate(this%lvl(this%nC))
+    allocate(this%neib(N_FACE,this%nC))
     call ot_genConn(this%otree,this%oid,this%lvl,this%neib)
   end subroutine
   

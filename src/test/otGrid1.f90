@@ -7,16 +7,16 @@ function otGrid1()
   
   otGrid1=0
   call grid%init([0d0,0d0,0d0],1d0,lvl=5)
-  if(grid%nCell/=32768)then
+  if(grid%nC/=32768)then
     otGrid1=otGrid1+1
   end if
-  do i=1,grid%nCell
+  do i=1,grid%nC
     if(grid%lvl(i)/=5)then
       otGrid1=otGrid1+10
       exit
     end if
   end do
-  do i=1,grid%nCell
+  do i=1,grid%nC
     if(grid%oid(i)/=int(i+o'400000'-1,kind=8))then
       otGrid1=otGrid1+100
       exit
