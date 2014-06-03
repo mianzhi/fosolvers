@@ -7,7 +7,7 @@ function readVTK1() result(ierr)
   type(polyMesh)::mesh
   
   ierr=0
-  open(10,file='data/mesh.vtk',action='read')
+  open(10,file='data/mesh_simple.vtk',action='read')
   call readVTK(10,mesh)
   close(10)
   if(any(mesh%iNE/=reshape([1,3,2,1,4,3,1,2,4,2,3,4],shape(mesh%iNE))))then

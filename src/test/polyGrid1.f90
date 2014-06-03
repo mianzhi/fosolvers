@@ -7,7 +7,7 @@ function polyGrid1() result(ierr)
   type(polyGrid)::grid
   
   ierr=0
-  open(10,file='data/grid.vtk',action='read')
+  open(10,file='data/grid_simple.vtk',action='read')
   call readVTK(10,grid)
   close(10)
   call grid%up()

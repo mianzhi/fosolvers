@@ -7,7 +7,7 @@ function polyMesh1()
   type(polyMesh)::mesh
   
   polyMesh1=0
-  open(10,file='data/mesh.gts',action='read')
+  open(10,file='data/mesh_simple.gts',action='read')
   call readGTS(10,mesh)
   close(10)
   call mesh%up()

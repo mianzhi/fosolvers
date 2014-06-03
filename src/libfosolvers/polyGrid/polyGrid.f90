@@ -1,12 +1,16 @@
 !----------------------------------------------------------------------------- best with 100 columns
 
-!> polyhedron grid module
+!> polyhedron and polygon grid module
 module modPolyGrid
   use modPolyX
   private
   
   ! constants
   integer,parameter::DIMS=3 !< dimensions
+  integer,public,parameter::TRI=10 !< triangle
+  integer,public,parameter::TRI_N=3 !< 3 nodes per triangle
+  integer,public,parameter::QUAD=11 !< quadrilateral
+  integer,public,parameter::QUAD_N=4 !< 4 nodes per quadrilateral
   integer,public,parameter::TET=20 !< tetrahedron
   integer,public,parameter::TET_N=4 !< 4 nodes per tetrahedron
   integer,public,parameter::HEX=21 !< hexahedron
@@ -14,6 +18,7 @@ module modPolyGrid
   
   !> polyhedron grid type
   type,extends(polyX),public::polyGrid
+    integer,allocatable::gid(:) !< geometric group identifier
     logical::isUp !< if auxiliary data is updated
     double precision,allocatable::v(:) !< volume
   contains
@@ -22,6 +27,11 @@ module modPolyGrid
     procedure,public::up=>upPolyGrid
     !FIXME:final::purgePolyGrid
   end type
+  
+  ! public procedures
+  public::nF
+  public::nNF
+  public::getINF
   
 contains
   
@@ -33,6 +43,7 @@ contains
     integer,intent(in)::m !< maximum number of nodes per elements
     
     call this%polyX%init(nN,nE,m)
+    allocate(this%gid(nE))
     allocate(this%v(nE))
     this%isUp=.false.
   end subroutine
@@ -42,6 +53,7 @@ contains
     class(polyGrid),intent(inout)::this !< this polyGrid
     
     call this%polyX%clear()
+    if(allocated(this%gid)) deallocate(this%gid)
     if(allocated(this%v)) deallocate(this%v)
   end subroutine
   
@@ -70,6 +82,112 @@ contains
     type(polyGrid),intent(inout)::this !< this polyGrid
     
     call this%clear()
+  end subroutine
+  
+  !> number of faces per given shape
+  elemental function nF(s)
+    integer,intent(in)::s !< shape
+    integer::nF !< result
+    
+    select case(s)
+    case(TRI)
+      nF=1
+    case(QUAD)
+      nF=1
+    case(TET)
+      nF=4
+    case(HEX)
+      nF=6
+    case default
+      nF=0
+    end select
+  end function
+  
+  !> number of nodes per given shape's i_th face
+  elemental function nNF(s,i)
+    integer,intent(in)::s !< shape
+    integer,intent(in)::i !< face index
+    integer::nNF !< result
+    
+    nNF=0
+    select case(s)
+    case(TRI)
+      select case(i)
+      case(1)
+        nNF=3
+      case default
+      end select
+    case(QUAD)
+      select case(i)
+      case(1)
+        nNF=4
+      case default
+      end select
+    case(TET)
+      select case(i)
+      case(1:4)
+        nNF=3
+      case default
+      end select
+    case(HEX)
+      select case(i)
+      case(1:6)
+        nNF=4
+      case default
+      end select
+    case default
+    end select
+  end function
+  
+  !> get the indices of nodes of given shape's i_th face
+  pure subroutine getINF(s,i,ind)
+    integer,intent(in)::s !< shape
+    integer,intent(in)::i !< face index
+    integer,intent(inout)::ind(:) !< result
+    
+    select case(s)
+    case(TRI)
+      select case(i)
+      case(1)
+        ind(1:3)=[1,2,3]
+      case default
+      end select
+    case(QUAD)
+      select case(i)
+      case(1)
+        ind(1:4)=[1,2,3,4]
+      case default
+      end select
+    case(TET)
+      select case(i)
+      case(1)
+        ind(1:3)=[1,3,2]
+      case(2)
+        ind(1:3)=[1,2,4]
+      case(3)
+        ind(1:3)=[1,4,3]
+      case(4)
+        ind(1:3)=[2,3,4]
+      case default
+      end select
+    case(HEX)
+      select case(i)
+      case(1)
+        ind(1:4)=[2,3,7,6]
+      case(2)
+        ind(1:4)=[1,5,8,4]
+      case(3)
+        ind(1:4)=[3,4,8,7]
+      case(4)
+        ind(1:4)=[1,2,6,5]
+      case(5)
+        ind(1:4)=[5,6,7,8]
+      case(6)
+        ind(1:4)=[1,4,3,2]
+      case default
+      end select
+    case default
+    end select
   end subroutine
   
 end module
