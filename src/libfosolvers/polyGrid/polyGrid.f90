@@ -145,6 +145,7 @@ contains
     integer,intent(in)::i !< face index
     integer,intent(inout)::ind(:) !< result
     
+    ind(:)=0
     select case(s)
     case(TRI)
       select case(i)
