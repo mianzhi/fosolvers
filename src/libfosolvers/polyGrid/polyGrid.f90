@@ -16,7 +16,7 @@ module modPolyGrid
   integer,public,parameter::HEX=21 !< hexahedron
   integer,public,parameter::HEX_N=8 !< 8 nodes per hexahedron
   
-  !> polyhedron grid type
+  !> polyhedron and polygon grid type
   type,extends(polyX),public::polyGrid
     integer,allocatable::gid(:) !< geometric group identifier
     logical::isUp !< if auxiliary data is updated

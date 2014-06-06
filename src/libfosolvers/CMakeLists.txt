@@ -1,14 +1,14 @@
 SET(libfosolvers_src
   otGrid/otGrid.f90
   otGrid/otree.c
-  polyX/polyX.f90
+  polyGrid/polyX.f90
   polyGrid/polyGrid.f90
-  polyMesh/polyMesh.f90
+  polyGrid/polyFvGrid.f90
+  polyGrid/polyMesh.f90
   fileIO/fileIO.f90
   fileIO/GTS.f90
   fileIO/VTK.f90
   geometry/geometry.f90
-  cellPair/cellPair.f90
 )
 
 SET(libfosolvers_lib
