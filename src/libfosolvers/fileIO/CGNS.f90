@@ -78,6 +78,7 @@ subroutine readCGNSPolyGrid(fname,grid)
       grid%nNE(iStart:iEnd)=m
       grid%iNE(1:m,iStart:iEnd)=reshape(conn(:),[m,iEnd-iStart+1])
     end if
+    grid%gid(iStart:iEnd)=i ! gid is defined as section number
     deallocate(conn)
     deallocate(tmpI)
   end do
