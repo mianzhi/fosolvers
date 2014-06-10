@@ -104,6 +104,9 @@ subroutine writeVTKPolyX(fid,poly)
   do i=1,poly%nE
     write(fid,*),transShape(poly%sE(i))
   end do
+  ! since we only support writing nodal data to VTK file, it's good to write the data header here.
+  write(fid,'(a)'),''
+  write(fid,'(a,i10,a)'),'POINT_DATA',poly%nN
   
 contains
   
@@ -128,4 +131,31 @@ contains
     end select
   end function
   
+end subroutine
+
+!> write VTK into fid from nodal scalar field
+subroutine writeVTKScal(fid,key,a)
+  integer,intent(in)::fid !< file id
+  character(*),intent(in)::key !< data name
+  double precision,intent(in)::a(:) !< data
+  
+  write(fid,'(a)'),''
+  write(fid,'(a)'),'SCALARS '//trim(adjustl(key))//' double'
+  write(fid,'(a)'),'LOOKUP_TABLE default'
+  do i=1,size(a)
+    write(fid,*),a(i)
+  end do
+end subroutine
+
+!> write VTK into fid from nodal vector field
+subroutine writeVTKVect(fid,key,a)
+  integer,intent(in)::fid !< file id
+  character(*),intent(in)::key !< data name
+  double precision,intent(in)::a(:,:) !< data
+  
+  write(fid,'(a)'),''
+  write(fid,'(a)'),'VECTORS '//trim(adjustl(key))//' double'
+  do i=1,size(a)
+    write(fid,*),a(:,i)
+  end do
 end subroutine

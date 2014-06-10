@@ -4,11 +4,11 @@ ENABLE_LANGUAGE(Fortran C)
 
 # compiler & linker arguments
 SET(CMAKE_Fortran_COMPILER mpif90)
-SET(CMAKE_Fortran_FLAGS "-Wall -Wextra -Ofast -fopenmp")
+SET(CMAKE_Fortran_FLAGS "-Wall -Ofast -fopenmp")
 SET(CMAKE_C_COMPILER mpicc)
-SET(CMAKE_C_FLAGS "-Wall -Wextra -Ofast -fopenmp -std=c11")
-SET(CMAKE_EXE_LINKER_FLAGS "-Wall -Wextra -Ofast -fopenmp")
-SET(CMAKE_SHARED_LINKER_FLAGS "-Wall -Wextra -Ofast -fopenmp")
+SET(CMAKE_C_FLAGS "-Wall -Ofast -fopenmp -std=c11")
+SET(CMAKE_EXE_LINKER_FLAGS "-Wall -Ofast -fopenmp")
+SET(CMAKE_SHARED_LINKER_FLAGS "-Wall -Ofast -fopenmp")
 
 # module, executable & lib output directories
 SET(CMAKE_Fortran_MODULE_DIRECTORY ${PROJECT_BINARY_DIR}/include)
@@ -18,6 +18,22 @@ SET(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 # include/library directories
 INCLUDE_DIRECTORIES(${PROJECT_BINARY_DIR}/include)
 LINK_DIRECTORIES(${PROJECT_BINARY_DIR}/lib)
+
+# external packages
+# CGNS and hdf5
+FIND_PATH(CGNS_INCLUDE_DIR cgnslib_f.h)
+IF(CGNS_INCLUDE_DIR)
+  INCLUDE_DIRECTORIES(${CGNS_INCLUDE_DIR})
+  MESSAGE(STATUS "Found CGNS.")
+ELSE(CGNS_INCLUDE_DIR)
+  MESSAGE(SEND_ERROR "Unable to find CGNS.")
+ENDIF(CGNS_INCLUDE_DIR)
+FIND_LIBRARY(HDF5_LIBRARY hdf5)
+IF(HDF5_LIBRARY)
+  MESSAGE(STATUS "Found hdf5.")
+ELSE(HDF5_LIBRARY)
+  MESSAGE(SEND_ERROR "Unable to find hdf5.")
+ENDIF(HDF5_LIBRARY)
 
 # subdirectories
 ADD_SUBDIRECTORY(src)

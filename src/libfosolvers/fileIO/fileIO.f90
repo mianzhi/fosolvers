@@ -4,9 +4,19 @@
 module modFileIO
   public
   
+  !> read CGNS from fname into a generic object
+  interface readCGNS
+    !> read CGNS from fname into polyGrid
+    subroutine readCGNSPolyGrid(fname,grid)
+      use modPolyGrid
+      character(*),intent(in)::fname !< file name
+      class(polyGrid),intent(inout)::grid !< result
+    end subroutine
+  end interface
+  
   !> read VTK from fid into a generic object
   interface readVTK
-    !> read into polyX
+    !> read VTK from fid into polyX
     subroutine readVTKPolyX(fid,poly)
       use modPolyX
       integer,intent(in)::fid !< file id
@@ -21,6 +31,18 @@ module modFileIO
       use modPolyX
       integer,intent(in)::fid !< file id
       class(polyX),intent(in)::poly !< source
+    end subroutine
+    !> write VTK into fid from nodal scalar field
+    subroutine writeVTKScal(fid,key,a)
+      integer,intent(in)::fid !< file id
+      character(*),intent(in)::key !< data name
+      double precision,intent(in)::a(:) !< data
+    end subroutine
+    !> write VTK into fid from nodal vector field
+    subroutine writeVTKVect(fid,key,a)
+      integer,intent(in)::fid !< file id
+      character(*),intent(in)::key !< data name
+      double precision,intent(in)::a(:,:) !< data
     end subroutine
   end interface
   

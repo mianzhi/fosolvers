@@ -13,7 +13,11 @@ SET(test_src
 
 ADD_EXECUTABLE(test ${test_src})
 
-TARGET_LINK_LIBRARIES(test fosolvers)
+TARGET_LINK_LIBRARIES(test
+  fosolvers
+  cgns
+  hdf5
+)
 
 ADD_CUSTOM_COMMAND(
   TARGET test
