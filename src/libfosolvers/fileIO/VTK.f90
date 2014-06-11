@@ -131,10 +131,10 @@ contains
 end subroutine
 
 !> write VTK data header into fid
-subroutine writeVTKHead(fid,grid,k)
-  use modPolyGrid
+subroutine writeVTKHead(fid,poly,k)
+  use modPolyX
   integer,intent(in)::fid !< file id
-  class(polyGrid),intent(in)::grid !< grid
+  class(polyX),intent(in)::poly !< polyX
   integer,intent(in)::k !< header switch
   integer,parameter::N_DATA=1 !< node data
   integer,parameter::E_DATA=2 !< element data
@@ -142,9 +142,9 @@ subroutine writeVTKHead(fid,grid,k)
   write(fid,'(a)'),''
   select case(k)
   case(N_DATA)
-    write(fid,'(a,i10,a)'),'POINT_DATA',grid%nN
+    write(fid,'(a,i10)'),'POINT_DATA',poly%nN
   case(E_DATA)
-    write(fid,'(a,i10,a)'),'CELL_DATA',grid%nE ! cell means element in VTK
+    write(fid,'(a,i10)'),'CELL_DATA',poly%nE ! cell means element in VTK
   case default
   end select
 end subroutine
