@@ -4,6 +4,11 @@
 module modFileIO
   public
   
+  integer,parameter::N_DATA=1 !< node data
+  integer,parameter::E_DATA=2 !< element data
+  integer,parameter::C_DATA=3 !< cell data
+  integer,parameter::F_DATA=4 !< facet data
+  
   !> read CGNS from fname into a generic object
   interface readCGNS
     !> read CGNS from fname into polyGrid
@@ -31,6 +36,13 @@ module modFileIO
       use modPolyX
       integer,intent(in)::fid !< file id
       class(polyX),intent(in)::poly !< source
+    end subroutine
+    !> write VTK data header into fid
+    subroutine writeVTKHead(fid,grid,k)
+      use modPolyGrid
+      integer,intent(in)::fid !< file id
+      class(polyGrid),intent(in)::grid !< grid
+      integer,intent(in)::k !< header switch
     end subroutine
     !> write VTK into fid from nodal scalar field
     subroutine writeVTKScal(fid,key,a)

@@ -104,9 +104,6 @@ subroutine writeVTKPolyX(fid,poly)
   do i=1,poly%nE
     write(fid,*),transShape(poly%sE(i))
   end do
-  ! since we only support writing nodal data to VTK file, it's good to write the data header here.
-  write(fid,'(a)'),''
-  write(fid,'(a,i10,a)'),'POINT_DATA',poly%nN
   
 contains
   
@@ -131,6 +128,25 @@ contains
     end select
   end function
   
+end subroutine
+
+!> write VTK data header into fid
+subroutine writeVTKHead(fid,grid,k)
+  use modPolyGrid
+  integer,intent(in)::fid !< file id
+  class(polyGrid),intent(in)::grid !< grid
+  integer,intent(in)::k !< header switch
+  integer,parameter::N_DATA=1 !< node data
+  integer,parameter::E_DATA=2 !< element data
+  
+  write(fid,'(a)'),''
+  select case(k)
+  case(N_DATA)
+    write(fid,'(a,i10,a)'),'POINT_DATA',grid%nN
+  case(E_DATA)
+    write(fid,'(a,i10,a)'),'CELL_DATA',grid%nE ! cell means element in VTK
+  case default
+  end select
 end subroutine
 
 !> write VTK into fid from nodal scalar field
