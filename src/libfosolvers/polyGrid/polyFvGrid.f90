@@ -10,8 +10,6 @@ module modPolyFvGrid
   
   !> polyhedron and polygon finite volume grid type
   type,extends(polyGrid),public::polyFvGrid
-    integer::nC !< number of cells
-    integer::nF !< number of facets
     integer::nP !< number of pairs of elements
     integer,allocatable::iEP(:,:) !< indices of elements of each pair
     integer,allocatable::neib(:,:) !< neighbor list
@@ -38,60 +36,8 @@ contains
     
     if(.not.this%isUp)then
       call this%polyGrid%up()
-      call sortPolyFvGrid(this)
       call getNeibPolyFvGrid(this)
     end if
-  end subroutine
-  
-  !> sort elements such that blocks are in the front
-  elemental subroutine sortPolyFvGrid(grid)
-    class(polyFvGrid),intent(inout)::grid !< the polyFvGrid
-    integer,allocatable::sE(:),nNE(:),iNE(:,:),gid(:)
-    double precision,allocatable::v(:)
-    
-    allocate(sE(grid%nE),source=grid%sE)!FIXME: remove the array specification work-around
-    allocate(nNE(grid%nE),source=grid%nNE)
-    allocate(iNE(size(grid%iNE,1),grid%nE),source=grid%iNE)
-    allocate(gid(grid%nE),source=grid%gid)
-    allocate(v(grid%nE),source=grid%v)
-    j=0
-    do i=1,grid%nE
-      if(sE(i)==TET.or.se(i)==HEX)then
-        j=j+1
-        grid%sE(j)=sE(i)
-        grid%nNE(j)=nNE(i)
-        grid%iNE(:,j)=iNE(:,i)
-        grid%gid(j)=gid(i)
-        grid%v(j)=v(i)
-      end if
-    end do
-    grid%nC=j
-    do i=1,grid%nE
-      if(sE(i)==TRI.or.se(i)==QUAD)then
-        j=j+1
-        grid%sE(j)=sE(i)
-        grid%nNE(j)=nNE(i)
-        grid%iNE(:,j)=iNE(:,i)
-        grid%gid(j)=gid(i)
-        grid%v(j)=0d0
-      end if
-    end do
-    grid%nF=j-grid%nC
-    do i=1,grid%nE
-      if(all(sE(i)/=[TET,HEX,TRI,QUAD]))then
-        j=j+1
-        grid%sE(j)=sE(i)
-        grid%nNE(j)=nNE(i)
-        grid%iNE(:,j)=iNE(:,i)
-        grid%gid(j)=gid(i)
-        grid%v(j)=0d0
-      end if
-    end do
-    deallocate(sE)
-    deallocate(nNE)
-    deallocate(iNE)
-    deallocate(gid)
-    deallocate(v)
   end subroutine
   
   !> get neighbor list and pairs

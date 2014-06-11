@@ -18,6 +18,8 @@ module modPolyGrid
   
   !> polyhedron and polygon grid type
   type,extends(polyX),public::polyGrid
+    integer::nC !< number of cells
+    integer::nF !< number of facets
     integer,allocatable::gid(:) !< geometric group identifier
     logical::isUp !< if auxiliary data is updated
     double precision,allocatable::v(:) !< volume
@@ -44,7 +46,6 @@ contains
     
     call this%polyX%init(nN,nE,m)
     allocate(this%gid(nE))
-    allocate(this%v(nE))
     this%isUp=.false.
   end subroutine
   
@@ -63,7 +64,10 @@ contains
     class(polyGrid),intent(inout)::this !< this polyGrid
     
     if(.not.this%isUp)then
-      do i=1,this%nE
+      call sortPolyGrid(this)
+      if(allocated(this%v)) deallocate(this%v)
+      allocate(this%v(this%nC))
+      do i=1,this%nC
         select case(this%sE(i))
         case(TET)
           this%v(i)=v4p(this%pN(:,this%iNE(:,i)))
@@ -75,6 +79,51 @@ contains
       end do
       this%isUp=.true.
     end if
+  end subroutine
+  
+  !> sort elements such that cells are in the front
+  elemental subroutine sortPolyGrid(grid)
+    class(polyGrid),intent(inout)::grid !< the polyGrid
+    integer,allocatable::sE(:),nNE(:),iNE(:,:),gid(:)
+    
+    allocate(sE(grid%nE),source=grid%sE)!FIXME: remove the array specification work-around
+    allocate(nNE(grid%nE),source=grid%nNE)
+    allocate(iNE(size(grid%iNE,1),grid%nE),source=grid%iNE)
+    allocate(gid(grid%nE),source=grid%gid)
+    j=0
+    do i=1,grid%nE
+      if(sE(i)==TET.or.se(i)==HEX)then
+        j=j+1
+        grid%sE(j)=sE(i)
+        grid%nNE(j)=nNE(i)
+        grid%iNE(:,j)=iNE(:,i)
+        grid%gid(j)=gid(i)
+      end if
+    end do
+    grid%nC=j
+    do i=1,grid%nE
+      if(sE(i)==TRI.or.se(i)==QUAD)then
+        j=j+1
+        grid%sE(j)=sE(i)
+        grid%nNE(j)=nNE(i)
+        grid%iNE(:,j)=iNE(:,i)
+        grid%gid(j)=gid(i)
+      end if
+    end do
+    grid%nF=j-grid%nC
+    do i=1,grid%nE
+      if(all(sE(i)/=[TET,HEX,TRI,QUAD]))then
+        j=j+1
+        grid%sE(j)=sE(i)
+        grid%nNE(j)=nNE(i)
+        grid%iNE(:,j)=iNE(:,i)
+        grid%gid(j)=gid(i)
+      end if
+    end do
+    deallocate(sE)
+    deallocate(nNE)
+    deallocate(iNE)
+    deallocate(gid)
   end subroutine
   
   !> destructor of polyGrid
