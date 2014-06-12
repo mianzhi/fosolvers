@@ -56,7 +56,7 @@ contains
     integer,intent(in)::k !< element index
     double precision::pPolyX(DIMS)
     
-    pPolyX(:)=sum(this%pN(:,this%iNE(:,k)),2)/dble(this%nNE(k))
+    pPolyX(:)=sum(this%pN(:,this%iNE(1:this%nNE(k),k)),2)/dble(this%nNE(k))
   end function
   
   !> destructor of polyX
