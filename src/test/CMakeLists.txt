@@ -5,10 +5,10 @@ SET(test_src
   polyX1.f90
   polyMesh1.f90
   polyGrid1.f90
-  polyFvGrid1.f90
   readGTS1.f90
   readVTK1.f90
   writeVTK1.f90
+  gradient1.f90
 )
 
 ADD_EXECUTABLE(test ${test_src})
@@ -17,6 +17,7 @@ TARGET_LINK_LIBRARIES(test
   fosolvers
   cgns
   hdf5
+  lapack
 )
 
 ADD_CUSTOM_COMMAND(
