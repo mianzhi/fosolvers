@@ -171,7 +171,7 @@ subroutine writeVTKVect(fid,key,a)
   
   write(fid,'(a)'),''
   write(fid,'(a)'),'VECTORS '//trim(adjustl(key))//' double'
-  do i=1,size(a)
+  do i=1,size(a,2)
     write(fid,*),a(:,i)
   end do
 end subroutine
