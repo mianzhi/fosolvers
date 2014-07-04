@@ -37,6 +37,12 @@ module modFileIO
       integer,intent(in)::fid !< file id
       class(polyX),intent(in)::poly !< source
     end subroutine
+    !> write VTK into fid from otGrid
+    subroutine writeVTKOtGrid(fid,grid)
+      use modOtGrid
+      integer,intent(in)::fid !< file id
+      class(otGrid),intent(in)::grid !< source
+    end subroutine
     !> write VTK data header into fid
     subroutine writeVTKHead(fid,poly,k)
       use modPolyX
@@ -44,13 +50,13 @@ module modFileIO
       class(polyX),intent(in)::poly !< grid
       integer,intent(in)::k !< header switch
     end subroutine
-    !> write VTK into fid from nodal scalar field
+    !> write VTK into fid from scalar field
     subroutine writeVTKScal(fid,key,a)
       integer,intent(in)::fid !< file id
       character(*),intent(in)::key !< data name
       double precision,intent(in)::a(:) !< data
     end subroutine
-    !> write VTK into fid from nodal vector field
+    !> write VTK into fid from vector field
     subroutine writeVTKVect(fid,key,a)
       integer,intent(in)::fid !< file id
       character(*),intent(in)::key !< data name
