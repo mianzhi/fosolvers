@@ -5,7 +5,7 @@
 #include "otree.h"
 
 int const BPD=3; /// bit per digit
-int const I_HEAD=04; /// index prefix
+int const I_HEAD=04U; /// index prefix
 int const N_FACE=6; /// number of faces
 
 /**
@@ -212,7 +212,7 @@ void getNode(node *self, long i, node **ptar)
   }else{
     int n=nBinDigits(i);
     int k=(i>>(n-BPD*2))%8;
-    i=(1<<(n-BPD-1))+i%(1<<(n-BPD*2));
+    i=(1U<<(n-BPD-1))+i%(1U<<(n-BPD*2));
     getNode(self->c[k],i,ptar);
   }
   return;
