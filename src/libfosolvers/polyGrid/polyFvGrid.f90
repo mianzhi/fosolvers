@@ -104,7 +104,7 @@ contains
           if(grid%neib(j,i)/=0)then
             cycle
           end if
-          ! 2_st round find cells only
+          ! 2_nd round find cells only
           do k=1,nEN(iNF(1))
             m=iEN(k,iNF(1)) ! m is an element with the 1_st node in iNF
             if(m/=i.and.m<=grid%nC)then ! cells only
