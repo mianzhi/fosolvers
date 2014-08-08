@@ -16,7 +16,7 @@ module modPolyMesh
   type,extends(polyX),public::polyMesh
     logical::isUp !< if auxiliary data is updated
     double precision,allocatable::a(:) !< surface area
-    double precision,allocatable::n(:,:) !< normal vector
+    double precision,allocatable::norm(:,:) !< normal vector
   contains
     procedure,public::init=>initPolyMesh
     procedure,public::clear=>clearPolyMesh
@@ -35,7 +35,7 @@ contains
     
     call this%polyX%init(nN,nE,m)
     allocate(this%a(nE))
-    allocate(this%n(DIMS,nE))
+    allocate(this%norm(DIMS,nE))
     this%isUp=.false.
   end subroutine
   
@@ -45,7 +45,7 @@ contains
     
     call this%polyX%clear()
     if(allocated(this%a)) deallocate(this%a)
-    if(allocated(this%n)) deallocate(this%n)
+    if(allocated(this%norm)) deallocate(this%norm)
   end subroutine
   
   !> update this polyMesh
@@ -58,13 +58,13 @@ contains
         select case(this%sE(i))
         case(TRI)
           this%a(i)=a3p(this%pN(:,this%iNE(:,i)))
-          this%n(:,i)=n3p(this%pN(:,this%iNE(:,i)))
+          this%norm(:,i)=n3p(this%pN(:,this%iNE(:,i)))
         case(QUAD)
           this%a(i)=a4p(this%pN(:,this%iNE(:,i)))
-          this%n(:,i)=n4p(this%pN(:,this%iNE(:,i)))
+          this%norm(:,i)=n4p(this%pN(:,this%iNE(:,i)))
         case default
           this%a(i)=0d0
-          this%n(:,i)=0d0
+          this%norm(:,i)=0d0
         end select
       end do
       this%isUp=.true.
