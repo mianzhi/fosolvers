@@ -13,6 +13,9 @@ module modPolyFvGrid
     integer::nP !< number of pairs of elements
     integer,allocatable::iEP(:,:) !< indices of elements of each pair
     integer,allocatable::neib(:,:) !< neighbor list
+    double precision,allocatable::aP(:) !< area of pair interfaces
+    double precision,allocatable::normP(:,:) !< normal vector of pair interfaces
+    double precision,allocatable::pP(:,:) !< center position of pair interfaces
   contains
     procedure,public::clear=>clearPolyFvGrid
     procedure,public::up=>upPolyFvGrid
@@ -28,6 +31,9 @@ contains
     call this%polyGrid%clear()
     if(allocated(this%iEP)) deallocate(this%iEP)
     if(allocated(this%neib)) deallocate(this%neib)
+    if(allocated(this%aP)) deallocate(this%aP)
+    if(allocated(this%normP)) deallocate(this%normP)
+    if(allocated(this%pP)) deallocate(this%pP)
   end subroutine
   
   !> update this polyFvGrid
@@ -42,8 +48,10 @@ contains
   
   !> get neighbor list and pairs
   elemental subroutine getNeibPolyFvGrid(grid)
+    use modGeometry
     class(polyFvGrid),intent(inout)::grid !< the polyFvGrid
     integer,allocatable::iEN(:,:),nEN(:),nFace(:),iNF(:),iNF1(:),iEP(:,:)
+    double precision,allocatable::aP(:),normP(:,:),pP(:,:)
     
     ! indices of elements containing each node
     allocate(nEN(grid%nN))
@@ -65,13 +73,19 @@ contains
     ! prepare storage for the face with most nodes
     allocate(nFace(grid%nE))
     nFace(:)=nF(grid%sE(:))
-    allocate(iNF(maxval([(maxval([(nNF(grid%sE(i),j),j=1,nFace(1))]),i=1,grid%nE)])))
+    allocate(iNF(maxval([(maxval([(nNF(grid%sE(i),j),j=1,nFace(i))]),i=1,grid%nE)])))
     allocate(iNF1(size(iNF)))
     ! find neighbor through each face
     if(allocated(grid%neib)) deallocate(grid%neib)
     if(allocated(grid%iEP)) deallocate(grid%iEP)
+    if(allocated(grid%aP)) deallocate(grid%aP)
+    if(allocated(grid%normP)) deallocate(grid%normP)
+    if(allocated(grid%pP)) deallocate(grid%pP)
     allocate(grid%neib(maxval(nFace),grid%nC))
     allocate(iEP(2,sum(nFace)))
+    allocate(aP(sum(nFace)))
+    allocate(normP(DIMS,sum(nFace)))
+    allocate(pP(DIMS,sum(nFace)))
     grid%neib(:,:)=0
     grid%nP=0
     do i=1,grid%nC
@@ -96,6 +110,20 @@ contains
                   grid%neib(j,i)=m
                   grid%nP=grid%nP+1
                   iEP(:,grid%nP)=[i,m]
+                  select case(count(iNF(:)>0))
+                  case(3)
+                    aP(grid%nP)=a3p(grid%pN(:,iNF(1:3)))
+                    normP(:,grid%nP)=n3p(grid%pN(:,iNF(1:3)))
+                    pP(:,grid%nP)=sum(grid%pN(:,iNF(1:4)),2)/3d0
+                  case(4)
+                    aP(grid%nP)=a4p(grid%pN(:,iNF(1:4)))
+                    normP(:,grid%nP)=n4p(grid%pN(:,iNF(1:4)))
+                    pP(:,grid%nP)=sum(grid%pN(:,iNF(1:4)),2)/4d0
+                  case default
+                    aP(grid%nP)=0d0
+                    normP(:,grid%nP)=0d0
+                    pP(:,grid%nP)=0d0
+                  end select
                 end if
               end do
             end if
@@ -119,6 +147,20 @@ contains
                   grid%neib(l,m)=i
                   grid%nP=grid%nP+1
                   iEP(:,grid%nP)=[i,m]
+                  select case(count(iNF(:)>0))
+                  case(3)
+                    aP(grid%nP)=a3p(grid%pN(:,iNF(1:3)))
+                    normP(:,grid%nP)=n3p(grid%pN(:,iNF(1:3)))
+                    pP(:,grid%nP)=sum(grid%pN(:,iNF(1:4)),2)/3d0
+                  case(4)
+                    aP(grid%nP)=a4p(grid%pN(:,iNF(1:4)))
+                    normP(:,grid%nP)=n4p(grid%pN(:,iNF(1:4)))
+                    pP(:,grid%nP)=sum(grid%pN(:,iNF(1:4)),2)/4d0
+                  case default
+                    aP(grid%nP)=0d0
+                    normP(:,grid%nP)=0d0
+                    pP(:,grid%nP)=0d0
+                  end select
                   exit
                 end if
               end do
@@ -128,12 +170,17 @@ contains
       end do
     end do
     allocate(grid%iEP(2,grid%nP),source=iEP(:,1:grid%nP))!FIXME:remove work-around
+    allocate(grid%aP(grid%nP),source=aP(1:grid%nP))!FIXME:remove work-around
+    allocate(grid%normP(DIMS,grid%nP),source=normP(:,1:grid%nP))!FIXME:remove work-around
+    allocate(grid%pP(DIMS,grid%nP),source=pP(:,1:grid%nP))!FIXME:remove work-around
     deallocate(iEN)
     deallocate(nEN)
     deallocate(nFace)
     deallocate(iNF)
     deallocate(iNF1)
     deallocate(iEP)
+    deallocate(aP)
+    deallocate(normP)
   end subroutine
   
   !> destructor of polyGrid
