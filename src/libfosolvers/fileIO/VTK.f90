@@ -97,7 +97,7 @@ subroutine writeVTKPolyX(fid,poly)
   write(fid,'(a)'),''
   write(fid,'(a,i10,i11)'),'CELLS',poly%nE,poly%nE+sum(poly%nNE)
   do i=1,poly%nE
-    write(fid,*),poly%nNE(i),poly%iNE(:,i)-1
+    write(fid,*),poly%nNE(i),poly%iNE(1:poly%nNE(i),i)-1
   end do
   write(fid,'(a)'),''
   write(fid,'(a,i10)'),'CELL_TYPES',poly%nE

@@ -27,6 +27,7 @@ contains
     double precision,allocatable,intent(inout)::adv(:,:) !< advection output
     double precision::F(size(s,1))
     
+    call grid%up()
     if(.not.(allocated(adv)))then
       allocate(adv(size(s,1),grid%nC))
     end if
