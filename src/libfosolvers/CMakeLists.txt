@@ -11,6 +11,7 @@ SET(libfosolvers_src
   fileIO/CGNS.f90
   geometry/geometry.f90
   FVM/gradient.f90
+  FVM/advection.f90
 )
 
 SET(libfosolvers_lib
