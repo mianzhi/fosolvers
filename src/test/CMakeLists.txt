@@ -10,6 +10,7 @@ SET(test_src
   readVTK1.f90
   writeVTK1.f90
   gradient1.f90
+  advection1.f90
 )
 
 ADD_EXECUTABLE(test ${test_src})
