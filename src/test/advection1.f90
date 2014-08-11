@@ -20,15 +20,21 @@ function advection1() result(ierr)
   allocate(u(3,grid%nC))
   do i=1,grid%nC
     p=grid%p(i)
-    s(i)=merge(1d0,0d0,p(1)<0.6d0.and.p(1)>0.4d0)
+    if(p(1)<0.6d0.and.p(1)>0.4d0)then
+      s(i)=1d0
+    else if(p(1)<0.3d0.and.p(1)>0.1d0)then
+      s(i)=sin((p(1)-0.1d0)*40d0*atan(1d0))
+    else
+      s(i)=0d0
+    end if
     u(:,i)=[1d0,0d0,0d0]
   end do
-  dt=0.001d0
-  do l=1,100
-    call findGrad(grid,u,gradu)
-    call reconAvg(grid,u,gradu,ur)
+  dt=0.0005d0
+  call findGrad(grid,u,gradu)
+  call reconAvg(grid,u,gradu,ur)
+  do l=1,200
     call findGrad(grid,s,grads)
-    call reconUW(grid,s,ur,sr)
+    call reconLtd(grid,s,grads,ur,sr)
     call findAdv(grid,sr,ur,tmps)
     s(:)=s(:)+dt*tmps(:)/grid%v(:)
   end do
