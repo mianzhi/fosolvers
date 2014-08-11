@@ -24,12 +24,13 @@ contains
     double precision,intent(in)::v(:,:) !< input data
     double precision,allocatable,intent(inout)::gradv(:,:,:) !< gradient output
     logical::useCellOnly,findCellOnly
-    integer,parameter::MIN_N_NEIB=4
-    integer,parameter::MAX_N_NEIB=15
+    integer,parameter::MIN_N_NEIB=8
+    integer,parameter::MAX_N_NEIB=25
     integer,parameter::MAX_L_WORK=2000
     integer,parameter::L_IWORK=200
     integer::nNeib,iNeib(MAX_N_NEIB),lwork,iwork(L_IWORK),ier
     double precision::dx(MAX_N_NEIB,DIMS),dv(MAX_N_NEIB,size(v,1)),stat(DIMS),work(MAX_L_WORK),rcond
+    double precision::tmp
     
     call grid%up()
     m=size(v,1) ! number of components
@@ -96,6 +97,35 @@ contains
       lwork=min(MAX_L_WORK,int(work(1)))
       call DGELSD(nNeib,DIMS,m,dx,MAX_N_NEIB,dv,MAX_N_NEIB,stat,rcond,rank,work,lwork,iwork,ier)
       gradv(:,:,i)=dv(1:DIMS,:)
+    end do
+    ! limit the gradient
+    do i=1,grid%nP
+      m=grid%iEP(1,i)
+      n=grid%iEP(2,i)
+      if(m<=grid%nC.and.n<=grid%nC)then
+        do j=1,size(gradv,2)
+          tmp=v(j,m)+dot_product(gradv(:,j,m),grid%pP(:,i)-grid%p(m))
+          if(tmp>max(v(j,m),v(j,n)))then
+            gradv(:,j,m)=gradv(:,j,m)&
+            &            -(grid%pP(:,i)-grid%p(m))*(tmp-max(v(j,m),v(j,n)))&
+            &             /dot_product(grid%pP(:,i)-grid%p(m),grid%pP(:,i)-grid%p(m))
+          else if(tmp<min(v(j,m),v(j,n)))then
+            gradv(:,j,m)=gradv(:,j,m)&
+            &            -(grid%pP(:,i)-grid%p(m))*(tmp-min(v(j,m),v(j,n)))&
+            &             /dot_product(grid%pP(:,i)-grid%p(m),grid%pP(:,i)-grid%p(m))
+          end if
+          tmp=v(j,n)+dot_product(gradv(:,j,n),grid%pP(:,i)-grid%p(n))
+          if(tmp>max(v(j,m),v(j,n)))then
+            gradv(:,j,n)=gradv(:,j,n)&
+            &            -(grid%pP(:,i)-grid%p(n))*(tmp-max(v(j,m),v(j,n)))&
+            &             /dot_product(grid%pP(:,i)-grid%p(n),grid%pP(:,i)-grid%p(n))
+          else if(tmp<min(v(j,m),v(j,n)))then
+            gradv(:,j,n)=gradv(:,j,n)&
+            &            -(grid%pP(:,i)-grid%p(n))*(tmp-min(v(j,m),v(j,n)))&
+            &             /dot_product(grid%pP(:,i)-grid%p(n),grid%pP(:,i)-grid%p(n))
+          end if
+        end do
+      end if
     end do
   end subroutine
   
