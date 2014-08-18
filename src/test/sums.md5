@@ -2,3 +2,5 @@ ee075febd4e858ccd2203768a4d6935d  mesh_simple.vtk
 49f278bc312904077c69476cc5e2f20f  tut21.vtk
 b6d703f6f80afeb5c3dc979e4e16edc9  grid_octree.vtk
 24a42bc14fdacc00f82fa8ab5dcfc8b5  polyFvGrid1.rst
+194190182cbb6b4dce222793c08c3f65  advection1_rst.vtk
+96f8d383e540a94ff94bbac73bd65180  diffusion1_rst.vtk
