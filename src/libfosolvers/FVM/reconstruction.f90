@@ -175,7 +175,7 @@ contains
         forall(j=1:size(r),abs(s(j,dn)-s(j,up))>tiny(1d0))
           r(j)=2d0*dot_product(grid%p(dn)-grid%p(up),grads(:,j,up))/(s(j,dn)-s(j,up))-1d0
         end forall
-        sr(:,i)=s(:,up)+vanLeer(r)*(s(:,dn)-s(:,up))/2d0
+        sr(:,i)=s(:,up)+vanAlbada(r)*(s(:,dn)-s(:,up))/2d0
       else
         sr(:,i)=0d0
       end if
@@ -294,12 +294,12 @@ contains
     vanLeer=(r+abs(r))/(1d0+abs(r))
   end function
   
-  !> minmod flux limiter
-  elemental function minmod(r)
+  !> van Albada flux limiter
+  elemental function vanAlbada(r)
     double precision,intent(in)::r !< successive gradient ratio
-    double precision minmod !< limit function
+    double precision::vanAlbada !< limit function
     
-    minmod=max(0d0,min(r,1d0))
+    vanAlbada=(r+r**2)/(1d0+r**2)
   end function
   
 end module
