@@ -9,6 +9,11 @@ module modOtGrid
   integer,parameter::DIMS=3 !< dimensions
   integer,parameter::N_FACE=6 !< number of faces per cell
   
+  ! public constants
+  integer,parameter,public::OT_OUT=0
+  integer,parameter,public::OT_IN=1
+  integer,parameter,public::OT_CUT=2
+  
   !> octree grid
   type,public::otGrid
     ! basic data
@@ -19,6 +24,7 @@ module modOtGrid
     integer(c_long),allocatable::oid(:) !< octal ids
     integer,allocatable::lvl(:) !< tree levels
     integer,allocatable::neib(:,:) !< neighbor lists
+    integer,allocatable::flag(:) !< flag (0-out, 1-in, 2-cut)
   contains
     procedure,public::init=>initOtGrid
     procedure,public::clear=>clearOtGrid
@@ -118,7 +124,9 @@ contains
     allocate(this%oid(this%nC))
     allocate(this%lvl(this%nC))
     allocate(this%neib(N_FACE,this%nC))
+    allocate(this%flag(this%nC))
     call ot_genConn(this%otree,this%oid,this%lvl,this%neib)
+    this%flag(:)=OT_IN
   end subroutine
   
   !> clear this otGrid
@@ -128,6 +136,7 @@ contains
     if(allocated(this%oid)) deallocate(this%oid)
     if(allocated(this%lvl)) deallocate(this%lvl)
     if(allocated(this%neib)) deallocate(this%neib)
+    if(allocated(this%flag)) deallocate(this%flag)
   end subroutine
   
   !> position of cell k
