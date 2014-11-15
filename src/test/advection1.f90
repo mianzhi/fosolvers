@@ -3,12 +3,10 @@
 function advection1() result(ierr)
   use modFileIO
   use modPolyFvGrid
-  use modReconstruction
-  use modGradient
   use modAdvection
   integer ierr
   type(polyFvGrid)::grid
-  double precision,allocatable::s(:),u(:,:),grads(:,:),gradu(:,:,:),sr(:),ur(:,:),tmps(:)
+  double precision,allocatable::s(:),u(:,:),tmps(:)
   double precision::p(3),dt
   
   ierr=0
@@ -18,6 +16,9 @@ function advection1() result(ierr)
   call grid%up()
   allocate(s(grid%nC))
   allocate(u(3,grid%nC))
+  forall(i=1:grid%nC)
+    u(:,i)=[1d0,0d0,0d0]
+  end forall
   do i=1,grid%nC
     p=grid%p(i)
     if(p(1)<0.6d0.and.p(1)>0.4d0)then
@@ -27,15 +28,10 @@ function advection1() result(ierr)
     else
       s(i)=0d0
     end if
-    u(:,i)=[1d0,0d0,0d0]
   end do
   dt=0.0005d0
-  call findGrad(grid,u,gradu)
-  call reconAvg(grid,u,gradu,ur)
   do l=1,200
-    call findGrad(grid,s,grads)
-    call reconLtd(grid,s,grads,ur,sr)
-    call findAdv(grid,sr,ur,tmps)
+    call findAdv(grid,s,u,tmps)
     s(:)=s(:)+dt*tmps(:)/grid%v(:)
   end do
   open(10,file='advection1_rst.vtk',action='write')
@@ -44,5 +40,5 @@ function advection1() result(ierr)
   call writeVTK(10,'s',[s,[(0d0,i=1,grid%nE-grid%nC)]])
   close(10)
   call grid%clear()
-  deallocate(s,u,grads,gradu,sr,ur,tmps)
+  deallocate(s,u,tmps)
 end function

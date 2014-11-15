@@ -4,7 +4,7 @@ program test
   integer,external::otGrid1,otGrid2,&
   &                 polyX1,polyMesh1,polyGrid1,polyFvGrid1,&
   &                 readGTS1,readVTK1,writeVTK1,&
-  &                 gradient1,advection1,diffusion1
+  &                 gradient1,advection1
   
   call try('otGrid1',otGrid1)
   call try('otGrid2',otGrid2)
@@ -17,7 +17,6 @@ program test
   call try('writeVTK1',writeVTK1)
   call try('gradient1',gradient1)
   call try('advection1',advection1)
-  call try('diffusion1',diffusion1)
   
   write(*,'(a)'),'check md5 of output files:'
   call system('md5sum -c sums.md5')
