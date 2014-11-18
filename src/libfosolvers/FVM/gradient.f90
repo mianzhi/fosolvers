@@ -28,7 +28,7 @@ contains
     integer,parameter::MAX_N_NEIB=25
     integer,parameter::MAX_L_WORK=2000
     integer,parameter::L_IWORK=200
-    integer::nNeib,iNeib(MAX_N_NEIB),lwork,iwork(L_IWORK),ier
+    integer::nNeib,iNeib(MAX_N_NEIB),lwork,iwork(L_IWORK),rank,ier
     double precision::dx(MAX_N_NEIB,DIMS),dv(MAX_N_NEIB,size(v,1)),stat(DIMS),work(MAX_L_WORK),rcond
     double precision::tmp
     
@@ -46,14 +46,16 @@ contains
       allocate(gradv(DIMS,m,merge(grid%nC,grid%nE,findCellOnly)))
     end if
     ! find gradient
+    !$omp parallel do default(shared)&
+    !$omp& private(nNeib,iNeib,dx,dv,lwork,work,iwork,stat,rank,ier,j,k,l,n)
     do i=1,grid%nE
       if(i>grid%nC.and.findCellOnly)then
-        exit
+        cycle
       end if
       ! list of neighbors
       if(i>grid%nC)then ! at non-cell
         if(findCellOnly)then
-          exit
+          cycle
         end if
         write(*,*),'findGradPolyVect: support cell element only'
         !TODO:nNeib,lNeib at non-cell
@@ -98,6 +100,7 @@ contains
       call DGELSD(nNeib,DIMS,m,dx,MAX_N_NEIB,dv,MAX_N_NEIB,stat,rcond,rank,work,lwork,iwork,ier)
       gradv(:,:,i)=dv(1:DIMS,:)
     end do
+    !$end omp parallel do
     ! limit the gradient
     do i=1,grid%nP
       m=grid%iEP(1,i)
