@@ -55,7 +55,7 @@ contains
           fDn=dot_product(f(:,j,dn),grid%normP(:,i))
           df=dot_product(matmul(grid%p(dn)-grid%p(up),gradF(:,j*DIMS-(DIMS-1):j*DIMS,up)),&
           &              grid%normP(:,i))
-          r=merge(2d0*df/(fDn-fUp)-1d0,fUp,abs(fDn-fUp)>tiny(1d0))
+          r=merge(2d0*df/(fDn-fUp)-1d0,0d0,abs(fDn-fUp)>tiny(1d0))
           flow(j)=-grid%aP(i)*(fUp+0.5d0*vanAlbada(r)*(fDn-fUp))
         end do
         adv(:,m)=adv(:,m)+flow(:)
@@ -97,8 +97,9 @@ contains
   elemental function vanAlbada(r)
     double precision,intent(in)::r !< successive gradient ratio
     double precision::vanAlbada !< limit function
+    double precision,parameter::R_LMT=1d20
     
-    vanAlbada=(r+r**2)/(1d0+r**2)
+    vanAlbada=merge((r+r**2)/(1d0+r**2),1d0,abs(r)<R_LMT)
   end function
   
 end module
