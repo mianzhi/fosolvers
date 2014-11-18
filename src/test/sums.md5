@@ -3,3 +3,5 @@ ee075febd4e858ccd2203768a4d6935d  mesh_simple.vtk
 b6d703f6f80afeb5c3dc979e4e16edc9  grid_octree.vtk
 24a42bc14fdacc00f82fa8ab5dcfc8b5  polyFvGrid1.rst
 2fae85979059dac0fdc04e68ee422813  advection1_rst.vtk
+fe14924a625767a5bd6d705c24e5da93  burgers_rst_1.vtk
+09b1dfa35c86fe7327c958997ce13e17  burgers_rst_2.vtk
