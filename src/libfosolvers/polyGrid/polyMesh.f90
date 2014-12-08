@@ -14,7 +14,6 @@ module modPolyMesh
   
   !> polygon surface mesh type
   type,extends(polyX),public::polyMesh
-    logical::isUp !< if auxiliary data is updated
     double precision,allocatable::a(:) !< surface area
     double precision,allocatable::norm(:,:) !< normal vector
   contains
@@ -36,7 +35,6 @@ contains
     call this%polyX%init(nN,nE,m)
     allocate(this%a(nE))
     allocate(this%norm(DIMS,nE))
-    this%isUp=.false.
   end subroutine
   
   !> clear this polyMesh
@@ -54,6 +52,7 @@ contains
     class(polyMesh),intent(inout)::this !< this polyMesh
     
     if(.not.this%isUp)then
+      call this%polyX%up()
       do i=1,this%nE
         select case(this%sE(i))
         case(TRI)

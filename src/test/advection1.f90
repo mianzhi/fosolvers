@@ -21,7 +21,7 @@ function advection1() result(ierr)
     u(:,i)=[1d0,0d0,0d0]
   end forall
   do i=1,grid%nC
-    p=grid%p(i)
+    p=grid%p(:,i)
     if(p(1)<0.6d0.and.p(1)>0.4d0)then
       s(i)=1d0
     else if(p(1)<0.3d0.and.p(1)>0.1d0)then

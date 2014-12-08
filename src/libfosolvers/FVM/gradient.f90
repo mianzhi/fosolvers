@@ -88,7 +88,7 @@ contains
       end if
       ! LSQ method
       forall(j=1:nNeib)
-        dx(j,:)=grid%p(iNeib(j))-grid%p(i)
+        dx(j,:)=grid%p(:,iNeib(j))-grid%p(:,i)
         dv(j,:)=v(:,iNeib(j))-v(:,i)
         dv(j,:)=dv(j,:)/dot_product(dx(j,:),dx(j,:))
         dx(j,:)=dx(j,:)/dot_product(dx(j,:),dx(j,:))
@@ -107,25 +107,25 @@ contains
       n=grid%iEP(2,i)
       if(m<=grid%nC.and.n<=grid%nC)then
         do j=1,size(gradv,2)
-          tmp=v(j,m)+dot_product(gradv(:,j,m),grid%pP(:,i)-grid%p(m))
+          tmp=v(j,m)+dot_product(gradv(:,j,m),grid%pP(:,i)-grid%p(:,m))
           if(tmp>max(v(j,m),v(j,n)))then
             gradv(:,j,m)=gradv(:,j,m)&
-            &            -(grid%pP(:,i)-grid%p(m))*(tmp-max(v(j,m),v(j,n)))&
-            &             /dot_product(grid%pP(:,i)-grid%p(m),grid%pP(:,i)-grid%p(m))
+            &            -(grid%pP(:,i)-grid%p(:,m))*(tmp-max(v(j,m),v(j,n)))&
+            &             /dot_product(grid%pP(:,i)-grid%p(:,m),grid%pP(:,i)-grid%p(:,m))
           else if(tmp<min(v(j,m),v(j,n)))then
             gradv(:,j,m)=gradv(:,j,m)&
-            &            -(grid%pP(:,i)-grid%p(m))*(tmp-min(v(j,m),v(j,n)))&
-            &             /dot_product(grid%pP(:,i)-grid%p(m),grid%pP(:,i)-grid%p(m))
+            &            -(grid%pP(:,i)-grid%p(:,m))*(tmp-min(v(j,m),v(j,n)))&
+            &             /dot_product(grid%pP(:,i)-grid%p(:,m),grid%pP(:,i)-grid%p(:,m))
           end if
-          tmp=v(j,n)+dot_product(gradv(:,j,n),grid%pP(:,i)-grid%p(n))
+          tmp=v(j,n)+dot_product(gradv(:,j,n),grid%pP(:,i)-grid%p(:,n))
           if(tmp>max(v(j,m),v(j,n)))then
             gradv(:,j,n)=gradv(:,j,n)&
-            &            -(grid%pP(:,i)-grid%p(n))*(tmp-max(v(j,m),v(j,n)))&
-            &             /dot_product(grid%pP(:,i)-grid%p(n),grid%pP(:,i)-grid%p(n))
+            &            -(grid%pP(:,i)-grid%p(:,n))*(tmp-max(v(j,m),v(j,n)))&
+            &             /dot_product(grid%pP(:,i)-grid%p(:,n),grid%pP(:,i)-grid%p(:,n))
           else if(tmp<min(v(j,m),v(j,n)))then
             gradv(:,j,n)=gradv(:,j,n)&
-            &            -(grid%pP(:,i)-grid%p(n))*(tmp-min(v(j,m),v(j,n)))&
-            &             /dot_product(grid%pP(:,i)-grid%p(n),grid%pP(:,i)-grid%p(n))
+            &            -(grid%pP(:,i)-grid%p(:,n))*(tmp-min(v(j,m),v(j,n)))&
+            &             /dot_product(grid%pP(:,i)-grid%p(:,n),grid%pP(:,i)-grid%p(:,n))
           end if
         end do
       end if

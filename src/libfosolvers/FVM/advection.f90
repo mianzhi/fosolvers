@@ -53,7 +53,7 @@ contains
           end if
           fUp=dot_product(f(:,j,up),grid%normP(:,i))
           fDn=dot_product(f(:,j,dn),grid%normP(:,i))
-          df=dot_product(matmul(grid%p(dn)-grid%p(up),gradF(:,j*DIMS-(DIMS-1):j*DIMS,up)),&
+          df=dot_product(matmul(grid%p(:,dn)-grid%p(:,up),gradF(:,j*DIMS-(DIMS-1):j*DIMS,up)),&
           &              grid%normP(:,i))
           r=merge(2d0*df/(fDn-fUp)-1d0,0d0,abs(fDn-fUp)>tiny(1d0))
           flow(j)=-grid%aP(i)*(fUp+0.5d0*vanAlbada(r)*(fDn-fUp))

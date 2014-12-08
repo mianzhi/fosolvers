@@ -18,7 +18,7 @@ function advection2() result(ierr)
   allocate(f(3,grid%nC))
   u(:,:)=0d0
   do i=1,grid%nC
-    p=grid%p(i)
+    p=grid%p(:,i)
     if(p(1)<0.5d0.and.p(1)>0.4d0)then
       u(1,i)=(p(1)-0.4d0)*10d0
     else if(p(1)<0.6d0.and.p(1)>0.5d0)then

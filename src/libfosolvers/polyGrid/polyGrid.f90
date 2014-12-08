@@ -21,7 +21,6 @@ module modPolyGrid
     integer::nC !< number of cells
     integer::nF !< number of facets
     integer,allocatable::gid(:) !< geometric group identifier
-    logical::isUp !< if auxiliary data is updated
     double precision,allocatable::v(:) !< volume
   contains
     procedure,public::init=>initPolyGrid
@@ -46,7 +45,6 @@ contains
     
     call this%polyX%init(nN,nE,m)
     allocate(this%gid(nE))
-    this%isUp=.false.
   end subroutine
   
   !> clear this polyGrid
@@ -64,6 +62,7 @@ contains
     class(polyGrid),intent(inout)::this !< this polyGrid
     
     if(.not.this%isUp)then
+      call this%polyX%up()
       call sortPolyGrid(this)
       if(allocated(this%v)) deallocate(this%v)
       allocate(this%v(this%nC))
@@ -85,10 +84,12 @@ contains
   elemental subroutine sortPolyGrid(grid)
     class(polyGrid),intent(inout)::grid !< the polyGrid
     integer,allocatable::sE(:),nNE(:),iNE(:,:),gid(:)
+    double precision,allocatable::p(:,:)
     
     allocate(sE(grid%nE),source=grid%sE)!FIXME: remove the array specification work-around
     allocate(nNE(grid%nE),source=grid%nNE)
     allocate(iNE(size(grid%iNE,1),grid%nE),source=grid%iNE)
+    allocate(p(DIMS,grid%nE),source=grid%p)
     allocate(gid(grid%nE),source=grid%gid)
     j=0
     do i=1,grid%nE
@@ -97,6 +98,7 @@ contains
         grid%sE(j)=sE(i)
         grid%nNE(j)=nNE(i)
         grid%iNE(:,j)=iNE(:,i)
+        grid%p(:,j)=p(:,i)
         grid%gid(j)=gid(i)
       end if
     end do
@@ -107,6 +109,7 @@ contains
         grid%sE(j)=sE(i)
         grid%nNE(j)=nNE(i)
         grid%iNE(:,j)=iNE(:,i)
+        grid%p(:,j)=p(:,i)
         grid%gid(j)=gid(i)
       end if
     end do
@@ -117,12 +120,14 @@ contains
         grid%sE(j)=sE(i)
         grid%nNE(j)=nNE(i)
         grid%iNE(:,j)=iNE(:,i)
+        grid%p(:,j)=p(:,i)
         grid%gid(j)=gid(i)
       end if
     end do
     deallocate(sE)
     deallocate(nNE)
     deallocate(iNE)
+    deallocate(p)
     deallocate(gid)
   end subroutine
   

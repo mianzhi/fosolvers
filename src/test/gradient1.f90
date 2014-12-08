@@ -13,7 +13,7 @@ function gradient1() result(ierr)
   call grid%up()
   allocate(v(grid%nC))
   do i=1,grid%nC
-    v(i)=norm2(grid%p(i)+[0.1d0,0.1d0,0.1d0])
+    v(i)=norm2(grid%p(:,i)+[0.1d0,0.1d0,0.1d0])
   end do
   call findGrad(grid,v,gradv)
   open(10,file='tut21.vtk',action='write')
