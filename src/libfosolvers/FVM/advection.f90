@@ -11,6 +11,8 @@ module modAdvection
   interface findAdv
     module procedure::findAdvPolyVect
     module procedure::findAdvPolyScal
+    module procedure::findAdvOtVect
+    module procedure::findAdvOtScal
   end interface
   public::findAdv
   
@@ -83,6 +85,51 @@ contains
     sv(1,:)=s(:)
     fv(:,1,:)=f(:,:)
     call findAdvPolyVect(grid,sv,fv,advv)
+    if(.not.allocated(adv))then
+      allocate(adv(size(advv,2)),source=advv(1,:))!FIXME:remove work-around
+    else
+      adv(:)=advv(1,:)
+    end if
+    deallocate(sv)
+    deallocate(fv)
+    deallocate(advv)
+  end subroutine
+  
+  !> find advection due to flux f depending on vector s on otGrid
+  !> \f[ \int_A \mathbf{f}(\mathbf{s}) \cdot \hat{n} dA \f]
+  subroutine findAdvOtVect(grid,s,f,adv)
+    use modOtGrid
+    use modGradient
+    class(otGrid),intent(inout)::grid !< the grid
+    double precision,intent(in)::s(:,:) !< state variables
+    double precision,intent(in)::f(:,:,:) !< fluxes
+    double precision,allocatable,intent(inout)::adv(:,:) !< advection output
+    
+    if(.not.(allocated(adv)))then
+      allocate(adv(size(s,2),grid%nC))
+    end if
+    adv(:,:)=0d0
+    !TODO
+  end subroutine
+  
+  !> find advection due to flux f depending on scalar s on otGrid
+  !> \f[ \int_A \mathbf{f}(s) \cdot \hat{n} dA \f]
+  subroutine findAdvOtScal(grid,s,f,adv)
+    use modOtGrid
+    class(otGrid),intent(inout)::grid !< the grid
+    double precision,intent(in)::s(:) !< state variable
+    double precision,intent(in)::f(:,:) !< flux
+    double precision,allocatable,intent(inout)::adv(:) !< advection output
+    double precision,allocatable::sv(:,:),fv(:,:,:),advv(:,:)
+    
+    allocate(sv(1,size(s)))
+    allocate(fv(DIMS,1,size(s)))
+    if(allocated(adv))then
+      allocate(advv(1,size(adv)))
+    end if
+    sv(1,:)=s(:)
+    fv(:,1,:)=f(:,:)
+    call findAdvOtVect(grid,sv,fv,advv)
     if(.not.allocated(adv))then
       allocate(adv(size(advv,2)),source=advv(1,:))!FIXME:remove work-around
     else

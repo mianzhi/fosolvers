@@ -11,6 +11,8 @@ module modGradient
   interface findGrad
     module procedure::findGradPolyVect
     module procedure::findGradPolyScal
+    module procedure::findGradOtVect
+    module procedure::findGradOtScal
   end interface
   public::findGrad
   
@@ -146,6 +148,44 @@ contains
     end if
     vv(1,:)=v(:)
     call findGradPolyVect(grid,vv,gradvv)
+    if(.not.allocated(gradv))then
+      allocate(gradv(DIMS,size(gradvv,3)),source=gradvv(:,1,:))!FIXME:remove work-around
+    else
+      gradv(:,:)=gradvv(:,1,:)
+    end if
+    deallocate(vv)
+    deallocate(gradvv)
+  end subroutine
+  
+  !> find gradient of vector v on otFvGrid
+  subroutine findGradOtVect(grid,v,gradv)
+    use modOtGrid
+    class(otGrid),intent(inout)::grid !< the grid
+    double precision,intent(in)::v(:,:) !< input data
+    double precision,allocatable,intent(inout)::gradv(:,:,:) !< gradient output
+    
+    m=size(v,1) ! number of components
+    if(.not.allocated(gradv))then
+      allocate(gradv(DIMS,m,grid%nC))
+    end if
+    gradv(:,:,:)=0d0
+    !TODO
+  end subroutine
+  
+  !> find gradient of scalar v on otGrid
+  subroutine findGradOtScal(grid,v,gradv)
+    use modOtGrid
+    class(otGrid),intent(inout)::grid !< the grid
+    double precision,intent(in)::v(:) !< input data
+    double precision,allocatable,intent(inout)::gradv(:,:) !< gradient output
+    double precision,allocatable::vv(:,:),gradvv(:,:,:)
+    
+    allocate(vv(1,size(v)))
+    if(allocated(gradv))then
+      allocate(gradvv(DIMS,1,size(gradv,2)))
+    end if
+    vv(1,:)=v(:)
+    call findGradOtVect(grid,vv,gradvv)
     if(.not.allocated(gradv))then
       allocate(gradv(DIMS,size(gradvv,3)),source=gradvv(:,1,:))!FIXME:remove work-around
     else

@@ -29,7 +29,9 @@ contains
     integer,external::item
     
     i=item()
-    if(i==0)then
+    if(i<0)then
+      write(*,'(a,a,a,i3)'),'[P]: "',trim(adjustl(str)),'", epsilon < 1E',i
+    else if(i==0)then
       write(*,'(a,a,a)'),'[P]: "',trim(adjustl(str)),'"'
     else
       write(*,'(a,a,a,i6)'),'[FAIL]: "',trim(adjustl(str)),'", ERR=',i
