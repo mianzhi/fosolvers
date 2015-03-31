@@ -157,7 +157,7 @@ contains
     deallocate(gradvv)
   end subroutine
   
-  !> find gradient of vector v on otFvGrid
+  !> find gradient of vector v on otGrid
   subroutine findGradOtVect(grid,v,gradv)
     use modOtGrid
     class(otGrid),intent(inout)::grid !< the grid
@@ -169,7 +169,22 @@ contains
       allocate(gradv(DIMS,m,grid%nC))
     end if
     gradv(:,:,:)=0d0
-    !TODO
+    do i=1,grid%nC
+      if(grid%flag(i)/=OT_OUT)then
+        do l=1,DIMS
+          if(grid%neib(l*2-1,i)>0.and.grid%neib(l*2,i)>0)then
+            !TODO: different level?
+            gradv(l,:,i)=(v(:,grid%neib(l*2,i))-v(:,grid%neib(l*2-1,i)))/2d0/grid%h(i)
+          else if(grid%neib(l*2-1,i)>0)then
+            !TODO: different level?
+            gradv(l,:,i)=(v(:,i)-v(:,grid%neib(l*2-1,i)))/grid%h(i)
+          else if(grid%neib(l*2,i)>0)then
+            !TODO: different level?
+            gradv(l,:,i)=(v(:,grid%neib(l*2,i))-v(:,i))/grid%h(i)
+          end if
+        end do
+      end if
+    end do
   end subroutine
   
   !> find gradient of scalar v on otGrid
