@@ -9,6 +9,7 @@ SET(libfosolvers_src
   fileIO/GTS.f90
   fileIO/VTK.f90
   fileIO/CGNS.f90
+  fileIO/GMSH.f90
   geometry/geometry.f90
   FVM/gradient.f90
   FVM/advection.f90

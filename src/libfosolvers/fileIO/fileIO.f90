@@ -19,6 +19,16 @@ module modFileIO
     end subroutine
   end interface
   
+  !> read GMSH from fid into a generic object
+  interface readGMSH
+    !> read GMSH from fid into polyGrid
+    subroutine readGMSHPolyGrid(fid,grid)
+      use modPolyGrid
+      integer,intent(in)::fid !< file id
+      class(polyGrid),intent(inout)::grid !< result
+    end subroutine
+  end interface
+  
   !> read VTK from fid into a generic object
   interface readVTK
     !> read VTK from fid into polyX
