@@ -11,6 +11,7 @@ module modAdvection
   interface findAdv
     module procedure::findAdvPolyVect
     module procedure::findAdvPolyScal
+    module procedure::findAdvPolyEuler
     module procedure::findAdvOtVect
     module procedure::findAdvOtScal
   end interface
@@ -93,6 +94,34 @@ contains
     deallocate(sv)
     deallocate(fv)
     deallocate(advv)
+  end subroutine
+  
+  !> find advection of Euler system on polyFvGrid
+  subroutine findAdvPolyEuler(grid,rho,rhou,rhoE,gamm,dRho,dRhou,dRhoE)
+    use modPolyFvGrid
+    use modGradient
+    class(polyFvGrid),intent(inout)::grid !< the grid
+    double precision,intent(in)::rho(:) !< cell-averaged rho
+    double precision,intent(in)::rhou(:) !< cell-averaged rhou
+    double precision,intent(in)::rhoE(:) !< cell-averaged rhoE
+    double precision,intent(in)::gamm(:) !< cell-averaged gamma
+    double precision,allocatable,intent(inout)::dRho(:) !< net flux of rho
+    double precision,allocatable,intent(inout)::dRhou(:) !< net flux of rhou
+    double precision,allocatable,intent(inout)::dRhoE(:) !< net flux of rhoE
+    
+    call grid%up()
+    if(.not.(allocated(dRho)))then
+      allocate(dRho(grid%nC))
+    end if
+    dRho(:)=0d0
+    if(.not.(allocated(dRhou)))then
+      allocate(dRhou(grid%nC))
+    end if
+    dRhou(:)=0d0
+    if(.not.(allocated(dRhoE)))then
+      allocate(dRhoE(grid%nC))
+    end if
+    dRhoE(:)=0d0
   end subroutine
   
   !> find advection due to flux f depending on vector s on otGrid
