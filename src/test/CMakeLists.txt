@@ -1,4 +1,4 @@
-SET(test_src
+SET(tests_src
   test.f90
   otGrid1.f90
   otGrid2.f90
@@ -14,17 +14,17 @@ SET(test_src
   advection2.f90
 )
 
-ADD_EXECUTABLE(test ${test_src})
+ADD_EXECUTABLE(tests ${tests_src})
 
-TARGET_LINK_LIBRARIES(test
+TARGET_LINK_LIBRARIES(tests
   fosolvers
   cgns
-  hdf5
+  ${HDF5_LIBRARIES}
   lapack
 )
 
 ADD_CUSTOM_COMMAND(
-  TARGET test
+  TARGET tests
   POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/runTest.sh
                                    ${PROJECT_BINARY_DIR}/bin/runTest
