@@ -97,17 +97,22 @@ contains
   end subroutine
   
   !> find advection of Euler system on polyFvGrid
-  subroutine findAdvPolyEuler(grid,rho,rhou,rhoE,gamm,dRho,dRhou,dRhoE)
+  subroutine findAdvPolyEuler(grid,rho,rhou,rhoE,p,dRho,dRhou,dRhoE)
     use modPolyFvGrid
     use modGradient
     class(polyFvGrid),intent(inout)::grid !< the grid
     double precision,intent(in)::rho(:) !< cell-averaged rho
-    double precision,intent(in)::rhou(:) !< cell-averaged rhou
+    double precision,intent(in)::rhou(:,:) !< cell-averaged rhou
     double precision,intent(in)::rhoE(:) !< cell-averaged rhoE
-    double precision,intent(in)::gamm(:) !< cell-averaged gamma
+    double precision,intent(in)::p(:) !< cell-averaged pressure
     double precision,allocatable,intent(inout)::dRho(:) !< net flux of rho
-    double precision,allocatable,intent(inout)::dRhou(:) !< net flux of rhou
+    double precision,allocatable,intent(inout)::dRhou(:,:) !< net flux of rhou
     double precision,allocatable,intent(inout)::dRhoE(:) !< net flux of rhoE
+    double precision,allocatable::u(:,:),H(:)
+    double precision,allocatable::f1c(:,:),f2c(:,:,:),f3c(:,:)
+    double precision::rhoAvg,uAvg(DIMS),HAvg,cAvg,uNormAvg,rhoJump,pJump,uJump(DIMS),uNormJump
+    double precision::dFEntropy(DIMS+2),dFAcoustic1(DIMS+2),dFAcoustic2(DIMS+2),flow(DIMS+2)
+    double precision,parameter::GAMM=1.4d0 ! TODO other gamma and real gas
     
     call grid%up()
     if(.not.(allocated(dRho)))then
@@ -115,13 +120,80 @@ contains
     end if
     dRho(:)=0d0
     if(.not.(allocated(dRhou)))then
-      allocate(dRhou(grid%nC))
+      allocate(dRhou(DIMS,grid%nC))
     end if
-    dRhou(:)=0d0
+    dRhou(:,:)=0d0
     if(.not.(allocated(dRhoE)))then
       allocate(dRhoE(grid%nC))
     end if
     dRhoE(:)=0d0
+    ! find auxiliary state and flux vectors in cell
+    allocate(u(DIMS,grid%nC))
+    allocate(H(grid%nC))
+    allocate(f1c(DIMS,grid%nC))
+    allocate(f2c(DIMS,DIMS,grid%nC))
+    allocate(f3c(DIMS,grid%nC))
+    forall(i=1:grid%nC)
+      u(:,i)=rhou(:,i)/rho(i)
+      H(i)=(rhoE(i)+p(i))/rho(i)
+      f1c(:,i)=rhou(:,i)
+      f2c(:,1,i)=rhou(1,i)*u(:,i)+[p(i),0d0,0d0]
+      f2c(:,2,i)=rhou(2,i)*u(:,i)+[0d0,p(i),0d0]
+      f2c(:,3,i)=rhou(3,i)*u(:,i)+[0d0,0d0,p(i)]
+      f3c(:,i)=(rhoE(i)+p(i))*u(:,i)
+    end forall
+    ! Roe flux difference splitting
+    do i=1,grid%nP
+      m=grid%iEP(1,i)
+      n=grid%iEP(2,i)
+      if(m<=grid%nC.and.n<=grid%nC)then
+        rhoAvg=sqrt(rho(m)*rho(n))
+        uAvg(:)=(sqrt(rho(m))*u(:,m)+sqrt(rho(n))*u(:,n))/(sqrt(rho(m))+sqrt(rho(n)))
+        uNormAvg=dot_product(uAvg,grid%normP(:,i))
+        HAvg=(sqrt(rho(m))*H(m)+sqrt(rho(n))*H(n))/(sqrt(rho(m))+sqrt(rho(n)))
+        cAvg=sqrt((GAMM-1d0)*(HAvg-0.5d0*(dot_product(uAvg,uAvg)))) ! TODO arbitrary gamma; real gas
+        rhoJump=rho(n)-rho(m)
+        pJump=p(n)-p(m)
+        uJump(:)=u(:,n)-u(:,m)
+        uNormJump=dot_product(uJump,grid%normP(:,i))
+        dFEntropy(:)=abs(uNormAvg)*&
+        &            ((rhoJump-pJump/cAvg**2)*&
+        &             [1d0,uAvg(1),uAvg(2),uAvg(3),0.5d0*dot_product(uAvg,uAvg)]&
+        &             +rhoAvg*&
+        &             [0d0,&
+        &              uJump(1)-grid%normP(1,i)*uNormJump,&
+        &              uJump(2)-grid%normP(2,i)*uNormJump,&
+        &              uJump(3)-grid%normP(3,i)*uNormJump,&
+        &              dot_product(uAvg,uJump)-uNormAvg*uNormJump])
+        dFAcoustic1(:)=abs(uNormAvg-cAvg)*(0.5d0*(pJump-rhoAvg*cAvg*uNormJump)/cAvg**2)*&
+        &              [1d0,&
+        &               uAvg(1)-grid%normP(1,i)*cAvg,&
+        &               uAvg(2)-grid%normP(2,i)*cAvg,&
+        &               uAvg(3)-grid%normP(3,i)*cAvg,&
+        &               HAvg-uNormAvg*cAvg]
+        dFAcoustic2(:)=abs(uNormAvg+cAvg)*(0.5d0*(pJump+rhoAvg*cAvg*uNormJump)/cAvg**2)*&
+        &              [1d0,&
+        &               uAvg(1)+grid%normP(1,i)*cAvg,&
+        &               uAvg(2)+grid%normP(2,i)*cAvg,&
+        &               uAvg(3)+grid%normP(3,i)*cAvg,&
+        &               HAvg+uNormAvg*cAvg]
+        flow(:)=grid%aP(i)*&
+        &       ([dot_product(0.5d0*(f1c(:,m)+f1c(:,n)),grid%normP(:,i)),&
+        &         dot_product(0.5d0*(f2c(:,1,m)+f2c(:,1,n)),grid%normP(:,i)),&
+        &         dot_product(0.5d0*(f2c(:,2,m)+f2c(:,2,n)),grid%normP(:,i)),&
+        &         dot_product(0.5d0*(f2c(:,3,m)+f2c(:,3,n)),grid%normP(:,i)),&
+        &         dot_product(0.5d0*(f3c(:,m)+f3c(:,n)),grid%normP(:,i))]&
+        &        -0.5d0*(dFEntropy(:)+dFAcoustic1(:)+dFAcoustic2(:)))
+        dRho(m)=dRho(m)-flow(1)
+        dRho(n)=dRho(n)+flow(1)
+        dRhou(:,m)=dRhou(:,m)-flow(2:4)
+        dRhou(:,n)=dRhou(:,n)+flow(2:4)
+        dRhoE(m)=dRhoE(m)-flow(5)
+        dRhoE(n)=dRhoE(n)+flow(5)
+      end if
+    end do
+    deallocate(u,H)
+    deallocate(f1c,f2c,f3c)
   end subroutine
   
   !> find advection due to flux f depending on vector s on otGrid
