@@ -38,11 +38,13 @@ contains
     end if
     adv(:,:)=0d0
     allocate(gradF(DIMS,DIMS*size(s,1),grid%nC))
-    call findGrad(grid,reshape(f,[size(f,1)*size(f,2),size(f,3)]),gradF)
+    call findGrad(grid,reshape(f(:,:,1:grid%nC),&
+    &                          [size(f(:,:,1:grid%nC),1)*size(f(:,:,1:grid%nC),2),&
+    &                           size(f(:,:,1:grid%nC),3)]),gradF)
     do i=1,grid%nP
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
-      if(m<=grid%nC.and.n<=grid%nC)then
+      if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
         do j=1,size(s,1)
           if(abs(s(j,m)-s(j,n))<=tiny(1d0))then
             up=m
@@ -63,6 +65,22 @@ contains
         end do
         adv(:,m)=adv(:,m)+flow(:)
         adv(:,n)=adv(:,n)-flow(:)
+      else if(m<=size(s,2).and.m<=size(f,3).and.n<=size(s,2).and.n<=size(f,3))then ! boundary pairs
+        do j=1,size(s,1)
+          if(abs(s(j,m)-s(j,n))<=tiny(1d0))then
+            up=m
+            dn=n
+          else if(dot_product((f(:,j,m)-f(:,j,n))/(s(j,m)-s(j,n)),grid%normP(:,i))>=0d0)then
+            up=m
+            dn=n
+          else
+            up=n
+            dn=m
+          end if
+          fUp=dot_product(f(:,j,up),grid%normP(:,i))
+          flow(j)=-grid%aP(i)*fUp
+        end do
+        adv(:,m)=adv(:,m)+flow(:)
       end if
     end do
     deallocate(gradF)

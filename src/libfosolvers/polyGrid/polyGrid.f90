@@ -80,7 +80,7 @@ contains
     end if
   end subroutine
   
-  !> sort elements such that cells are in the front
+  !> sort elements such that cells are in the front, and facets follows
   elemental subroutine sortPolyGrid(grid)
     class(polyGrid),intent(inout)::grid !< the polyGrid
     integer,allocatable::sE(:),nNE(:),iNE(:,:),gid(:)
