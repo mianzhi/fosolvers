@@ -29,7 +29,7 @@ contains
     double precision,intent(in)::f(:,:,:) !< fluxes
     double precision,allocatable,intent(inout)::adv(:,:) !< advection output
     integer::up,dn
-    double precision::flow(size(s,1)),fUp,fDn,df,r
+    double precision::flow,fUp,fDn,df,r
     double precision,allocatable::gradF(:,:,:)
     
     call grid%up()
@@ -44,7 +44,7 @@ contains
     do i=1,grid%nP
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
-      if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
+      if(m<=size(s,2).and.m<=size(f,3).and.n<=size(s,2).and.n<=size(f,3))then
         do j=1,size(s,1)
           if(abs(s(j,m)-s(j,n))<=tiny(1d0))then
             up=m
@@ -58,29 +58,18 @@ contains
           end if
           fUp=dot_product(f(:,j,up),grid%normP(:,i))
           fDn=dot_product(f(:,j,dn),grid%normP(:,i))
-          df=dot_product(matmul(grid%p(:,dn)-grid%p(:,up),gradF(:,j*DIMS-(DIMS-1):j*DIMS,up)),&
-          &              grid%normP(:,i))
-          r=merge(2d0*df/(fDn-fUp)-1d0,0d0,abs(fDn-fUp)>tiny(1d0))
-          flow(j)=-grid%aP(i)*(fUp+0.5d0*vanAlbada(r)*(fDn-fUp))
-        end do
-        adv(:,m)=adv(:,m)+flow(:)
-        adv(:,n)=adv(:,n)-flow(:)
-      else if(m<=size(s,2).and.m<=size(f,3).and.n<=size(s,2).and.n<=size(f,3))then ! boundary pairs
-        do j=1,size(s,1)
-          if(abs(s(j,m)-s(j,n))<=tiny(1d0))then
-            up=m
-            dn=n
-          else if(dot_product((f(:,j,m)-f(:,j,n))/(s(j,m)-s(j,n)),grid%normP(:,i))>=0d0)then
-            up=m
-            dn=n
-          else
-            up=n
-            dn=m
+          if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
+            df=dot_product(matmul(grid%p(:,dn)-grid%p(:,up),gradF(:,j*DIMS-(DIMS-1):j*DIMS,up)),&
+            &              grid%normP(:,i))
+            r=merge(2d0*df/(fDn-fUp)-1d0,0d0,abs(fDn-fUp)>tiny(1d0))
+            flow=-grid%aP(i)*(fUp+0.5d0*vanAlbada(r)*(fDn-fUp))
+            adv(j,m)=adv(j,m)+flow
+            adv(j,n)=adv(j,n)-flow
+          else ! boundary pairs
+            flow=-grid%aP(i)*fUp
+            adv(j,m)=adv(j,m)+flow
           end if
-          fUp=dot_product(f(:,j,up),grid%normP(:,i))
-          flow(j)=-grid%aP(i)*fUp
         end do
-        adv(:,m)=adv(:,m)+flow(:)
       end if
     end do
     deallocate(gradF)
