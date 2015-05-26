@@ -114,7 +114,7 @@ contains
                   case(3)
                     aP(grid%nP)=a3p(grid%pN(:,iNF(1:3)))
                     normP(:,grid%nP)=n3p(grid%pN(:,iNF(1:3)))
-                    pP(:,grid%nP)=sum(grid%pN(:,iNF(1:4)),2)/3d0
+                    pP(:,grid%nP)=sum(grid%pN(:,iNF(1:3)),2)/3d0
                   case(4)
                     aP(grid%nP)=a4p(grid%pN(:,iNF(1:4)))
                     normP(:,grid%nP)=n4p(grid%pN(:,iNF(1:4)))
@@ -151,7 +151,7 @@ contains
                   case(3)
                     aP(grid%nP)=a3p(grid%pN(:,iNF(1:3)))
                     normP(:,grid%nP)=n3p(grid%pN(:,iNF(1:3)))
-                    pP(:,grid%nP)=sum(grid%pN(:,iNF(1:4)),2)/3d0
+                    pP(:,grid%nP)=sum(grid%pN(:,iNF(1:3)),2)/3d0
                   case(4)
                     aP(grid%nP)=a4p(grid%pN(:,iNF(1:4)))
                     normP(:,grid%nP)=n4p(grid%pN(:,iNF(1:4)))
