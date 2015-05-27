@@ -12,6 +12,7 @@ SET(tests_src
   gradient1.f90
   advection1.f90
   advection2.f90
+  euler.f90
 )
 
 ADD_EXECUTABLE(tests ${tests_src})

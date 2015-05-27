@@ -135,12 +135,13 @@ contains
     end if
     dRhoE(:)=0d0
     ! find auxiliary state and flux vectors in cell
-    allocate(u(DIMS,grid%nC))
-    allocate(H(grid%nC))
-    allocate(f1c(DIMS,grid%nC))
-    allocate(f2c(DIMS,DIMS,grid%nC))
-    allocate(f3c(DIMS,grid%nC))
-    forall(i=1:grid%nC)
+    k=minval([size(rho),size(rhou,2),size(rhoE),size(p)])
+    allocate(u(DIMS,k))
+    allocate(H(k))
+    allocate(f1c(DIMS,k))
+    allocate(f2c(DIMS,DIMS,k))
+    allocate(f3c(DIMS,k))
+    forall(i=1:k)
       u(:,i)=rhou(:,i)/rho(i)
       H(i)=(rhoE(i)+p(i))/rho(i)
       f1c(:,i)=rhou(:,i)
@@ -153,7 +154,7 @@ contains
     do i=1,grid%nP
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
-      if(m<=grid%nC.and.n<=grid%nC)then
+      if(m<=k.and.n<=k)then
         rhoAvg=sqrt(rho(m)*rho(n))
         uAvg(:)=(sqrt(rho(m))*u(:,m)+sqrt(rho(n))*u(:,n))/(sqrt(rho(m))+sqrt(rho(n)))
         uNormAvg=dot_product(uAvg,grid%normP(:,i))
@@ -191,12 +192,18 @@ contains
         &         dot_product(0.5d0*(f2c(:,3,m)+f2c(:,3,n)),grid%normP(:,i)),&
         &         dot_product(0.5d0*(f3c(:,m)+f3c(:,n)),grid%normP(:,i))]&
         &        -0.5d0*(dFEntropy(:)+dFAcoustic1(:)+dFAcoustic2(:)))
-        dRho(m)=dRho(m)-flow(1)
-        dRho(n)=dRho(n)+flow(1)
-        dRhou(:,m)=dRhou(:,m)-flow(2:4)
-        dRhou(:,n)=dRhou(:,n)+flow(2:4)
-        dRhoE(m)=dRhoE(m)-flow(5)
-        dRhoE(n)=dRhoE(n)+flow(5)
+        if(n<=grid%nC)then
+          dRho(m)=dRho(m)-flow(1)
+          dRho(n)=dRho(n)+flow(1)
+          dRhou(:,m)=dRhou(:,m)-flow(2:4)
+          dRhou(:,n)=dRhou(:,n)+flow(2:4)
+          dRhoE(m)=dRhoE(m)-flow(5)
+          dRhoE(n)=dRhoE(n)+flow(5)
+        else
+          dRho(m)=dRho(m)-flow(1)
+          dRhou(:,m)=dRhou(:,m)-flow(2:4)
+          dRhoE(m)=dRhoE(m)-flow(5)
+        end if
       end if
     end do
     deallocate(u,H)
