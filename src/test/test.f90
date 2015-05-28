@@ -4,6 +4,7 @@ program test
   integer,external::otGrid1,otGrid2,&
   &                 polyX1,polyMesh1,polyGrid1,polyFvGrid1,&
   &                 readGTS1,readVTK1,writeVTK1,&
+  &                 readCondTab1,&
   &                 gradient1,advection1,advection2,euler
   
   call try('otGrid1',otGrid1)
@@ -15,6 +16,7 @@ program test
   call try('readGTS1',readGTS1)
   call try('readVTK1',readVTK1)
   call try('writeVTK1',writeVTK1)
+  call try('readCondTab',readCondTab1)
   call try('gradient1',gradient1)
   call try('advection1',advection1)
   call try('advection2',advection2)

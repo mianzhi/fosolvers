@@ -84,6 +84,13 @@ module modFileIO
       type(polyMesh),intent(inout)::mesh !< result
     end subroutine
     
+    !> read conditions from fid into cond
+    subroutine readCondTab(fid,cond)
+      use modCondition
+      integer,intent(in)::fid
+      type(condTab),intent(inout)::cond !< result
+    end subroutine
+    
   end interface
   
 end module

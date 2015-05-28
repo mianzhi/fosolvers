@@ -9,6 +9,7 @@ SET(tests_src
   readGTS1.f90
   readVTK1.f90
   writeVTK1.f90
+  readCondTab1.f90
   gradient1.f90
   advection1.f90
   advection2.f90
