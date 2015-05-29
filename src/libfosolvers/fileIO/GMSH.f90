@@ -66,7 +66,7 @@ subroutine readGMSHPolyGrid(fid,grid)
 
 contains
   
-  !> translate the shape type of VTK
+  !> translate the shape type of GMSH
   pure subroutine transShape(t,n)
     use modPolyGrid,only:TRI,TRI_N,QUAD,QUAD_N,TET,TET_N,HEX,HEX_N
     integer,intent(inout)::t !< shape type
