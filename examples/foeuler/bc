@@ -1,7 +1,7 @@
 2		# number of conditions
 5		# maximum number of parameters per condition
 
-10		# geometric group identifier
+5		# geometric group identifier
 1		# condition type: inflow
 5		# number of real parameters
 300.		# real parameter: total temperature
@@ -10,7 +10,7 @@
 0.		# real parameter: direction of the flow, y component
 0.		# real parameter: direction of the flow, z component
 
-20		# geometric group identifier
+3		# geometric group identifier
 2		# condition type: outflow
 1		# number of real parameters
 0.8e5		# static pressure

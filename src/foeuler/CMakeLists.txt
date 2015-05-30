@@ -9,4 +9,5 @@ TARGET_LINK_LIBRARIES(foeuler
   cgns
   ${HDF5_LIBRARIES}
   lapack
+  ${CVODE_LIBRARIES}
 )
