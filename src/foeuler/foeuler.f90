@@ -160,7 +160,7 @@ contains
   !> set the boundary conditions
   subroutine setBC(x)
     double precision,intent(in)::x(*) !< solution vector
-    double precision::pGst,TGst,ptGst,TtGst,uGst(DIMS),rhoGst
+    double precision::pGst,TGst,ptGst,TtGst,uGst(DIMS),rhoGst,Mach
     
     do i=1,grid%nP
     m=grid%iEP(1,i)
@@ -176,8 +176,9 @@ contains
         pGst=bc%p(1,iBC(n))
         TGst=bc%p(2,iBC(n))
         uGst(:)=bc%p(3:5,iBC(n))
+        Mach=norm2(uGst)/sqrt(gamm*r*TGst)
         rhoGst=pGst/r/TGst
-        if(norm2(uGst)/sqrt(gamm*r*TGst)<1d0)then
+        if(Mach<1d0)then
           uGst(:)=x(grid%nC*[1,2,3]+m)/rhoGst
         end if
         rho(n)=rhoGst
@@ -187,9 +188,11 @@ contains
         ptGst=bc%p(1,iBC(n))
         TtGst=bc%p(2,iBC(n))
         uGst=bc%p(3:5,iBC(n))
-        ! TODO: find static values
+        TGst=TtGst-0.5d0*(gamm-1d0)/gamm/r*dot_product(uGst,uGst)
+        Mach=norm2(uGst)/sqrt(gamm*r*TGst)
+        pGst=ptGst*(1d0+0.5d0*(gamm-1d0)*Mach**2)**(-gamm/(gamm-1d0))
         rhoGst=pGst/r/TGst
-        if(norm2(uGst)/sqrt(gamm*r*TGst)<1d0)then
+        if(Mach<1d0)then
           uGst(:)=x(grid%nC*[1,2,3]+m)/rhoGst
         end if
         rho(n)=rhoGst
@@ -197,11 +200,10 @@ contains
         rhoE(n)=rhoGst*(1d0/(gamm-1d0)*r*TGst+0.5d0*dot_product(uGst,uGst))
       case(BC_OUT)
         pGst=bc%p(1,iBC(n))
-        ! TODO apply pressure
         rho(n)=x(m)
-        rhou(:,n)=x(grid%nC*[1,2,3]+m)&
-        &         -2d0*dot_product(x(grid%nC*[1,2,3]+m),grid%normP(:,i))*grid%normP(:,i)
-        rhoE(n)=x(4*grid%nC+m)
+        rhou(:,n)=x(grid%nC*[1,2,3]+m)
+        rhoE(n)=1d0/(gamm-1d0)*pGst&
+        &       +0.5d0*dot_product(x(grid%nC*[1,2,3]+m),x(grid%nC*[1,2,3]+m))/x(m)
       case default
       end select
     end if
