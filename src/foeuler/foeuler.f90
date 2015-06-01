@@ -12,6 +12,11 @@ module modEuler
   double precision,parameter::RTOL=1d-7 !< relative tolerance
   double precision,parameter::ATOL=1d-13 !< absolute tolerance
   
+  integer,parameter::BC_WALL=0 !< wall boundary
+  integer,parameter::BC_IN_STATIC=10 !< inflow boundary with static properties
+  integer,parameter::BC_IN_TOTAL=11 !< inflow boundary with total properties
+  integer,parameter::BC_OUT=20 !< outflow boundary
+  
   type(polyFvGrid)::grid !< computational grid
   type(condTab)::bc !< boundary conditions
   
@@ -152,6 +157,57 @@ contains
     end forall
   end subroutine
   
+  !> set the boundary conditions
+  subroutine setBC(x)
+    double precision,intent(in)::x(*) !< solution vector
+    double precision::pGst,TGst,ptGst,TtGst,uGst(DIMS),rhoGst
+    
+    do i=1,grid%nP
+    m=grid%iEP(1,i)
+    n=grid%iEP(2,i)
+    if(n>grid%nC)then
+      select case(bc%t(iBC(n)))
+      case(BC_WALL)
+        rho(n)=x(m)
+        rhou(:,n)=x(grid%nC*[1,2,3]+m)&
+        &         -2d0*dot_product(x(grid%nC*[1,2,3]+m),grid%normP(:,i))*grid%normP(:,i)
+        rhoE(n)=x(4*grid%nC+m)
+      case(BC_IN_STATIC)
+        pGst=bc%p(1,iBC(n))
+        TGst=bc%p(2,iBC(n))
+        uGst(:)=bc%p(3:5,iBC(n))
+        rhoGst=pGst/r/TGst
+        if(norm2(uGst)/sqrt(gamm*r*TGst)<1d0)then
+          uGst(:)=x(grid%nC*[1,2,3]+m)/rhoGst
+        end if
+        rho(n)=rhoGst
+        rhou(:,n)=rhoGst*uGst(:)
+        rhoE(n)=rhoGst*(1d0/(gamm-1d0)*r*TGst+0.5d0*dot_product(uGst,uGst))
+      case(BC_IN_TOTAL)
+        ptGst=bc%p(1,iBC(n))
+        TtGst=bc%p(2,iBC(n))
+        uGst=bc%p(3:5,iBC(n))
+        ! TODO: find static values
+        rhoGst=pGst/r/TGst
+        if(norm2(uGst)/sqrt(gamm*r*TGst)<1d0)then
+          uGst(:)=x(grid%nC*[1,2,3]+m)/rhoGst
+        end if
+        rho(n)=rhoGst
+        rhou(:,n)=rhoGst*uGst(:)
+        rhoE(n)=rhoGst*(1d0/(gamm-1d0)*r*TGst+0.5d0*dot_product(uGst,uGst))
+      case(BC_OUT)
+        pGst=bc%p(1,iBC(n))
+        ! TODO apply pressure
+        rho(n)=x(m)
+        rhou(:,n)=x(grid%nC*[1,2,3]+m)&
+        &         -2d0*dot_product(x(grid%nC*[1,2,3]+m),grid%normP(:,i))*grid%normP(:,i)
+        rhoE(n)=x(4*grid%nC+m)
+      case default
+      end select
+    end if
+  end do
+  end subroutine
+  
   !> write the state
   subroutine writeState(fName)
     use modFileIO
@@ -203,25 +259,15 @@ subroutine fcvfun(time,x,dxdt,iPara,rPara,ier)
   double precision::rPara(*)
   integer::ier
   
-  do i=1,grid%nP
-    m=grid%iEP(1,i)
-    n=grid%iEP(2,i)
-    if(n>grid%nC)then
-      ! TODO set boundary conditions
-      rho(n)=rho(m)
-      rhou(:,n)=rhou(:,m)-2d0*dot_product(rhou(:,m),grid%normP(:,i))*grid%normP(:,i)
-      rhoE(n)=rhoE(m)
-      p(n)=p(m)
-    end if
-  end do
+  call setBC(x)
   call syncState(x)
   call findAdv(grid,rho,rhou,rhoE,p,dRho,dRhou,dRhoE)
   forall(i=1:grid%nC)
-    dxdt(i)=dRho(i)
-    dxdt(grid%nC+i)=dRhou(1,i)
-    dxdt(2*grid%nC+i)=dRhou(2,i)
-    dxdt(3*grid%nC+i)=dRhou(3,i)
-    dxdt(4*grid%nC+i)=dRhoE(i)
+    dxdt(i)=dRho(i)/grid%v(i)
+    dxdt(grid%nC+i)=dRhou(1,i)/grid%v(i)
+    dxdt(2*grid%nC+i)=dRhou(2,i)/grid%v(i)
+    dxdt(3*grid%nC+i)=dRhou(3,i)/grid%v(i)
+    dxdt(4*grid%nC+i)=dRhoE(i)/grid%v(i)
   end forall
   ier=0
 end subroutine
