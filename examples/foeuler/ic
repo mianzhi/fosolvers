@@ -1,4 +1,4 @@
-1e5		# initial pressure
+0.9e5		# initial pressure
 300.		# initial temperature
 0.		# initial velocity, x component
 0.		# initial velocity, y component

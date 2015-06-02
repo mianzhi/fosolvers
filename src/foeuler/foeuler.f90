@@ -167,12 +167,12 @@ contains
     n=grid%iEP(2,i)
     if(n>grid%nC)then
       select case(bc%t(iBC(n)))
-      case(BC_WALL)
+      case(BC_WALL) ! wall boundary
         rho(n)=x(m)
         rhou(:,n)=x(grid%nC*[1,2,3]+m)&
         &         -2d0*dot_product(x(grid%nC*[1,2,3]+m),grid%normP(:,i))*grid%normP(:,i)
         rhoE(n)=x(4*grid%nC+m)
-      case(BC_IN_STATIC)
+      case(BC_IN_STATIC) ! inflow boundary with static properties
         pGst=bc%p(1,iBC(n))
         TGst=bc%p(2,iBC(n))
         uGst(:)=bc%p(3:5,iBC(n))
@@ -184,7 +184,7 @@ contains
         rho(n)=rhoGst
         rhou(:,n)=rhoGst*uGst(:)
         rhoE(n)=rhoGst*(1d0/(gamm-1d0)*r*TGst+0.5d0*dot_product(uGst,uGst))
-      case(BC_IN_TOTAL)
+      case(BC_IN_TOTAL) ! inflow boundary with total properties
         ptGst=bc%p(1,iBC(n))
         TtGst=bc%p(2,iBC(n))
         uGst=bc%p(3:5,iBC(n))
@@ -194,11 +194,15 @@ contains
         rhoGst=pGst/r/TGst
         if(Mach<1d0)then
           uGst(:)=x(grid%nC*[1,2,3]+m)/rhoGst
+          TGst=TtGst-0.5d0*(gamm-1d0)/gamm/r*dot_product(uGst,uGst)
+          Mach=norm2(uGst)/sqrt(gamm*r*TGst)
+          pGst=ptGst*(1d0+0.5d0*(gamm-1d0)*Mach**2)**(-gamm/(gamm-1d0))
+          rhoGst=pGst/r/TGst
         end if
         rho(n)=rhoGst
         rhou(:,n)=rhoGst*uGst(:)
         rhoE(n)=rhoGst*(1d0/(gamm-1d0)*r*TGst+0.5d0*dot_product(uGst,uGst))
-      case(BC_OUT)
+      case(BC_OUT) ! outflow boundary
         pGst=bc%p(1,iBC(n))
         rho(n)=x(m)
         rhou(:,n)=x(grid%nC*[1,2,3]+m)
