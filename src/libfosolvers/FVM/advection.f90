@@ -141,6 +141,7 @@ contains
     allocate(f1c(DIMS,k))
     allocate(f2c(DIMS,DIMS,k))
     allocate(f3c(DIMS,k))
+    !$omp workshare
     forall(i=1:k)
       u(:,i)=rhou(:,i)/rho(i)
       H(i)=(rhoE(i)+p(i))/rho(i)
@@ -150,7 +151,11 @@ contains
       f2c(:,3,i)=rhou(3,i)*u(:,i)+[0d0,0d0,p(i)]
       f3c(:,i)=(rhoE(i)+p(i))*u(:,i)
     end forall
+    !$omp end workshare
     ! Roe flux difference splitting
+    !$omp parallel do default(shared)&
+    !$omp& private(m,n,rhoAvg,uAvg,Havg,cAvg,uNormAvg,rhoJump,pJump,uJump,uNormJump,&
+    !$omp&         dFEntropy,dFAcoustic1,dFAcoustic2,flow)
     do i=1,grid%nP
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
@@ -192,6 +197,7 @@ contains
         &         dot_product(0.5d0*(f2c(:,3,m)+f2c(:,3,n)),grid%normP(:,i)),&
         &         dot_product(0.5d0*(f3c(:,m)+f3c(:,n)),grid%normP(:,i))]&
         &        -0.5d0*(dFEntropy(:)+dFAcoustic1(:)+dFAcoustic2(:)))
+        !$omp critical
         if(n<=grid%nC)then
           dRho(m)=dRho(m)-flow(1)
           dRho(n)=dRho(n)+flow(1)
@@ -204,8 +210,10 @@ contains
           dRhou(:,m)=dRhou(:,m)-flow(2:4)
           dRhoE(m)=dRhoE(m)-flow(5)
         end if
+        !$omp end critical
       end if
     end do
+    !$end omp parallel do
     deallocate(u,H)
     deallocate(f1c,f2c,f3c)
   end subroutine
