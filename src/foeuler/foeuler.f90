@@ -193,7 +193,7 @@ contains
         pGst=ptGst*(1d0+0.5d0*(gamm-1d0)*Mach**2)**(-gamm/(gamm-1d0))
         rhoGst=pGst/r/TGst
         if(Mach<1d0)then
-          uGst(:)=x(grid%nC*[1,2,3]+m)/rhoGst
+          uGst(:)=dot_product(x(grid%nC*[1,2,3]+m)/x(m),uGst(:))*uGst/dot_product(uGst,uGst)
           TGst=TtGst-0.5d0*(gamm-1d0)/gamm/r*dot_product(uGst,uGst)
           Mach=norm2(uGst)/sqrt(gamm*r*TGst)
           pGst=ptGst*(1d0+0.5d0*(gamm-1d0)*Mach**2)**(-gamm/(gamm-1d0))

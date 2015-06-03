@@ -6,9 +6,9 @@
 5		# number of real parameters
 1e5		# real parameter: total pressure
 300.		# real parameter: total temperature
-20.		# real parameter: direction of the flow, x component
-0.		# real parameter: direction of the flow, y component
-0.		# real parameter: direction of the flow, z component
+1.		# real parameter: velocity/direction of the flow, x component
+0.		# real parameter: velocity/direction of the flow, y component
+0.		# real parameter: velocity/direction of the flow, z component
 
 3		# geometric group identifier
 20		# condition type: outflow
