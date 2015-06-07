@@ -115,8 +115,8 @@ contains
     double precision,allocatable,intent(inout)::dRho(:) !< net flux of rho
     double precision,allocatable,intent(inout)::dRhou(:,:) !< net flux of rhou
     double precision,allocatable,intent(inout)::dRhoE(:) !< net flux of rhoE
-    double precision,allocatable::u(:,:),H(:)
-    double precision,allocatable::f1c(:,:),f2c(:,:,:),f3c(:,:)
+    double precision,allocatable,save::u(:,:),H(:)
+    double precision,allocatable,save::f1c(:,:),f2c(:,:,:),f3c(:,:)
     double precision::rhoAvg,uAvg(DIMS),HAvg,cAvg,uNormAvg,rhoJump,pJump,uJump(DIMS),uNormJump
     double precision::dFEntropy(DIMS+2),dFAcoustic1(DIMS+2),dFAcoustic2(DIMS+2),flow(DIMS+2)
     double precision,parameter::GAMM=1.4d0 ! TODO other gamma and real gas
@@ -136,11 +136,21 @@ contains
     dRhoE(:)=0d0
     ! find auxiliary state and flux vectors in cell
     k=minval([size(rho),size(rhou,2),size(rhoE),size(p)])
-    allocate(u(DIMS,k))
-    allocate(H(k))
-    allocate(f1c(DIMS,k))
-    allocate(f2c(DIMS,DIMS,k))
-    allocate(f3c(DIMS,k))
+    if(.not.allocated(u))then
+      allocate(u(DIMS,k))
+      allocate(H(k))
+      allocate(f1c(DIMS,k))
+      allocate(f2c(DIMS,DIMS,k))
+      allocate(f3c(DIMS,k))
+    else if(size(u,2)<k)then
+      deallocate(u,H)
+      deallocate(f1c,f2c,f3c)
+      allocate(u(DIMS,k))
+      allocate(H(k))
+      allocate(f1c(DIMS,k))
+      allocate(f2c(DIMS,DIMS,k))
+      allocate(f3c(DIMS,k))
+    end if
     !$omp workshare
     forall(i=1:k)
       u(:,i)=rhou(:,i)/rho(i)
@@ -214,8 +224,6 @@ contains
       end if
     end do
     !$end omp parallel do
-    deallocate(u,H)
-    deallocate(f1c,f2c,f3c)
   end subroutine
   
   !> find advection due to flux f depending on vector s on otGrid
