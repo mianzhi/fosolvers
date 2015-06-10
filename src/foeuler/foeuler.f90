@@ -16,6 +16,7 @@ module modEuler
   integer,parameter::BC_IN_STATIC=10 !< inflow boundary with static properties
   integer,parameter::BC_IN_TOTAL=11 !< inflow boundary with total properties
   integer,parameter::BC_OUT=20 !< outflow boundary
+  integer,parameter::BC_FAR=30 !< far-field boundary
   
   type(polyFvGrid)::grid !< computational grid
   type(condTab)::bc !< boundary conditions
@@ -160,58 +161,88 @@ contains
   !> set the boundary conditions
   subroutine setBC(x)
     double precision,intent(in)::x(*) !< solution vector
-    double precision::pGst,TGst,ptGst,TtGst,uGst(DIMS),rhoGst,Mach
+    double precision::pGst,TGst,ptGst,TtGst,uGst(DIMS),rhoGst,Mach,&
+    &                 un(DIMS),ut(DIMS),ui(DIMS),charI,charO,a
     
     do i=1,grid%nP
-    m=grid%iEP(1,i)
-    n=grid%iEP(2,i)
-    if(n>grid%nC)then
-      select case(bc%t(iBC(n)))
-      case(BC_WALL) ! wall boundary
-        rho(n)=x(m)
-        rhou(:,n)=x(grid%nC*[1,2,3]+m)&
-        &         -2d0*dot_product(x(grid%nC*[1,2,3]+m),grid%normP(:,i))*grid%normP(:,i)
-        rhoE(n)=x(4*grid%nC+m)
-      case(BC_IN_STATIC) ! inflow boundary with static properties
-        pGst=bc%p(1,iBC(n))
-        TGst=bc%p(2,iBC(n))
-        uGst(:)=bc%p(3:5,iBC(n))
-        Mach=norm2(uGst)/sqrt(gamm*r*TGst)
-        rhoGst=pGst/r/TGst
-        if(Mach<1d0)then
-          uGst(:)=x(grid%nC*[1,2,3]+m)/rhoGst
-        end if
-        rho(n)=rhoGst
-        rhou(:,n)=rhoGst*uGst(:)
-        rhoE(n)=rhoGst*(1d0/(gamm-1d0)*r*TGst+0.5d0*dot_product(uGst,uGst))
-      case(BC_IN_TOTAL) ! inflow boundary with total properties
-        ptGst=bc%p(1,iBC(n))
-        TtGst=bc%p(2,iBC(n))
-        uGst=bc%p(3:5,iBC(n))
-        TGst=TtGst-0.5d0*(gamm-1d0)/gamm/r*dot_product(uGst,uGst)
-        Mach=norm2(uGst)/sqrt(gamm*r*TGst)
-        pGst=ptGst*(1d0+0.5d0*(gamm-1d0)*Mach**2)**(-gamm/(gamm-1d0))
-        rhoGst=pGst/r/TGst
-        if(Mach<1d0)then
-          uGst(:)=dot_product(x(grid%nC*[1,2,3]+m)/x(m),uGst(:))*uGst/dot_product(uGst,uGst)
+      m=grid%iEP(1,i)
+      n=grid%iEP(2,i)
+      if(n>grid%nC)then
+        select case(bc%t(iBC(n)))
+        case(BC_WALL) ! wall boundary
+          rho(n)=x(m)
+          rhou(:,n)=x(grid%nC*[1,2,3]+m)&
+          &         -2d0*dot_product(x(grid%nC*[1,2,3]+m),grid%normP(:,i))*grid%normP(:,i)
+          rhoE(n)=x(4*grid%nC+m)
+        case(BC_IN_STATIC) ! inflow boundary with static properties
+          pGst=bc%p(1,iBC(n))
+          TGst=bc%p(2,iBC(n))
+          uGst(:)=bc%p(3:5,iBC(n))
+          Mach=norm2(uGst)/sqrt(gamm*r*TGst)
+          rhoGst=pGst/r/TGst
+          if(Mach<1d0)then
+            uGst(:)=x(grid%nC*[1,2,3]+m)/rhoGst
+          end if
+          rho(n)=rhoGst
+          rhou(:,n)=rhoGst*uGst(:)
+          rhoE(n)=rhoGst*(1d0/(gamm-1d0)*r*TGst+0.5d0*dot_product(uGst,uGst))
+        case(BC_IN_TOTAL) ! inflow boundary with total properties
+          ptGst=bc%p(1,iBC(n))
+          TtGst=bc%p(2,iBC(n))
+          uGst=bc%p(3:5,iBC(n))
           TGst=TtGst-0.5d0*(gamm-1d0)/gamm/r*dot_product(uGst,uGst)
           Mach=norm2(uGst)/sqrt(gamm*r*TGst)
           pGst=ptGst*(1d0+0.5d0*(gamm-1d0)*Mach**2)**(-gamm/(gamm-1d0))
           rhoGst=pGst/r/TGst
-        end if
-        rho(n)=rhoGst
-        rhou(:,n)=rhoGst*uGst(:)
-        rhoE(n)=rhoGst*(1d0/(gamm-1d0)*r*TGst+0.5d0*dot_product(uGst,uGst))
-      case(BC_OUT) ! outflow boundary
-        pGst=bc%p(1,iBC(n))
-        rho(n)=x(m)
-        rhou(:,n)=x(grid%nC*[1,2,3]+m)
-        rhoE(n)=1d0/(gamm-1d0)*pGst&
-        &       +0.5d0*dot_product(x(grid%nC*[1,2,3]+m),x(grid%nC*[1,2,3]+m))/x(m)
-      case default
-      end select
-    end if
-  end do
+          if(Mach<1d0)then
+            uGst(:)=dot_product(x(grid%nC*[1,2,3]+m)/x(m),uGst(:))*uGst/dot_product(uGst,uGst)
+            TGst=TtGst-0.5d0*(gamm-1d0)/gamm/r*dot_product(uGst,uGst)
+            Mach=norm2(uGst)/sqrt(gamm*r*TGst)
+            pGst=ptGst*(1d0+0.5d0*(gamm-1d0)*Mach**2)**(-gamm/(gamm-1d0))
+            rhoGst=pGst/r/TGst
+          end if
+          rho(n)=rhoGst
+          rhou(:,n)=rhoGst*uGst(:)
+          rhoE(n)=rhoGst*(1d0/(gamm-1d0)*r*TGst+0.5d0*dot_product(uGst,uGst))
+        case(BC_OUT) ! outflow boundary
+          pGst=bc%p(1,iBC(n))
+          rho(n)=x(m)
+          rhou(:,n)=x(grid%nC*[1,2,3]+m)
+          rhoE(n)=1d0/(gamm-1d0)*pGst&
+          &       +0.5d0*dot_product(x(grid%nC*[1,2,3]+m),x(grid%nC*[1,2,3]+m))/x(m)
+        case(BC_FAR) ! far-field boundary
+          pGst=bc%p(1,iBC(n))
+          TGst=bc%p(2,iBC(n))
+          uGst(:)=bc%p(3:5,iBC(n))
+          charO=dot_product(uGst,grid%normP(:,i))-2d0*sqrt(gamm*r*TGst)/(gamm-1d0)
+          ui(:)=x(grid%nC*[1,2,3]+m)/x(m)
+          charI=dot_product(ui,grid%normP(:,i))&
+          &     +2d0*sqrt(gamm/x(m)/(gamm-1d0)*(x(4*grid%nC+m)-0.5d0*dot_product(ui,ui)*x(m)))
+          un(:)=0.5d0*grid%normP(:,i)*(charI+charO)
+          a=0.25d0*(gamm-1d0)*(charI-charO)
+          if(dot_product(un(:),grid%normP(:,i))>0d0)then
+            ut(:)=ui(:)-grid%normP(:,i)*dot_product(grid%normP(:,i),ui(:))
+            Mach=norm2(ui)/&
+            &    sqrt(gamm/x(m)*(gamm-1d0)*(x(4*grid%nC+m)-0.5d0*dot_product(ui,ui)*x(m)))
+            ptGst=(gamm-1d0)*(x(4*grid%nC+m)-0.5d0*dot_product(ui,ui)*x(m))*&
+            &     (1d0+0.5d0*(gamm-1d0)*Mach**2)**(gamm/(gamm-1d0))
+          else
+            ut(:)=uGst(:)-un
+            Mach=norm2(uGst)/sqrt(gamm*r*TGst)
+            ptGst=pGst*(1d0+0.5d0*(gamm-1d0)*Mach**2)**(gamm/(gamm-1d0))
+          end if
+          uGst(:)=un(:)+ut(:)
+          TGst=a**2/gamm/r
+          Mach=norm2(uGst)/a
+          pGst=ptGst*(1d0+0.5d0*(gamm-1d0)*Mach**2)**(-gamm/(gamm-1d0))
+          rhoGst=pGst/r/TGst
+          rho(n)=rhoGst
+          rhou(:,n)=rhoGst*uGst(:)
+          rhoE(n)=rhoGst*(1d0/(gamm-1d0)*r*TGst+0.5d0*dot_product(uGst,uGst))
+        case default
+        end select
+      end if
+    end do
   end subroutine
   
   !> write the state
