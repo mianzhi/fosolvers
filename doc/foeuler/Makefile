@@ -17,4 +17,4 @@ $(latexfile).pdf:$(latexfile).dvi
 	ps2pdf $(latexfile).ps
 
 clean:
-	rm *.aux *.dvi *.ps *.log *.toc *.pdf
+	rm *.aux *.dvi *.ps *.log *.toc *.pdf *.out
