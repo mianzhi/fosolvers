@@ -14,6 +14,7 @@ SET(tests_src
   advection1.f90
   advection2.f90
   euler.f90
+  UDF1.f90
 )
 
 ADD_EXECUTABLE(tests ${tests_src})
@@ -23,6 +24,7 @@ TARGET_LINK_LIBRARIES(tests
   cgns
   ${HDF5_LIBRARIES}
   lapack
+  matheval
 )
 
 ADD_CUSTOM_COMMAND(

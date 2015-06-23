@@ -10,6 +10,7 @@ TARGET_LINK_LIBRARIES(foeuler
   ${HDF5_LIBRARIES}
   lapack
   ${CVODE_LIBRARIES}
+  matheval
 )
 
 INSTALL(TARGETS foeuler DESTINATION bin)
