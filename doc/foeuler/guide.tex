@@ -84,9 +84,9 @@ installation of FOEuler is straightforward:
 
 Figure~\ref{fig:flow} shows the work flow of a simulation with FOEuler.
 FOEuler reads grid file ``grid.msh'' in GMSH format.
-Boundary conditions, initial conditions, simulation control file, and fluid property file are all
-text files.
-Their file name must exactly be ``bc'', ``ic'', ``sim'', and ``fl'' respectively.
+Boundary conditions, initial conditions, simulation control, fluid property, and user-defined
+function (optional) file are all text files.
+Their file name must exactly be ``bc'', ``ic'', ``sim'', ``fl'', and ``udf'' respectively.
 As the computation runs, post-processing files ``rst\_n.vtk'' (``n'' is an integer starting from 0)
 are generated.
 These post-processing files can be read by visualization software ParaView.
@@ -127,13 +127,17 @@ is the time interval between post-processing outputs.
 \subsubsection{Initial Condition File}
 
 Figure~\ref{lst:ic} shows an example of initial condition file.
-The ``ic'' file has five lines, specifying the initial state.
+The ``ic'' file has six lines.
+The first line is an integer switch of user-defined function (UDF).
+If the value is ``0'', UDF is not used;
+If the value is ``1'', UDFs are used for all the five state variables of initial condition.
 The state variables are static pressure, static temperature, and the three components of velocity.
 The initial state is set uniformly through the computation domain according to the given state
 variables.
 
 \begin{figure}[h!]
   \begin{lstlisting}[backgroundcolor=\color{lightgray}]
+    0		# do not use UDF
     0.4e5	# initial pressure
     200.	# initial temperature
     350.	# initial velocity, x component
@@ -189,18 +193,22 @@ Tab.~\ref{tab:bc}.
 
 \begin{table}
 \caption{All supported boundary conditions.}
-  \begin{tabular}{cccl} 
+  \begin{tabular}{cccl}
     \hline
-    Boundary Type & Code & \# R. Par. & Real Parameters \\ 
+    Boundary Type & Code & \# R. Par. & Real Parameters \\
     \hline
-    Wall & 0 & 0 & N/A \\ 
+    Wall & 0 & 0 & N/A \\
     In-flow (static) & 10 & 5 &
       static pressure, static temperature, velocity/direction (3 components) \\
+    (UDF) & 15 & 5 & UDFs of the above variables (integers in float form) \\
     In-flow (total) & 11 & 5 &
       total pressure, total temperature, velocity/direction (3 components) \\
-    Out-flow & 20 & 1 & static pressure  \\
+    (UDF) & 16 & 5 & UDFs of the above variables (integers in float form) \\
+    Out-flow & 20 & 1 & static pressure \\
+    (UDF) & 25 & 1 & UDF of the above variable (integers in float form) \\
     Far-field & 30 & 5 &
       static pressure, static temperature, velocity (3 components) \\
+    (UDF) & 35 & 5 & UDFs of the above variables (integers in float form) \\
     \hline
   \end{tabular}
   \label{tab:bc}
@@ -227,6 +235,34 @@ heat capacities.
   \end{lstlisting}
   \caption{An example of ``fl'' file.}
   \label{lst:fl}
+\end{figure}
+
+\subsubsection{UDF File (Optional)}
+
+Figure~\ref{lst:udf} shows an example of UDF file.
+The first line of the ``udf'' file is the total number of UDFs.
+Each of the UDFs takes a single line.
+Each of the UDF should be a scalar function of $\{x,y,z,t\}$.
+Details about the supported operators and rules of ODF follows the documentation of open-source
+project libmatheval.
+
+In case that boundary conditions and(/or) initial conditions defined by UDFs are used, the ``udf''
+must be provided.
+The real parameters of boundary condition in ``bc'' file and(/or) the real state variables in ``ic''
+file should be replaced by the integer index of the associated UDF in float form, i.e. ``3.'' can be
+used to associate with the third UDF.
+
+\begin{figure}[h!]
+  \begin{lstlisting}[backgroundcolor=\color{lightgray}]
+    5
+    90000.-x*5000
+    300.
+    118.+x*35.
+    x*4.
+    0.
+  \end{lstlisting}
+  \caption{An example of ``udf'' file.}
+  \label{lst:udf}
 \end{figure}
 
 \subsection{Run FOEuler}

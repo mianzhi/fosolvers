@@ -4,6 +4,7 @@
 module modEuler
   use modPolyFvGrid
   use modCondition
+  use modUDF
   use iso_c_binding
   
   public
@@ -14,12 +15,17 @@ module modEuler
   
   integer,parameter::BC_WALL=0 !< wall boundary
   integer,parameter::BC_IN_STATIC=10 !< inflow boundary with static properties
+  integer,parameter::BC_IN_STATIC_UDF=15 !< inflow boundary with static properties by UDF
   integer,parameter::BC_IN_TOTAL=11 !< inflow boundary with total properties
+  integer,parameter::BC_IN_TOTAL_UDF=16 !< inflow boundary with total properties by UDF
   integer,parameter::BC_OUT=20 !< outflow boundary
+  integer,parameter::BC_OUT_UDF=25 !< outflow boundary by UDF
   integer,parameter::BC_FAR=30 !< far-field boundary
+  integer,parameter::BC_FAR_UDF=35 !< far-field boundary by UDF
   
   type(polyFvGrid)::grid !< computational grid
   type(condTab)::bc !< boundary conditions
+  type(UDFTab)::udf !< UDF
   
   double precision::t !< time
   double precision::tFinal !< final time
@@ -53,7 +59,8 @@ contains
   subroutine init()
     use modFileIO
     integer,parameter::FID=10
-    double precision::p0,T0,u0(DIMS)
+    double precision::p0,T0,u0(DIMS),pE(DIMS),tmpD
+    integer::udfIc,udfBc,iUdf(5)
     
     ! read inputs
     open(FID,file='grid.msh',action='read')
@@ -62,13 +69,35 @@ contains
     close(FID)
     open(FID,file='bc',action='read')
     call readCondTab(FID,bc)
+    if(any(bc%t(:)==BC_IN_STATIC_UDF).or.&
+    &  any(bc%t(:)==BC_IN_TOTAL_UDF).or.&
+    &  any(bc%t(:)==BC_OUT_UDF).or.&
+    &  any(bc%t(:)==BC_FAR_UDF))then
+      udfBc=1
+    else
+      udfBc=0
+    end if
     close(FID)
     open(FID,file='ic',action='read')
-    read(FID,*),p0
-    read(FID,*),T0
-    read(FID,*),u0(1)
-    read(FID,*),u0(2)
-    read(FID,*),u0(3)
+    read(FID,*),udfIC
+    if(udfIc==0)then
+      read(FID,*),p0
+      read(FID,*),T0
+      read(FID,*),u0(1)
+      read(FID,*),u0(2)
+      read(FID,*),u0(3)
+    else
+      read(FID,*),tmpD
+      iUdf(1)=int(tmpD)
+      read(FID,*),tmpD
+      iUdf(2)=int(tmpD)
+      read(FID,*),tmpD
+      iUdf(3)=int(tmpD)
+      read(FID,*),tmpD
+      iUdf(4)=int(tmpD)
+      read(FID,*),tmpD
+      iUdf(5)=int(tmpD)
+    end if
     close(FID)
     open(FID,file='sim',action='read')
     read(FID,*),tFinal
@@ -78,6 +107,11 @@ contains
     read(FID,*),r
     read(FID,*),gamm
     close(FID)
+    if(udfIc/=0.or.udfBc/=0)then
+      open(FID,file='udf',action='read')
+      call readUDFTab(FID,udf)
+      close(FID)
+    end if
     ! work space and initial state
     allocate(rho(grid%nE))
     allocate(rhou(DIMS,grid%nE))
@@ -86,7 +120,15 @@ contains
     allocate(p(grid%nE))
     allocate(temp(grid%nE))
     allocate(c(grid%nE))
-    forall(i=1:grid%nE)
+    do i=1,grid%nE
+      if(udfIc/=0)then
+        pE(:)=grid%p(:,i)
+        p0=udf%eval(iUdf(1),pE,0d0)
+        T0=udf%eval(iUdf(2),pE,0d0)
+        u0(1)=udf%eval(iUdf(3),pE,0d0)
+        u0(2)=udf%eval(iUdf(4),pE,0d0)
+        u0(3)=udf%eval(iUdf(5),pE,0d0)
+      end if
       rho(i)=p0/r/T0
       rhou(:,i)=rho(i)*u0(:)
       rhoE(i)=rho(i)*(1d0/(gamm-1d0)*r*T0+0.5d0*dot_product(u0,u0))
@@ -94,7 +136,7 @@ contains
       p(i)=p0
       temp(i)=T0
       c(i)=sqrt(gamm*r*T0)
-    end forall
+    end do
     t=0d0
     tNext=tInt
     iOut=0
@@ -162,7 +204,7 @@ contains
   subroutine setBC(x)
     double precision,intent(in)::x(*) !< solution vector
     double precision::pGst,TGst,ptGst,TtGst,uGst(DIMS),rhoGst,Mach,&
-    &                 un(DIMS),ut(DIMS),ui(DIMS),charI,charO,a
+    &                 un(DIMS),ut(DIMS),ui(DIMS),charI,charO,a,pP(DIMS)
     
     do i=1,grid%nP
       m=grid%iEP(1,i)
@@ -174,10 +216,19 @@ contains
           rhou(:,n)=x(grid%nC*[1,2,3]+m)&
           &         -2d0*dot_product(x(grid%nC*[1,2,3]+m),grid%normP(:,i))*grid%normP(:,i)
           rhoE(n)=x(4*grid%nC+m)
-        case(BC_IN_STATIC) ! inflow boundary with static properties
-          pGst=bc%p(1,iBC(n))
-          TGst=bc%p(2,iBC(n))
-          uGst(:)=bc%p(3:5,iBC(n))
+        case(BC_IN_STATIC,BC_IN_STATIC_UDF) ! inflow boundary with static properties
+          if(bc%t(iBC(n))==BC_IN_STATIC)then
+            pGst=bc%p(1,iBC(n))
+            TGst=bc%p(2,iBC(n))
+            uGst(:)=bc%p(3:5,iBC(n))
+          else
+            pP(:)=grid%pP(:,i)
+            pGst=udf%eval(int(bc%p(1,iBC(n))),pP,t)
+            TGst=udf%eval(int(bc%p(2,iBC(n))),pP,t)
+            uGst(1)=udf%eval(int(bc%p(3,iBC(n))),pP,t)
+            uGst(2)=udf%eval(int(bc%p(4,iBC(n))),pP,t)
+            uGst(3)=udf%eval(int(bc%p(5,iBC(n))),pP,t)
+          end if
           Mach=norm2(uGst)/sqrt(gamm*r*TGst)
           rhoGst=pGst/r/TGst
           if(Mach<1d0)then
@@ -186,10 +237,19 @@ contains
           rho(n)=rhoGst
           rhou(:,n)=rhoGst*uGst(:)
           rhoE(n)=rhoGst*(1d0/(gamm-1d0)*r*TGst+0.5d0*dot_product(uGst,uGst))
-        case(BC_IN_TOTAL) ! inflow boundary with total properties
-          ptGst=bc%p(1,iBC(n))
-          TtGst=bc%p(2,iBC(n))
-          uGst=bc%p(3:5,iBC(n))
+        case(BC_IN_TOTAL,BC_IN_TOTAL_UDF) ! inflow boundary with total properties
+          if(bc%t(iBC(n))==BC_IN_TOTAL)then
+            ptGst=bc%p(1,iBC(n))
+            TtGst=bc%p(2,iBC(n))
+            uGst=bc%p(3:5,iBC(n))
+          else
+            pP(:)=grid%pP(:,i)
+            ptGst=udf%eval(int(bc%p(1,iBC(n))),pP,t)
+            TtGst=udf%eval(int(bc%p(2,iBC(n))),pP,t)
+            uGst(1)=udf%eval(int(bc%p(3,iBC(n))),pP,t)
+            uGst(2)=udf%eval(int(bc%p(4,iBC(n))),pP,t)
+            uGst(3)=udf%eval(int(bc%p(5,iBC(n))),pP,t)
+          end if
           TGst=TtGst-0.5d0*(gamm-1d0)/gamm/r*dot_product(uGst,uGst)
           Mach=norm2(uGst)/sqrt(gamm*r*TGst)
           pGst=ptGst*(1d0+0.5d0*(gamm-1d0)*Mach**2)**(-gamm/(gamm-1d0))
@@ -204,16 +264,30 @@ contains
           rho(n)=rhoGst
           rhou(:,n)=rhoGst*uGst(:)
           rhoE(n)=rhoGst*(1d0/(gamm-1d0)*r*TGst+0.5d0*dot_product(uGst,uGst))
-        case(BC_OUT) ! outflow boundary
-          pGst=bc%p(1,iBC(n))
+        case(BC_OUT,BC_OUT_UDF) ! outflow boundary
+          if(bc%t(iBC(n))==BC_OUT)then
+            pGst=bc%p(1,iBC(n))
+          else
+            pP(:)=grid%pP(:,i)
+            pGst=udf%eval(int(bc%p(1,iBC(n))),pP,t)
+          end if
           rho(n)=x(m)
           rhou(:,n)=x(grid%nC*[1,2,3]+m)
           rhoE(n)=1d0/(gamm-1d0)*pGst&
           &       +0.5d0*dot_product(x(grid%nC*[1,2,3]+m),x(grid%nC*[1,2,3]+m))/x(m)
-        case(BC_FAR) ! far-field boundary
-          pGst=bc%p(1,iBC(n))
-          TGst=bc%p(2,iBC(n))
-          uGst(:)=bc%p(3:5,iBC(n))
+        case(BC_FAR,BC_FAR_UDF) ! far-field boundary
+          if(bc%t(iBC(n))==BC_FAR)then
+            pGst=bc%p(1,iBC(n))
+            TGst=bc%p(2,iBC(n))
+            uGst(:)=bc%p(3:5,iBC(n))
+          else
+            pP(:)=grid%pP(:,i)
+            pGst=udf%eval(int(bc%p(1,iBC(n))),pP,t)
+            TGst=udf%eval(int(bc%p(2,iBC(n))),pP,t)
+            uGst(1)=udf%eval(int(bc%p(3,iBC(n))),pP,t)
+            uGst(2)=udf%eval(int(bc%p(4,iBC(n))),pP,t)
+            uGst(3)=udf%eval(int(bc%p(5,iBC(n))),pP,t)
+          end if
           charO=dot_product(uGst,grid%normP(:,i))-2d0*sqrt(gamm*r*TGst)/(gamm-1d0)
           ui(:)=x(grid%nC*[1,2,3]+m)/x(m)
           charI=dot_product(ui,grid%normP(:,i))&
