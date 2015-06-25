@@ -357,10 +357,10 @@ program foeuler
   use mpi
   use modEuler
   character(20)::tmpStr
-  integer::ierr,pid
+  integer::ier,pid
   
-  call MPI_init(ierr)
-  call MPI_comm_rank(MPI_comm_world,pid,ierr)
+  call MPI_init(ier)
+  call MPI_comm_rank(MPI_comm_world,pid,ier)
   prec%comm=MPI_comm_world
   prec%sym=0
   prec%par=1
@@ -381,7 +381,7 @@ program foeuler
     call clear()
   else ! MUMPS slaves
     do while(.true.)
-      call MPI_Bcast(k,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+      call MPI_Bcast(k,1,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
       prec%job=k
       call dmumps(prec)
       if(k==-2)then

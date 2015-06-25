@@ -8,6 +8,7 @@ TARGET_LINK_LIBRARIES(foeuler
   fosolvers
   cgns
   ${HDF5_LIBRARIES}
+  blas
   lapack
   ${CVODE_LIBRARIES}
   dmumps

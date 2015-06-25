@@ -28,6 +28,7 @@ The following tools and packages are required to build FOSolverS:
   \item an MPI implementation
   \item CGNS, a CFD general notation system
   \item libhdf5, a hierarchical data format library used by CGNS
+  \item BLAS, a basic linear algebra library
   \item LAPACK, a dense linear algebra package
   \item SUNDIALS-CVODE, a non-linear stiff ODE solver
   \item MUMPS, a parallel LU solver used as GMRES preconditioner
@@ -37,7 +38,7 @@ In a modern GNU/Linux system distribution, say Ubuntu, all the above required to
 be installed with the command:
 \begin{lstlisting}[backgroundcolor=\color{lightgray}]
   # apt-get install cmake gfortran mpi-default-dev mpi-default-bin \
-    libcgns-dev libhdf5-dev liblapack-dev libsundials-serial-dev \
+    libcgns-dev libhdf5-dev libblas-dev liblapack-dev libsundials-serial-dev \
     libmumps-dev libmatheval-dev
 \end{lstlisting}
 Note that the command and the package names may be vary in different GNU/Linux distribution.
@@ -275,5 +276,11 @@ Once all the input files are prepared, the FOEuler solver can be started by:
 \end{lstlisting}
 The execution of the program may take a long time depending on the size and nature of the problem.
 Post-processing files are generated in the same folder as the solver is running.
+
+The FOEuler can also run in MPI mode:
+\begin{lstlisting}[backgroundcolor=\color{lightgray}]
+  $ cd my_case # this folder contains all input files
+  $ mpirun -np 4 foeuler
+\end{lstlisting}
 
 \end{document}

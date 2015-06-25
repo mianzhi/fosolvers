@@ -23,6 +23,7 @@ TARGET_LINK_LIBRARIES(tests
   fosolvers
   cgns
   ${HDF5_LIBRARIES}
+  blas
   lapack
   matheval
 )
