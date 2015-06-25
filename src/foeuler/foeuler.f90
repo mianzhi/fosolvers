@@ -170,6 +170,7 @@ contains
     call fnvinits(1,nEq,ier)
     call fcvmalloc(t,y,2,2,1,RTOL,ATOL,iStat,rStat,iPar,rPar,ier)
     call fcvspgmr(0,1,0,0d0,ier)
+    call fcvspilssetprec(1,ier)
     call fcvsetrin('MAX_STEP',tInt/50d0,ier)
   end subroutine
   
@@ -380,5 +381,53 @@ subroutine fcvfun(time,x,dxdt,iPara,rPara,ier)
     dxdt(3*grid%nC+i)=dRhou(3,i)/grid%v(i)
     dxdt(4*grid%nC+i)=dRhoE(i)/grid%v(i)
   end forall
+  ier=0
+end subroutine
+
+!> setup/factor preconditioning matrix
+subroutine fcvpset(time,x,fx,Jok,Jcur,pGamm,h,iPara,rPara,work1,work2,work3,ier)
+  use modEuler
+  use iso_c_binding
+  double precision::time
+  double precision::x(*)
+  double precision::fx(*)
+  integer::Jok
+  integer::Jcur
+  double precision::pGamm
+  double precision::h
+  integer(C_LONG)::iPara(*)
+  double precision::rPara(*)
+  double precision::work1(*)
+  double precision::work2(*)
+  double precision::work3(*)
+  integer::ier
+  
+  if(Jok==1)then
+    Jcur=0
+  else
+    ! TODO
+    Jcur=1
+  end if
+  ier=0
+end subroutine
+
+!> solve the preconditioning problem
+subroutine fcvpsol(time,x,fx,res,z,pGamm,delta,lr,iPara,rPara,work,ier)
+  use modEuler
+  use iso_c_binding
+  double precision::time
+  double precision::x(*)
+  double precision::fx(*)
+  double precision::res(*)
+  double precision::z(*)
+  double precision::pGamm
+  double precision::delta
+  integer::lr
+  integer(C_LONG)::iPara(*)
+  double precision::rPara(*)
+  double precision::work(*)
+  integer::ier
+  
+  z(1:grid%nC)=res(1:grid%nC)
   ier=0
 end subroutine
