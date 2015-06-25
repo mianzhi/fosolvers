@@ -30,6 +30,7 @@ The following tools and packages are required to build FOSolverS:
   \item libhdf5, a hierarchical data format library used by CGNS
   \item LAPACK, a dense linear algebra package
   \item SUNDIALS-CVODE, a non-linear stiff ODE solver
+  \item MUMPS, a parallel LU solver used as GMRES preconditioner
   \item libmatheval, a math expression evaluator for UDF
 \end{itemize}
 In a modern GNU/Linux system distribution, say Ubuntu, all the above required tools and packages can
@@ -37,7 +38,7 @@ be installed with the command:
 \begin{lstlisting}[backgroundcolor=\color{lightgray}]
   # apt-get install cmake gfortran mpi-default-dev mpi-default-bin \
     libcgns-dev libhdf5-dev liblapack-dev libsundials-serial-dev \
-    libmatheval-dev
+    libmumps-dev libmatheval-dev
 \end{lstlisting}
 Note that the command and the package names may be vary in different GNU/Linux distribution.
 If any package is not included the repository of the GNU/Linux distribution on which FOEuler is

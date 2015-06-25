@@ -6,6 +6,7 @@ module modEuler
   use modCondition
   use modUDF
   use iso_c_binding
+  include 'dmumps_struc.h'
   
   public
   
@@ -45,6 +46,7 @@ module modEuler
   double precision,allocatable::temp(:) !< temperature
   double precision,allocatable::c(:) !< speed of sound
   
+  type(dmumps_struc)::prec !< preconditioner
   double precision,allocatable::y(:) !< solution vector
   double precision,allocatable::dRho(:) !< time derivative of density
   double precision,allocatable::dRhou(:,:) !< time derivative of momentum
@@ -57,6 +59,7 @@ contains
   
   !> initialize the simulation
   subroutine init()
+    use mpi
     use modFileIO
     integer,parameter::FID=10
     double precision::p0,T0,u0(DIMS),pE(DIMS),tmpD
@@ -172,14 +175,25 @@ contains
     call fcvspgmr(0,1,0,0d0,ier)
     call fcvspilssetprec(1,ier)
     call fcvsetrin('MAX_STEP',tInt/50d0,ier)
+    ! initialize preconditioning solver
+    prec%job=-1
+    call MPI_Bcast(prec%job,1,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+    call dmumps(prec)
+    prec%icntl(3)=0
+    ! TODO
   end subroutine
   
   !> clear the simulation environment
   subroutine clear()
+    use mpi
+    
     deallocate(iBC,rho,rhou,rhoE,u,p,temp,c)
     deallocate(y,dRho,dRhou,dRhoE)
     call grid%clear()
     call bc%clear()
+    prec%job=-2
+    call MPI_Bcast(prec%job,1,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+    call dmumps(prec)
   end subroutine
   
   !> synchronize the state with the solution vector
@@ -340,23 +354,42 @@ end module
 
 !> Euler solver
 program foeuler
+  use mpi
   use modEuler
   character(20)::tmpStr
+  integer::ierr,pid
   
-  call init()
-  write(tmpStr,*),iOut
-  call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
-  do while(t<tFinal)
-    call fcvode(tFinal,t,y,2,ier)
-    if(t>=tNext)then
-      iOut=iOut+1
-      write(tmpStr,*),iOut
-      call syncState(y)
-      call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
-      tNext=tNext+tInt
-    end if
-  end do
-  call clear()
+  call MPI_init(ierr)
+  call MPI_comm_rank(MPI_comm_world,pid,ierr)
+  prec%comm=MPI_comm_world
+  prec%sym=0
+  prec%par=1
+  if(pid==0)then ! master process
+    call init()
+    write(tmpStr,*),iOut
+    call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
+    do while(t<tFinal)
+      call fcvode(tFinal,t,y,2,ier)
+      if(t>=tNext)then
+        iOut=iOut+1
+        write(tmpStr,*),iOut
+        call syncState(y)
+        call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
+        tNext=tNext+tInt
+      end if
+    end do
+    call clear()
+  else ! MUMPS slaves
+    do while(.true.)
+      call MPI_Bcast(k,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+      prec%job=k
+      call dmumps(prec)
+      if(k==-2)then
+        exit
+      end if
+    end do
+  end if
+  call MPI_finalize(ierr)
 end program
 
 !> the ODE to be advanced

@@ -10,6 +10,8 @@ TARGET_LINK_LIBRARIES(foeuler
   ${HDF5_LIBRARIES}
   lapack
   ${CVODE_LIBRARIES}
+  dmumps
+  mumps_common
   matheval
 )
 
