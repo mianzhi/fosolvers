@@ -6,7 +6,7 @@ module modEuler
   use modCondition
   use modUDF
   use iso_c_binding
-  include 'dmumps_struc.h'
+  include 'smumps_struc.h'
   
   public
   
@@ -45,8 +45,9 @@ module modEuler
   double precision,allocatable::p(:) !< pressure
   double precision,allocatable::temp(:) !< temperature
   double precision,allocatable::c(:) !< speed of sound
+  double precision,allocatable::Jac(:,:,:) !< Jacobian matrix
   
-  type(dmumps_struc)::prec !< preconditioner
+  type(smumps_struc)::prec !< preconditioner
   double precision,allocatable::y(:) !< solution vector
   double precision,allocatable::dRho(:) !< time derivative of density
   double precision,allocatable::dRhou(:,:) !< time derivative of momentum
@@ -172,15 +173,38 @@ contains
     end forall
     call fnvinits(1,nEq,ier)
     call fcvmalloc(t,y,2,2,1,RTOL,ATOL,iStat,rStat,iPar,rPar,ier)
-    call fcvspgmr(0,1,0,0d0,ier)
+    call fcvspgmr(1,1,0,0d0,ier)
     call fcvspilssetprec(1,ier)
     call fcvsetrin('MAX_STEP',tInt/50d0,ier)
     ! initialize preconditioning solver
     prec%job=-1
     call MPI_Bcast(prec%job,1,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
-    call dmumps(prec)
-    prec%icntl(3)=0
-    ! TODO
+    call smumps(prec)
+    !prec%icntl(3)=0
+    ! preconditioning matrix pattern
+    prec%icntl(5)=1
+    prec%n=grid%nC*5
+    prec%nelt=grid%nP
+    allocate(prec%rhs(grid%nC*5))
+    allocate(prec%eltptr(prec%nelt+1))
+    forall(i=1:grid%nP)
+      prec%eltptr(i+1)=merge(10,5,grid%iEP(2,i)<=grid%nC)
+    end forall
+    allocate(prec%a_elt(dot_product(prec%eltptr(2:grid%nP+1),prec%eltptr(2:grid%nP+1))))
+    prec%eltptr(1)=1
+    do i=1,grid%nP
+      prec%eltptr(i+1)=prec%eltptr(i)+prec%eltptr(i+1)
+    end do
+    allocate(prec%eltvar(prec%eltptr(grid%nP+1)-1))
+    do i=1,grid%nP
+      prec%eltvar(prec%eltptr(i):prec%eltptr(i)+4)=grid%iEP(1,i)+[0,1,2,3,4]*grid%nC
+      if(grid%iEP(2,i)<=grid%nC)then
+        prec%eltvar(prec%eltptr(i)+5:prec%eltptr(i+1)-1)=grid%iEP(2,i)+[0,1,2,3,4]*grid%nC
+      end if
+    end do
+    prec%job=1
+    call MPI_Bcast(prec%job,1,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+    call smumps(prec)
   end subroutine
   
   !> clear the simulation environment
@@ -188,12 +212,16 @@ contains
     use mpi
     
     deallocate(iBC,rho,rhou,rhoE,u,p,temp,c)
-    deallocate(y,dRho,dRhou,dRhoE)
+    deallocate(y,dRho,dRhou,dRhoE,Jac)
     call grid%clear()
     call bc%clear()
+    deallocate(prec%eltptr)
+    deallocate(prec%eltvar)
+    deallocate(prec%a_elt)
+    deallocate(prec%rhs)
     prec%job=-2
     call MPI_Bcast(prec%job,1,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
-    call dmumps(prec)
+    call smumps(prec)
   end subroutine
   
   !> synchronize the state with the solution vector
@@ -383,7 +411,7 @@ program foeuler
     do while(.true.)
       call MPI_Bcast(k,1,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
       prec%job=k
-      call dmumps(prec)
+      call smumps(prec)
       if(k==-2)then
         exit
       end if
@@ -404,6 +432,7 @@ subroutine fcvfun(time,x,dxdt,iPara,rPara,ier)
   double precision::rPara(*)
   integer::ier
   
+  write(*,*),'a0'
   call setBC(x)
   call syncState(x)
   call findAdv(grid,rho,rhou,rhoE,p,dRho,dRhou,dRhoE)
@@ -415,11 +444,14 @@ subroutine fcvfun(time,x,dxdt,iPara,rPara,ier)
     dxdt(4*grid%nC+i)=dRhoE(i)/grid%v(i)
   end forall
   ier=0
+  write(*,*),'a1'
 end subroutine
 
 !> setup/factor preconditioning matrix
 subroutine fcvpset(time,x,fx,Jok,Jcur,pGamm,h,iPara,rPara,work1,work2,work3,ier)
+  use mpi
   use modEuler
+  use modAdvection
   use iso_c_binding
   double precision::time
   double precision::x(*)
@@ -435,17 +467,35 @@ subroutine fcvpset(time,x,fx,Jok,Jcur,pGamm,h,iPara,rPara,work1,work2,work3,ier)
   double precision::work3(*)
   integer::ier
   
+  write(*,*),'b0'
   if(Jok==1)then
     Jcur=0
   else
-    ! TODO
+    call setBC(x)
+    call syncState(x)
+    call findAdvJac(grid,rho,rhou,rhoE,p,Jac)
+    l=1
+    do i=1,grid%nP
+      n=prec%eltptr(i+1)-prec%eltptr(i)
+      Jac(1:n,1:n,i)=-pGamm*Jac(1:n,1:n,i)
+      forall(j=1:n)
+        Jac(j,j,i)=Jac(j,j,i)+1d0 ! FIXME wrong diagonal
+      end forall
+      prec%a_elt(l:l+n**2-1)=real(reshape(Jac(1:n,1:n,i),[1]),4)
+      l=l+n**2
+    end do
+    prec%job=2
+    call MPI_Bcast(prec%job,1,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+    call smumps(prec)
     Jcur=1
   end if
   ier=0
+  write(*,*),'b1'
 end subroutine
 
 !> solve the preconditioning problem
 subroutine fcvpsol(time,x,fx,res,z,pGamm,delta,lr,iPara,rPara,work,ier)
+  use mpi
   use modEuler
   use iso_c_binding
   double precision::time
@@ -461,6 +511,12 @@ subroutine fcvpsol(time,x,fx,res,z,pGamm,delta,lr,iPara,rPara,work,ier)
   double precision::work(*)
   integer::ier
   
-  z(1:grid%nC)=res(1:grid%nC)
+  write(*,*),'c0'
+  prec%rhs(1:grid%nC*5)=real(res(1:grid%nC*5),4)
+  prec%job=3
+  call MPI_Bcast(prec%job,1,MPI_INTEGER,0,MPI_COMM_WORLD,ier)
+  call smumps(prec)
+  z(1:grid%nC*5)=dble(prec%rhs(1:grid%nC*5))
   ier=0
+  write(*,*),'c1'
 end subroutine
