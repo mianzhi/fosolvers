@@ -233,23 +233,28 @@ contains
   end subroutine
   
   !> find advection Jacobian of Euler system on polyFvGrid
-  subroutine findAdvJacPolyEuler(grid,rho,rhou,rhoE,p,Jac)
+  subroutine findAdvJacPolyEuler(grid,rho,rhou,rhoE,p,JacP,JacC)
     use modPolyFvGrid
     class(polyFvGrid),intent(inout)::grid !< the grid
     double precision,intent(in)::rho(:) !< cell-averaged rho
     double precision,intent(in)::rhou(:,:) !< cell-averaged rhou
     double precision,intent(in)::rhoE(:) !< cell-averaged rhoE
     double precision,intent(in)::p(:) !< cell-averaged pressure
-    double precision,allocatable,intent(inout)::Jac(:,:,:) !< Jacobian for each pair
+    double precision,allocatable,intent(inout)::JacP(:,:,:) !< Jacobian for each pair
+    double precision,allocatable,intent(inout)::JacC(:,:,:) !< Jacobian for each cell
     double precision,allocatable,save::u(:,:),H(:),c(:)
     double precision::uAvg(DIMS),HAvg,cAvg
     double precision,parameter::GAMM=1.4d0 ! TODO other gamma and real gas
     
     call grid%up()
-    if(.not.(allocated(Jac)))then
-      allocate(Jac(10,10,grid%nP))
+    if(.not.(allocated(JacP)))then
+      allocate(JacP(10,10,grid%nP))
     end if
-    Jac(:,:,:)=0d0
+    if(.not.(allocated(JacC)))then
+      allocate(JacC(5,size(grid%neib,1)*5,grid%nC))
+    end if
+    JacP(:,:,:)=0d0
+    JacC(:,:,:)=0d0
     ! find auxiliary state
     k=minval([size(rho),size(rhou,2),size(rhoE),size(p)])
     if(.not.allocated(u))then
@@ -280,18 +285,43 @@ contains
         HAvg=(sqrt(rho(m))*H(m)+sqrt(rho(n))*H(n))/(sqrt(rho(m))+sqrt(rho(n)))
         cAvg=sqrt((GAMM-1d0)*(HAvg-0.5d0*(dot_product(uAvg,uAvg)))) ! TODO arbitrary gamma; real gas
         if(n<=grid%nC)then
-          Jac(1:5,1:5,i)=-0.5d0*grid%aP(i)*(eulerNFJ(grid%normP(:,i),u(:,m),H(m),GAMM)&
-          &                                 +eulerANFJ(grid%normP(:,i),uAvg(:),HAvg,cAvg,GAMM))
-          Jac(1:5,6:10,i)=-0.5d0*grid%aP(i)*(eulerNFJ(grid%normP(:,i),u(:,n),H(n),GAMM)&
-          &                                  -eulerANFJ(grid%normP(:,i),uAvg(:),HAvg,cAvg,GAMM))
-          Jac(6:10,1:10,i)=-Jac(1:5,1:10,i)
+          JacP(1:5,1:5,i)=-0.5d0*grid%aP(i)*(eulerNFJ(grid%normP(:,i),u(:,m),H(m),GAMM)&
+          &                                  +eulerANFJ(grid%normP(:,i),uAvg(:),HAvg,cAvg,GAMM))
+          JacP(1:5,6:10,i)=-0.5d0*grid%aP(i)*(eulerNFJ(grid%normP(:,i),u(:,n),H(n),GAMM)&
+          &                                   -eulerANFJ(grid%normP(:,i),uAvg(:),HAvg,cAvg,GAMM))
+          JacP(6:10,1:10,i)=-JacP(1:5,1:10,i)
         else
-          Jac(1:5,1:5,i)=-0.5d0*grid%aP(i)*(eulerNFJ(grid%normP(:,i),u(:,m),H(m),GAMM)&
+          JacP(1:5,1:5,i)=-0.5d0*grid%aP(i)*(eulerNFJ(grid%normP(:,i),u(:,m),H(m),GAMM)&
           &                                 +eulerANFJ(grid%normP(:,i),uAvg(:),HAvg,cAvg,GAMM))
         end if
       end if
     end do
     !$end omp parallel do
+    ! copy Jacobian to cell
+    do i=1,grid%nP
+      m=grid%iEP(1,i)
+      n=grid%iEP(2,i)
+      if(m<=k)then
+        JacC(:,1:5,m)=JacC(:,1:5,m)+JacP(1:5,1:5,i)
+      end if
+      if(n<=k)then
+        JacC(:,1:5,n)=JacC(:,1:5,n)+JacP(6:10,6:10,i)
+      end if
+      if(m<=k.and.n<=k)then
+        do j=1,size(grid%neib,1)
+          if(grid%neib(j,m)==n)then
+            JacC(:,j*5+1:j*5+5,m)=JacC(:,j*5+1:j*5+5,m)+JacP(1:5,6:10,i)
+            exit
+          end if
+        end do
+        do j=1,size(grid%neib,1)
+          if(grid%neib(j,n)==m)then
+            JacC(:,j*5+1:j*5+5,n)=JacC(:,j*5+1:j*5+5,n)+JacP(6:10,1:5,i)
+            exit
+          end if
+        end do
+      end if
+    end do
   end subroutine
   
   !> find advection due to flux f depending on vector s on otGrid
