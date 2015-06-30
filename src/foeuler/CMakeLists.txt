@@ -11,8 +11,6 @@ TARGET_LINK_LIBRARIES(foeuler
   blas
   lapack
   ${CVODE_LIBRARIES}
-  smumps
-  mumps_common
   matheval
 )
 
