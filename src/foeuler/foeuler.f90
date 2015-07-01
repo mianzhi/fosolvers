@@ -184,7 +184,8 @@ contains
   !> clear the simulation environment
   subroutine clear()
     deallocate(iBC,rho,rhou,rhoE,u,p,temp,c)
-    deallocate(y,dRho,dRhou,dRhoE,JacP)
+    deallocate(y,dRho,dRhou,dRhoE)
+    deallocate(JacP,JacC)
     deallocate(precPiv,precRhs)
     call grid%clear()
     call bc%clear()
@@ -219,111 +220,118 @@ contains
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
       if(n>grid%nC)then
-        select case(bc%t(iBC(n)))
-        case(BC_WALL) ! wall boundary
+        if(iBC(n)==0)then ! default wall boundary
           rho(n)=x(m)
           rhou(:,n)=x(grid%nC*[1,2,3]+m)&
           &         -2d0*dot_product(x(grid%nC*[1,2,3]+m),grid%normP(:,i))*grid%normP(:,i)
           rhoE(n)=x(4*grid%nC+m)
-        case(BC_IN_STATIC,BC_IN_STATIC_UDF) ! inflow boundary with static properties
-          if(bc%t(iBC(n))==BC_IN_STATIC)then
-            pGst=bc%p(1,iBC(n))
-            TGst=bc%p(2,iBC(n))
-            uGst(:)=bc%p(3:5,iBC(n))
-          else
-            pP(:)=grid%pP(:,i)
-            pGst=udf%eval(int(bc%p(1,iBC(n))),pP,t)
-            TGst=udf%eval(int(bc%p(2,iBC(n))),pP,t)
-            uGst(1)=udf%eval(int(bc%p(3,iBC(n))),pP,t)
-            uGst(2)=udf%eval(int(bc%p(4,iBC(n))),pP,t)
-            uGst(3)=udf%eval(int(bc%p(5,iBC(n))),pP,t)
-          end if
-          Mach=norm2(uGst)/sqrt(gamm*r*TGst)
-          rhoGst=pGst/r/TGst
-          if(Mach<1d0)then
-            uGst(:)=x(grid%nC*[1,2,3]+m)/rhoGst
-          end if
-          rho(n)=rhoGst
-          rhou(:,n)=rhoGst*uGst(:)
-          rhoE(n)=rhoGst*(1d0/(gamm-1d0)*r*TGst+0.5d0*dot_product(uGst,uGst))
-        case(BC_IN_TOTAL,BC_IN_TOTAL_UDF) ! inflow boundary with total properties
-          if(bc%t(iBC(n))==BC_IN_TOTAL)then
-            ptGst=bc%p(1,iBC(n))
-            TtGst=bc%p(2,iBC(n))
-            uGst=bc%p(3:5,iBC(n))
-          else
-            pP(:)=grid%pP(:,i)
-            ptGst=udf%eval(int(bc%p(1,iBC(n))),pP,t)
-            TtGst=udf%eval(int(bc%p(2,iBC(n))),pP,t)
-            uGst(1)=udf%eval(int(bc%p(3,iBC(n))),pP,t)
-            uGst(2)=udf%eval(int(bc%p(4,iBC(n))),pP,t)
-            uGst(3)=udf%eval(int(bc%p(5,iBC(n))),pP,t)
-          end if
-          TGst=TtGst-0.5d0*(gamm-1d0)/gamm/r*dot_product(uGst,uGst)
-          Mach=norm2(uGst)/sqrt(gamm*r*TGst)
-          pGst=ptGst*(1d0+0.5d0*(gamm-1d0)*Mach**2)**(-gamm/(gamm-1d0))
-          rhoGst=pGst/r/TGst
-          if(Mach<1d0)then
-            uGst(:)=dot_product(x(grid%nC*[1,2,3]+m)/x(m),uGst(:))*uGst/dot_product(uGst,uGst)
+        else
+          select case(bc%t(iBC(n)))
+          case(BC_WALL) ! wall boundary
+            rho(n)=x(m)
+            rhou(:,n)=x(grid%nC*[1,2,3]+m)&
+            &         -2d0*dot_product(x(grid%nC*[1,2,3]+m),grid%normP(:,i))*grid%normP(:,i)
+            rhoE(n)=x(4*grid%nC+m)
+          case(BC_IN_STATIC,BC_IN_STATIC_UDF) ! inflow boundary with static properties
+            if(bc%t(iBC(n))==BC_IN_STATIC)then
+              pGst=bc%p(1,iBC(n))
+              TGst=bc%p(2,iBC(n))
+              uGst(:)=bc%p(3:5,iBC(n))
+            else
+              pP(:)=grid%pP(:,i)
+              pGst=udf%eval(int(bc%p(1,iBC(n))),pP,t)
+              TGst=udf%eval(int(bc%p(2,iBC(n))),pP,t)
+              uGst(1)=udf%eval(int(bc%p(3,iBC(n))),pP,t)
+              uGst(2)=udf%eval(int(bc%p(4,iBC(n))),pP,t)
+              uGst(3)=udf%eval(int(bc%p(5,iBC(n))),pP,t)
+            end if
+            Mach=norm2(uGst)/sqrt(gamm*r*TGst)
+            rhoGst=pGst/r/TGst
+            if(Mach<1d0)then
+              uGst(:)=x(grid%nC*[1,2,3]+m)/rhoGst
+            end if
+            rho(n)=rhoGst
+            rhou(:,n)=rhoGst*uGst(:)
+            rhoE(n)=rhoGst*(1d0/(gamm-1d0)*r*TGst+0.5d0*dot_product(uGst,uGst))
+          case(BC_IN_TOTAL,BC_IN_TOTAL_UDF) ! inflow boundary with total properties
+            if(bc%t(iBC(n))==BC_IN_TOTAL)then
+              ptGst=bc%p(1,iBC(n))
+              TtGst=bc%p(2,iBC(n))
+              uGst=bc%p(3:5,iBC(n))
+            else
+              pP(:)=grid%pP(:,i)
+              ptGst=udf%eval(int(bc%p(1,iBC(n))),pP,t)
+              TtGst=udf%eval(int(bc%p(2,iBC(n))),pP,t)
+              uGst(1)=udf%eval(int(bc%p(3,iBC(n))),pP,t)
+              uGst(2)=udf%eval(int(bc%p(4,iBC(n))),pP,t)
+              uGst(3)=udf%eval(int(bc%p(5,iBC(n))),pP,t)
+            end if
             TGst=TtGst-0.5d0*(gamm-1d0)/gamm/r*dot_product(uGst,uGst)
             Mach=norm2(uGst)/sqrt(gamm*r*TGst)
             pGst=ptGst*(1d0+0.5d0*(gamm-1d0)*Mach**2)**(-gamm/(gamm-1d0))
             rhoGst=pGst/r/TGst
-          end if
-          rho(n)=rhoGst
-          rhou(:,n)=rhoGst*uGst(:)
-          rhoE(n)=rhoGst*(1d0/(gamm-1d0)*r*TGst+0.5d0*dot_product(uGst,uGst))
-        case(BC_OUT,BC_OUT_UDF) ! outflow boundary
-          if(bc%t(iBC(n))==BC_OUT)then
-            pGst=bc%p(1,iBC(n))
-          else
-            pP(:)=grid%pP(:,i)
-            pGst=udf%eval(int(bc%p(1,iBC(n))),pP,t)
-          end if
-          rho(n)=x(m)
-          rhou(:,n)=x(grid%nC*[1,2,3]+m)
-          rhoE(n)=1d0/(gamm-1d0)*pGst&
-          &       +0.5d0*dot_product(x(grid%nC*[1,2,3]+m),x(grid%nC*[1,2,3]+m))/x(m)
-        case(BC_FAR,BC_FAR_UDF) ! far-field boundary
-          if(bc%t(iBC(n))==BC_FAR)then
-            pGst=bc%p(1,iBC(n))
-            TGst=bc%p(2,iBC(n))
-            uGst(:)=bc%p(3:5,iBC(n))
-          else
-            pP(:)=grid%pP(:,i)
-            pGst=udf%eval(int(bc%p(1,iBC(n))),pP,t)
-            TGst=udf%eval(int(bc%p(2,iBC(n))),pP,t)
-            uGst(1)=udf%eval(int(bc%p(3,iBC(n))),pP,t)
-            uGst(2)=udf%eval(int(bc%p(4,iBC(n))),pP,t)
-            uGst(3)=udf%eval(int(bc%p(5,iBC(n))),pP,t)
-          end if
-          charO=dot_product(uGst,grid%normP(:,i))-2d0*sqrt(gamm*r*TGst)/(gamm-1d0)
-          ui(:)=x(grid%nC*[1,2,3]+m)/x(m)
-          charI=dot_product(ui,grid%normP(:,i))&
-          &     +2d0*sqrt(gamm/x(m)/(gamm-1d0)*(x(4*grid%nC+m)-0.5d0*dot_product(ui,ui)*x(m)))
-          un(:)=0.5d0*grid%normP(:,i)*(charI+charO)
-          a=0.25d0*(gamm-1d0)*(charI-charO)
-          if(dot_product(un(:),grid%normP(:,i))>0d0)then
-            ut(:)=ui(:)-grid%normP(:,i)*dot_product(grid%normP(:,i),ui(:))
-            Mach=norm2(ui)/&
-            &    sqrt(gamm/x(m)*(gamm-1d0)*(x(4*grid%nC+m)-0.5d0*dot_product(ui,ui)*x(m)))
-            ptGst=(gamm-1d0)*(x(4*grid%nC+m)-0.5d0*dot_product(ui,ui)*x(m))*&
-            &     (1d0+0.5d0*(gamm-1d0)*Mach**2)**(gamm/(gamm-1d0))
-          else
-            ut(:)=uGst(:)-un
-            Mach=norm2(uGst)/sqrt(gamm*r*TGst)
-            ptGst=pGst*(1d0+0.5d0*(gamm-1d0)*Mach**2)**(gamm/(gamm-1d0))
-          end if
-          uGst(:)=un(:)+ut(:)
-          TGst=a**2/gamm/r
-          Mach=norm2(uGst)/a
-          pGst=ptGst*(1d0+0.5d0*(gamm-1d0)*Mach**2)**(-gamm/(gamm-1d0))
-          rhoGst=pGst/r/TGst
-          rho(n)=rhoGst
-          rhou(:,n)=rhoGst*uGst(:)
-          rhoE(n)=rhoGst*(1d0/(gamm-1d0)*r*TGst+0.5d0*dot_product(uGst,uGst))
-        case default
-        end select
+            if(Mach<1d0)then
+              uGst(:)=dot_product(x(grid%nC*[1,2,3]+m)/x(m),uGst(:))*uGst/dot_product(uGst,uGst)
+              TGst=TtGst-0.5d0*(gamm-1d0)/gamm/r*dot_product(uGst,uGst)
+              Mach=norm2(uGst)/sqrt(gamm*r*TGst)
+              pGst=ptGst*(1d0+0.5d0*(gamm-1d0)*Mach**2)**(-gamm/(gamm-1d0))
+              rhoGst=pGst/r/TGst
+            end if
+            rho(n)=rhoGst
+            rhou(:,n)=rhoGst*uGst(:)
+            rhoE(n)=rhoGst*(1d0/(gamm-1d0)*r*TGst+0.5d0*dot_product(uGst,uGst))
+          case(BC_OUT,BC_OUT_UDF) ! outflow boundary
+            if(bc%t(iBC(n))==BC_OUT)then
+              pGst=bc%p(1,iBC(n))
+            else
+              pP(:)=grid%pP(:,i)
+              pGst=udf%eval(int(bc%p(1,iBC(n))),pP,t)
+            end if
+            rho(n)=x(m)
+            rhou(:,n)=x(grid%nC*[1,2,3]+m)
+            rhoE(n)=1d0/(gamm-1d0)*pGst&
+            &       +0.5d0*dot_product(x(grid%nC*[1,2,3]+m),x(grid%nC*[1,2,3]+m))/x(m)
+          case(BC_FAR,BC_FAR_UDF) ! far-field boundary
+            if(bc%t(iBC(n))==BC_FAR)then
+              pGst=bc%p(1,iBC(n))
+              TGst=bc%p(2,iBC(n))
+              uGst(:)=bc%p(3:5,iBC(n))
+            else
+              pP(:)=grid%pP(:,i)
+              pGst=udf%eval(int(bc%p(1,iBC(n))),pP,t)
+              TGst=udf%eval(int(bc%p(2,iBC(n))),pP,t)
+              uGst(1)=udf%eval(int(bc%p(3,iBC(n))),pP,t)
+              uGst(2)=udf%eval(int(bc%p(4,iBC(n))),pP,t)
+              uGst(3)=udf%eval(int(bc%p(5,iBC(n))),pP,t)
+            end if
+            charO=dot_product(uGst,grid%normP(:,i))-2d0*sqrt(gamm*r*TGst)/(gamm-1d0)
+            ui(:)=x(grid%nC*[1,2,3]+m)/x(m)
+            charI=dot_product(ui,grid%normP(:,i))&
+            &     +2d0*sqrt(gamm/x(m)/(gamm-1d0)*(x(4*grid%nC+m)-0.5d0*dot_product(ui,ui)*x(m)))
+            un(:)=0.5d0*grid%normP(:,i)*(charI+charO)
+            a=0.25d0*(gamm-1d0)*(charI-charO)
+            if(dot_product(un(:),grid%normP(:,i))>0d0)then
+              ut(:)=ui(:)-grid%normP(:,i)*dot_product(grid%normP(:,i),ui(:))
+              Mach=norm2(ui)/&
+              &    sqrt(gamm/x(m)*(gamm-1d0)*(x(4*grid%nC+m)-0.5d0*dot_product(ui,ui)*x(m)))
+              ptGst=(gamm-1d0)*(x(4*grid%nC+m)-0.5d0*dot_product(ui,ui)*x(m))*&
+              &     (1d0+0.5d0*(gamm-1d0)*Mach**2)**(gamm/(gamm-1d0))
+            else
+              ut(:)=uGst(:)-un
+              Mach=norm2(uGst)/sqrt(gamm*r*TGst)
+              ptGst=pGst*(1d0+0.5d0*(gamm-1d0)*Mach**2)**(gamm/(gamm-1d0))
+            end if
+            uGst(:)=un(:)+ut(:)
+            TGst=a**2/gamm/r
+            Mach=norm2(uGst)/a
+            pGst=ptGst*(1d0+0.5d0*(gamm-1d0)*Mach**2)**(-gamm/(gamm-1d0))
+            rhoGst=pGst/r/TGst
+            rho(n)=rhoGst
+            rhou(:,n)=rhoGst*uGst(:)
+            rhoE(n)=rhoGst*(1d0/(gamm-1d0)*r*TGst+0.5d0*dot_product(uGst,uGst))
+          case default
+          end select
+        end if
       end if
     end do
   end subroutine
@@ -350,7 +358,7 @@ end module
 program foeuler
   use modEuler
   character(20)::tmpStr
-  integer::ier,pid
+  integer::ier
   
   call init()
   write(tmpStr,*),iOut
@@ -451,7 +459,6 @@ subroutine fcvpsol(time,x,fx,res,z,pGamm,delta,lr,iPara,rPara,work,ier)
   double precision::rPara(*)
   double precision::work(*)
   integer::ier
-  double precision::rhs(5)
   
   n=max(floor(-log10(pGamm)),0)
   ! adaptive number of Jacobi iteration

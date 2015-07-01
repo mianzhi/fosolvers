@@ -301,13 +301,13 @@ contains
     do i=1,grid%nP
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
-      if(m<=k)then
+      if(m<=grid%nC)then
         JacC(:,1:5,m)=JacC(:,1:5,m)+JacP(1:5,1:5,i)
       end if
-      if(n<=k)then
+      if(n<=grid%nC)then
         JacC(:,1:5,n)=JacC(:,1:5,n)+JacP(6:10,6:10,i)
       end if
-      if(m<=k.and.n<=k)then
+      if(m<=grid%nC.and.n<=grid%nC)then
         do j=1,size(grid%neib,1)
           if(grid%neib(j,m)==n)then
             JacC(:,j*5+1:j*5+5,m)=JacC(:,j*5+1:j*5+5,m)+JacP(1:5,6:10,i)
