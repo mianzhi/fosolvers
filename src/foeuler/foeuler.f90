@@ -364,7 +364,6 @@ program foeuler
       call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
       tNext=tNext+tInt
     end if
-    write(*,*),t
   end do
   call clear()
 end program
@@ -416,7 +415,6 @@ subroutine fcvpset(time,x,fx,Jok,Jcur,pGamm,h,iPara,rPara,work1,work2,work3,ier)
   if(Jok==1)then
     Jcur=0
   else
-    write(*,*),'set'
     call setBC(x)
     call syncState(x)
     call findAdvJac(grid,rho,rhou,rhoE,p,JacP,JacC)
@@ -456,17 +454,16 @@ subroutine fcvpsol(time,x,fx,res,z,pGamm,delta,lr,iPara,rPara,work,ier)
   double precision::rhs(5)
   
   n=max(floor(-log10(pGamm)),0)
-  write(*,*),'sol',n
   ! adaptive number of Jacobi iteration
-  if(n>=6)then
+  if(n>=7)then
     z(1:5*grid%nC)=res(1:5*grid%nC)
     ier=0
     return
-  else if(n>=5)then
+  else if(n>=6)then
     n=0
-  else if(n>=4)then
+  else if(n>=5)then
     n=1
-  else if(n>=3)then
+  else if(n>=4)then
     n=2
   else
     n=3
