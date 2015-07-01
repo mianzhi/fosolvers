@@ -251,7 +251,7 @@ contains
       allocate(JacP(10,10,grid%nP))
     end if
     if(.not.(allocated(JacC)))then
-      allocate(JacC(5,size(grid%neib,1)*5,grid%nC))
+      allocate(JacC(5,size(grid%neib,1)*5+5,grid%nC))
     end if
     JacP(:,:,:)=0d0
     JacC(:,:,:)=0d0
@@ -391,7 +391,7 @@ contains
     vn=dot_product(u,norm)
     tmp(:,:)=0d0
     call dger(DIMS,DIMS,1d0,u,1,norm,1,tmp,DIMS)
-    call dger(DIMS,DIMS,gamm-1d0,norm,1,u,1,tmp,DIMS)
+    call dger(DIMS,DIMS,1d0-gamm,norm,1,u,1,tmp,DIMS)
     forall(i=1:DIMS)
       tmp(i,i)=tmp(i,i)+vn
     end forall
@@ -428,7 +428,7 @@ contains
     end forall
     tmp2(1,1)=1d0-0.5d0*(gamm-1d0)*M**2
     tmp2(2:4,1)=-(1d0+0.5d0*(gamm-1d0)*M**2)*u(:)+vn*norm(:)
-    tmp2(5,1)=vn**2-0.5d0*vn**2*(1d0+0.5d0*(gamm-1d0)*M**2)
+    tmp2(5,1)=vn**2-0.5d0*v**2*(1d0+0.5d0*(gamm-1d0)*M**2)
     tmp2(1,2:4)=(gamm-1d0)/c**2*u(:)
     tmp2(2:4,2:4)=tmp1(:,:)
     tmp2(5,2:4)=(1d0+0.5d0*(gamm-1d0)*M**2)*u(:)-vn*norm(:)
