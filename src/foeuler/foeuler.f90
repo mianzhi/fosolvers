@@ -426,20 +426,20 @@ subroutine fcvpset(time,x,fx,Jok,Jcur,pGamm,h,iPara,rPara,work1,work2,work3,ier)
     call setBC(x)
     call syncState(x)
     call findAdvJac(grid,rho,rhou,rhoE,p,JacP,JacC)
-    JacC(:,:,:)=-pGamm*JacC(:,:,:)
-    forall(i=1:grid%nC)
-      forall(j=1:5)
-        JacC(j,j,i)=JacC(j,j,i)+1d0
-      end forall
-    end forall
-    !$omp parallel do default(shared)&
-    !$omp& private(ier)
-    do i=1,grid%nC
-      call DGETRF(5,5,JacC(:,1:5,i),5,precPiv(:,i),ier)
-    end do
-    !$end omp parallel do
     Jcur=1
   end if
+  JacC(:,:,:)=-pGamm*JacC(:,:,:)
+  forall(i=1:grid%nC)
+    forall(j=1:5)
+      JacC(j,j,i)=JacC(j,j,i)+1d0
+    end forall
+  end forall
+  !$omp parallel do default(shared)&
+  !$omp& private(ier)
+  do i=1,grid%nC
+    call DGETRF(5,5,JacC(:,1:5,i),5,precPiv(:,i),ier)
+  end do
+  !$end omp parallel do
   ier=0
 end subroutine
 
