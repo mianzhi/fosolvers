@@ -390,7 +390,7 @@ subroutine fcvfun(time,x,dxdt,iPara,rPara,ier)
   
   call setBC(x)
   call syncState(x)
-  call findAdv(grid,rho,rhou,rhoE,p,dRho,dRhou,dRhoE)
+  call findAdv(grid,rho,rhou,rhoE,p,gamm,dRho,dRhou,dRhoE)
   forall(i=1:grid%nC)
     dxdt(i)=dRho(i)/grid%v(i)
     dxdt(grid%nC+i)=dRhou(1,i)/grid%v(i)
@@ -425,7 +425,7 @@ subroutine fcvpset(time,x,fx,Jok,Jcur,pGamm,h,iPara,rPara,work1,work2,work3,ier)
   else
     call setBC(x)
     call syncState(x)
-    call findAdvJac(grid,rho,rhou,rhoE,p,JacP,JacC)
+    call findAdvJac(grid,rho,rhou,rhoE,p,gamm,JacP,JacC)
     Jcur=1
   end if
   JacC(:,:,:)=-pGamm*JacC(:,:,:)

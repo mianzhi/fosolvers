@@ -110,7 +110,7 @@ contains
   end subroutine
   
   !> find advection of Euler system on polyFvGrid
-  subroutine findAdvPolyEuler(grid,rho,rhou,rhoE,p,dRho,dRhou,dRhoE)
+  subroutine findAdvPolyEuler(grid,rho,rhou,rhoE,p,gamm,dRho,dRhou,dRhoE)
     use modPolyFvGrid
     use modGradient
     class(polyFvGrid),intent(inout)::grid !< the grid
@@ -118,6 +118,7 @@ contains
     double precision,intent(in)::rhou(:,:) !< cell-averaged rhou
     double precision,intent(in)::rhoE(:) !< cell-averaged rhoE
     double precision,intent(in)::p(:) !< cell-averaged pressure
+    double precision,intent(in)::gamm !< ratio of heat capacities
     double precision,allocatable,intent(inout)::dRho(:) !< net flux of rho
     double precision,allocatable,intent(inout)::dRhou(:,:) !< net flux of rhou
     double precision,allocatable,intent(inout)::dRhoE(:) !< net flux of rhoE
@@ -125,7 +126,6 @@ contains
     double precision,allocatable,save::f1c(:,:),f2c(:,:,:),f3c(:,:)
     double precision::rhoAvg,uAvg(DIMS),HAvg,cAvg,uNormAvg,rhoJump,pJump,uJump(DIMS),uNormJump
     double precision::dFEntropy(DIMS+2),dFAcoustic1(DIMS+2),dFAcoustic2(DIMS+2),flow(DIMS+2)
-    double precision,parameter::GAMM=1.4d0 ! TODO other gamma and real gas
     
     call grid%up()
     if(.not.(allocated(dRho)))then
@@ -180,7 +180,7 @@ contains
         uAvg(:)=(sqrt(rho(m))*u(:,m)+sqrt(rho(n))*u(:,n))/(sqrt(rho(m))+sqrt(rho(n)))
         uNormAvg=dot_product(uAvg,grid%normP(:,i))
         HAvg=(sqrt(rho(m))*H(m)+sqrt(rho(n))*H(n))/(sqrt(rho(m))+sqrt(rho(n)))
-        cAvg=sqrt((GAMM-1d0)*(HAvg-0.5d0*(dot_product(uAvg,uAvg)))) ! TODO arbitrary gamma; real gas
+        cAvg=sqrt((GAMM-1d0)*(HAvg-0.5d0*(dot_product(uAvg,uAvg))))
         rhoJump=rho(n)-rho(m)
         pJump=p(n)-p(m)
         uJump(:)=u(:,n)-u(:,m)
@@ -233,18 +233,18 @@ contains
   end subroutine
   
   !> find advection Jacobian of Euler system on polyFvGrid
-  subroutine findAdvJacPolyEuler(grid,rho,rhou,rhoE,p,JacP,JacC)
+  subroutine findAdvJacPolyEuler(grid,rho,rhou,rhoE,p,gamm,JacP,JacC)
     use modPolyFvGrid
     class(polyFvGrid),intent(inout)::grid !< the grid
     double precision,intent(in)::rho(:) !< cell-averaged rho
     double precision,intent(in)::rhou(:,:) !< cell-averaged rhou
     double precision,intent(in)::rhoE(:) !< cell-averaged rhoE
     double precision,intent(in)::p(:) !< cell-averaged pressure
+    double precision,intent(in)::gamm !< ratio of heat capacities
     double precision,allocatable,intent(inout)::JacP(:,:,:) !< Jacobian for each pair
     double precision,allocatable,intent(inout)::JacC(:,:,:) !< Jacobian for each cell
     double precision,allocatable,save::u(:,:),H(:),c(:)
     double precision::uAvg(DIMS),HAvg,cAvg
-    double precision,parameter::GAMM=1.4d0 ! TODO other gamma and real gas
     
     call grid%up()
     if(.not.(allocated(JacP)))then
@@ -271,7 +271,7 @@ contains
     forall(i=1:k)
       u(:,i)=rhou(:,i)/rho(i)
       H(i)=(rhoE(i)+p(i))/rho(i)
-      c(i)=sqrt((GAMM-1d0)*(H(i)-0.5d0*(dot_product(u(:,i),u(:,i))))) ! TODO arbitrary gamma; real gas
+      c(i)=sqrt((GAMM-1d0)*(H(i)-0.5d0*(dot_product(u(:,i),u(:,i)))))
     end forall
     !$omp end workshare
     ! find approximate Jacobian with quasi-constant absolute flux Jacobian
@@ -283,7 +283,7 @@ contains
       if(m<=k.and.n<=k)then
         uAvg(:)=(sqrt(rho(m))*u(:,m)+sqrt(rho(n))*u(:,n))/(sqrt(rho(m))+sqrt(rho(n)))
         HAvg=(sqrt(rho(m))*H(m)+sqrt(rho(n))*H(n))/(sqrt(rho(m))+sqrt(rho(n)))
-        cAvg=sqrt((GAMM-1d0)*(HAvg-0.5d0*(dot_product(uAvg,uAvg)))) ! TODO arbitrary gamma; real gas
+        cAvg=sqrt((GAMM-1d0)*(HAvg-0.5d0*(dot_product(uAvg,uAvg))))
         if(n<=grid%nC)then
           JacP(1:5,1:5,i)=-0.5d0*grid%aP(i)*(eulerNFJ(grid%normP(:,i),u(:,m),H(m),GAMM)&
           &                                  +eulerANFJ(grid%normP(:,i),uAvg(:),HAvg,cAvg,GAMM))
