@@ -271,7 +271,7 @@ contains
     forall(i=1:k)
       u(:,i)=rhou(:,i)/rho(i)
       H(i)=(rhoE(i)+p(i))/rho(i)
-      c(i)=sqrt((GAMM-1d0)*(H(i)-0.5d0*(dot_product(u(:,i),u(:,i)))))
+      c(i)=sqrt((gamm-1d0)*(H(i)-0.5d0*(dot_product(u(:,i),u(:,i)))))
     end forall
     !$omp end workshare
     ! find approximate Jacobian with quasi-constant absolute flux Jacobian
@@ -283,16 +283,16 @@ contains
       if(m<=k.and.n<=k)then
         uAvg(:)=(sqrt(rho(m))*u(:,m)+sqrt(rho(n))*u(:,n))/(sqrt(rho(m))+sqrt(rho(n)))
         HAvg=(sqrt(rho(m))*H(m)+sqrt(rho(n))*H(n))/(sqrt(rho(m))+sqrt(rho(n)))
-        cAvg=sqrt((GAMM-1d0)*(HAvg-0.5d0*(dot_product(uAvg,uAvg))))
+        cAvg=sqrt((gamm-1d0)*(HAvg-0.5d0*(dot_product(uAvg,uAvg))))
         if(n<=grid%nC)then
-          JacP(1:5,1:5,i)=-0.5d0*grid%aP(i)*(eulerNFJ(grid%normP(:,i),u(:,m),H(m),GAMM)&
-          &                                  +eulerANFJ(grid%normP(:,i),uAvg(:),HAvg,cAvg,GAMM))
-          JacP(1:5,6:10,i)=-0.5d0*grid%aP(i)*(eulerNFJ(grid%normP(:,i),u(:,n),H(n),GAMM)&
-          &                                   -eulerANFJ(grid%normP(:,i),uAvg(:),HAvg,cAvg,GAMM))
+          JacP(1:5,1:5,i)=-0.5d0*grid%aP(i)*(eulerNFJ(grid%normP(:,i),u(:,m),H(m),gamm)&
+          &                                  +eulerANFJ(grid%normP(:,i),uAvg(:),HAvg,cAvg,gamm))
+          JacP(1:5,6:10,i)=-0.5d0*grid%aP(i)*(eulerNFJ(grid%normP(:,i),u(:,n),H(n),gamm)&
+          &                                   -eulerANFJ(grid%normP(:,i),uAvg(:),HAvg,cAvg,gamm))
           JacP(6:10,1:10,i)=-JacP(1:5,1:10,i)
         else
-          JacP(1:5,1:5,i)=-0.5d0*grid%aP(i)*(eulerNFJ(grid%normP(:,i),u(:,m),H(m),GAMM)&
-          &                                 +eulerANFJ(grid%normP(:,i),uAvg(:),HAvg,cAvg,GAMM))
+          JacP(1:5,1:5,i)=-0.5d0*grid%aP(i)*(eulerNFJ(grid%normP(:,i),u(:,m),H(m),gamm)&
+          &                                 +eulerANFJ(grid%normP(:,i),uAvg(:),HAvg,cAvg,gamm))
         end if
       end if
     end do
