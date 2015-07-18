@@ -485,7 +485,7 @@ subroutine fcvpsol(time,x,fx,res,z,pGamm,delta,lr,iPara,rPara,work,ier)
   !$end omp parallel do
   do l=1,n ! additional Jacobi loops
     !$omp parallel do default(shared)&
-    !$omp& private(ier)
+    !$omp& private(j,m,ier)
     do i=1,grid%nC
       precRhs(:,i)=res([0,1,2,3,4]*grid%nC+i)
       do j=1,size(grid%neib,1)
