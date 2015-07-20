@@ -54,8 +54,9 @@ module modEuler
   integer(C_LONG)::nEq !< number of equations
   integer(C_LONG)::iStat(100),iPar(1) !< integer solver outputs and parameters
   double precision::rStat(100),rPar(1) !< real solver outputs and parameters
+  real,allocatable::JacS(:,:,:) !< single precision version of JacC
   integer,allocatable::precPiv(:,:) !< pivoting arrays for Lapack
-  double precision,allocatable::precRhs(:,:) !< RHS arrays for Lapack
+  real,allocatable::precRhs(:,:) !< RHS arrays for Lapack
 
 contains
   
@@ -185,7 +186,7 @@ contains
   subroutine clear()
     deallocate(iBC,rho,rhou,rhoE,u,p,temp,c)
     deallocate(y,dRho,dRhou,dRhoE)
-    deallocate(JacP,JacC)
+    deallocate(JacP,JacC,JacS)
     deallocate(precPiv,precRhs)
     call grid%clear()
     call bc%clear()
@@ -426,18 +427,22 @@ subroutine fcvpset(time,x,fx,Jok,Jcur,pGamm,h,iPara,rPara,work1,work2,work3,ier)
     call setBC(x)
     call syncState(x)
     call findAdvJac(grid,rho,rhou,rhoE,p,gamm,JacP,JacC)
+    if(.not.allocated(JacS))then
+      allocate(JacS(size(JacC,1),size(JacC,2),size(JacC,3)))
+    end if
+    JacS(:,:,:)=real(JacC(:,:,:))
     Jcur=1
   end if
-  JacC(:,:,:)=-pGamm*JacC(:,:,:)
+  JacS(:,:,:)=-real(pGamm)*JacS(:,:,:)
   forall(i=1:grid%nC)
     forall(j=1:5)
-      JacC(j,j,i)=JacC(j,j,i)+1d0
+      JacS(j,j,i)=JacS(j,j,i)+1e0
     end forall
   end forall
   !$omp parallel do default(shared)&
   !$omp& private(ier)
   do i=1,grid%nC
-    call DGETRF(5,5,JacC(:,1:5,i),5,precPiv(:,i),ier)
+    call SGETRF(5,5,JacS(:,1:5,i),5,precPiv(:,i),ier)
   end do
   !$end omp parallel do
   ier=0
@@ -478,20 +483,20 @@ subroutine fcvpsol(time,x,fx,res,z,pGamm,delta,lr,iPara,rPara,work,ier)
   !$omp parallel do default(shared)&
   !$omp& private(ier)
   do i=1,grid%nC
-    precRhs(:,i)=res([0,1,2,3,4]*grid%nC+i)
-    call DGETRS('N',5,1,JacC(:,1:5,i),5,precPiv(:,i),precRhs(:,i),5,ier)
-    z([0,1,2,3,4]*grid%nC+i)=precRhs(:,i)
+    precRhs(:,i)=real(res([0,1,2,3,4]*grid%nC+i))
+    call SGETRS('N',5,1,JacS(:,1:5,i),5,precPiv(:,i),precRhs(:,i),5,ier)
+    z([0,1,2,3,4]*grid%nC+i)=dble(precRhs(:,i))
   end do
   !$end omp parallel do
   do l=1,n ! additional Jacobi loops
     !$omp parallel do default(shared)&
     !$omp& private(j,m,ier)
     do i=1,grid%nC
-      precRhs(:,i)=res([0,1,2,3,4]*grid%nC+i)
+      precRhs(:,i)=real(res([0,1,2,3,4]*grid%nC+i))
       do j=1,size(grid%neib,1)
         m=grid%neib(j,i)
         if(1<=m.and.m<=grid%nC)then
-          precRhs(:,i)=precRhs(:,i)-matmul(JacC(:,j*5+1:j*5+5,i),z([0,1,2,3,4]*grid%nC+m))
+          precRhs(:,i)=precRhs(:,i)-matmul(JacS(:,j*5+1:j*5+5,i),real(z([0,1,2,3,4]*grid%nC+m)))
         end if
       end do
     end do
@@ -499,8 +504,8 @@ subroutine fcvpsol(time,x,fx,res,z,pGamm,delta,lr,iPara,rPara,work,ier)
     !$omp parallel do default(shared)&
     !$omp& private(ier)
     do i=1,grid%nC
-      call DGETRS('N',5,1,JacC(:,1:5,i),5,precPiv(:,i),precRhs(:,i),5,ier)
-      z([0,1,2,3,4]*grid%nC+i)=precRhs(:,i)
+      call SGETRS('N',5,1,JacS(:,1:5,i),5,precPiv(:,i),precRhs(:,i),5,ier)
+      z([0,1,2,3,4]*grid%nC+i)=dble(precRhs(:,i))
     end do
     !$end omp parallel do
   end do
