@@ -176,7 +176,7 @@ contains
     call fcvmalloc(t,y,2,2,1,RTOL,ATOL,iStat,rStat,iPar,rPar,ier)
     call fcvspgmr(1,1,0,0d0,ier)
     call fcvspilssetprec(1,ier)
-    call fcvsetrin('MAX_STEP',tInt/50d0,ier)
+    call fcvsetiin('MAX_NSTEPS',huge(1),ier)
     ! initialize preconditioning solver
     allocate(precPiv(5,grid%nC))
     allocate(precRhs(5,grid%nC))
@@ -365,8 +365,8 @@ program foeuler
   write(tmpStr,*),iOut
   call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
   do while(t<tFinal)
-    call fcvode(tFinal,t,y,2,ier)
-    if(t>=tNext)then
+    call fcvode(tNext,t,y,1,ier)
+    if(t+tiny(1d0)>=tNext)then
       iOut=iOut+1
       write(tmpStr,*),iOut
       call syncState(y)
