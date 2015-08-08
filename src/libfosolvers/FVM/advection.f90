@@ -157,8 +157,8 @@ contains
       allocate(f2c(DIMS,DIMS,k))
       allocate(f3c(DIMS,k))
     end if
-    !$omp workshare
-    forall(i=1:k)
+    !$omp parallel do default(shared)
+    do i=1,k
       u(:,i)=rhou(:,i)/rho(i)
       H(i)=(rhoE(i)+p(i))/rho(i)
       f1c(:,i)=rhou(:,i)
@@ -166,8 +166,8 @@ contains
       f2c(:,2,i)=rhou(2,i)*u(:,i)+[0d0,p(i),0d0]
       f2c(:,3,i)=rhou(3,i)*u(:,i)+[0d0,0d0,p(i)]
       f3c(:,i)=(rhoE(i)+p(i))*u(:,i)
-    end forall
-    !$omp end workshare
+    end do
+    !$omp end parallel do
     ! Roe flux difference splitting
     !$omp parallel do default(shared)&
     !$omp& private(m,n,rhoAvg,uAvg,Havg,cAvg,uNormAvg,rhoJump,pJump,uJump,uNormJump,&

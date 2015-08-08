@@ -196,19 +196,23 @@ contains
   subroutine syncState(x)
     double precision,intent(in)::x(*) !< solution vector
     
-    forall(i=1:grid%nC)
+    !$omp parallel do default(shared)
+    do i=1,grid%nC
       rho(i)=x(i)
       rhou(1,i)=x(grid%nC+i)
       rhou(2,i)=x(2*grid%nC+i)
       rhou(3,i)=x(3*grid%nC+i)
       rhoE(i)=x(4*grid%nC+i)
-    end forall
-    forall(i=1:grid%nE)
+    end do
+    !$omp end parallel do
+    !$omp parallel do default(shared)
+    do i=1,grid%nE
       u(:,i)=rhou(:,i)/rho(i)
       p(i)=(gamm-1d0)*(rhoE(i)-0.5d0*dot_product(rhou(:,i),rhou(:,i))/rho(i))
       temp(i)=p(i)/rho(i)/r
       c(i)=sqrt(gamm*r*temp(i))
-    end forall
+    end do
+    !$omp end parallel do
   end subroutine
   
   !> set the boundary conditions
