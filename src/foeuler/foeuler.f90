@@ -471,7 +471,7 @@ subroutine fcvpsol(time,x,fx,res,z,pGamm,delta,lr,iPara,rPara,work,ier)
   
   n=max(floor(-log10(pGamm)),0)
   ! adaptive number of Jacobi iteration
-  if(n>=7)then
+  if(n>=7.or..true.)then
     z(1:5*grid%nC)=res(1:5*grid%nC)
     ier=0
     return
