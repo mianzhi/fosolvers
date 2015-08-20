@@ -10,8 +10,8 @@ module modEuler
   public
   
   integer,parameter::DIMS=3 !< three dimensions
-  double precision,parameter::RTOL=1d-7 !< relative tolerance
-  double precision,parameter::ATOL=1d-13 !< absolute tolerance
+  double precision,parameter::RTOL=1d-6 !< relative tolerance
+  double precision,parameter::ATOL=1d-12 !< absolute tolerance
   
   integer,parameter::BC_WALL=0 !< wall boundary
   integer,parameter::BC_IN_STATIC=10 !< inflow boundary with static properties
@@ -471,18 +471,14 @@ subroutine fcvpsol(time,x,fx,res,z,pGamm,delta,lr,iPara,rPara,work,ier)
   
   n=max(floor(-log10(pGamm)),0)
   ! adaptive number of Jacobi iteration
-  if(n>=7.or..true.)then
+  if(n>=6)then
     z(1:5*grid%nC)=res(1:5*grid%nC)
     ier=0
     return
-  else if(n>=6)then
-    n=0
   else if(n>=5)then
-    n=1
-  else if(n>=4)then
-    n=2
+    n=0
   else
-    n=3
+    n=1
   end if
   !$omp parallel do default(shared)&
   !$omp& private(ier)
