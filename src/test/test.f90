@@ -5,9 +5,10 @@ program test
   &                 polyX1,polyMesh1,polyGrid1,polyFvGrid1,&
   &                 readGTS1,readVTK1,writeVTK1,&
   &                 readCondTab1,&
-  &                 gradient1,advection1,advection2,euler,&
+  &                 gradient1,advection1,advection2,euler,eulerJac,&
   &                 UDF1
   
+  call try('eulerJac',eulerJac)
   call try('otGrid1',otGrid1)
   call try('otGrid2',otGrid2)
   call try('polyX1',polyX1)

@@ -14,6 +14,7 @@ SET(tests_src
   advection1.f90
   advection2.f90
   euler.f90
+  eulerJac.f90
   UDF1.f90
 )
 
