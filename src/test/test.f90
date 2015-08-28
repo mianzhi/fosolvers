@@ -8,7 +8,6 @@ program test
   &                 gradient1,advection1,advection2,euler,eulerJac,&
   &                 UDF1
   
-  call try('eulerJac',eulerJac)
   call try('otGrid1',otGrid1)
   call try('otGrid2',otGrid2)
   call try('polyX1',polyX1)
@@ -23,6 +22,7 @@ program test
   call try('advection1',advection1)
   call try('advection2',advection2)
   call try('euler',euler)
+  call try('eulerJac',eulerJac)
   call try('UDF1',UDF1)
   
   write(*,'(a)'),'check md5 of output files:'

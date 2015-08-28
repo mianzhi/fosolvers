@@ -180,7 +180,7 @@ contains
         uAvg(:)=(sqrt(rho(m))*u(:,m)+sqrt(rho(n))*u(:,n))/(sqrt(rho(m))+sqrt(rho(n)))
         uNormAvg=dot_product(uAvg,grid%normP(:,i))
         HAvg=(sqrt(rho(m))*H(m)+sqrt(rho(n))*H(n))/(sqrt(rho(m))+sqrt(rho(n)))
-        cAvg=sqrt((GAMM-1d0)*(HAvg-0.5d0*(dot_product(uAvg,uAvg))))
+        cAvg=sqrt((gamm-1d0)*(HAvg-0.5d0*(dot_product(uAvg,uAvg))))
         rhoJump=rho(n)-rho(m)
         pJump=p(n)-p(m)
         uJump(:)=u(:,n)-u(:,m)
@@ -267,13 +267,13 @@ contains
       allocate(H(k))
       allocate(c(k))
     end if
-    !$omp workshare
-    forall(i=1:k)
+    !$omp parallel do default(shared)
+    do i=1,k
       u(:,i)=rhou(:,i)/rho(i)
       H(i)=(rhoE(i)+p(i))/rho(i)
       c(i)=sqrt((gamm-1d0)*(H(i)-0.5d0*(dot_product(u(:,i),u(:,i)))))
-    end forall
-    !$omp end workshare
+    end do
+    !$omp end parallel do
     ! find approximate Jacobian with quasi-constant absolute flux Jacobian
     !$omp parallel do default(shared)&
     !$omp& private(m,n,uAvg,Havg,cAvg)
