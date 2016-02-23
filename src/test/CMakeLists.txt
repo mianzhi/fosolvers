@@ -13,6 +13,7 @@ SET(tests_src
   gradient1.f90
   advection1.f90
   advection2.f90
+  diffusion1.f90
   euler.f90
   eulerJac.f90
   UDF1.f90

@@ -6,6 +6,7 @@ program test
   &                 readGTS1,readVTK1,writeVTK1,&
   &                 readCondTab1,&
   &                 gradient1,advection1,advection2,euler,eulerJac,&
+  &                 diffusion1,&
   &                 UDF1
   
   call try('otGrid1',otGrid1)
@@ -21,6 +22,7 @@ program test
   call try('gradient1',gradient1)
   call try('advection1',advection1)
   call try('advection2',advection2)
+  call try('diffusion1',diffusion1)
   call try('euler',euler)
   call try('eulerJac',eulerJac)
   call try('UDF1',UDF1)
