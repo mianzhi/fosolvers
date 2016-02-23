@@ -40,7 +40,7 @@ contains
     
     call grid%up()
     if(.not.(allocated(adv)))then
-      allocate(adv(size(s,2),grid%nC))
+      allocate(adv(size(s,1),grid%nC))
     end if
     adv(:,:)=0d0
     allocate(gradF(DIMS,DIMS*size(s,1),grid%nC))
