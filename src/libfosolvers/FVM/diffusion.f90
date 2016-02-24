@@ -40,10 +40,15 @@ contains
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
       if(m<=size(s,2).and.n<=size(s,2))then
-        fPF=norm2(grid%pP(:,i)-grid%p(:,n))&
-        &   /(norm2(grid%pP(:,i)-grid%p(:,m))+norm2(grid%pP(:,i)-grid%p(:,n)))
-        dF(:)=fPF*d(:,m)+(1d0-fPF)*d(:,n)
-        gradSF(:,:)=fPF*gradS(:,:,m)+(1d0-fPF)*gradS(:,:,n)
+        if(n<=grid%nC)then
+          fPF=norm2(grid%pP(:,i)-grid%p(:,n))&
+          &   /(norm2(grid%pP(:,i)-grid%p(:,m))+norm2(grid%pP(:,i)-grid%p(:,n)))
+          dF(:)=fPF*d(:,m)+(1d0-fPF)*d(:,n)
+          gradSF(:,:)=fPF*gradS(:,:,m)+(1d0-fPF)*gradS(:,:,n)
+        else
+          dF(:)=d(:,m)
+          gradSF(:,:)=gradS(:,:,m)
+        end if
         sf(:)=grid%p(:,n)-grid%p(:,m)
         dPF=norm2(sf)
         sf(:)=sf(:)/dPF

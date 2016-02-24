@@ -37,7 +37,7 @@ contains
     call grid%up()
     m=size(v,1) ! number of components
     ! handling non-cell elements
-    useCellOnly=.not.(size(v,2)>=grid%nE)
+    useCellOnly=size(v,2)<grid%nE
     findCellOnly=.true.
     if(allocated(gradv))then
       if(size(gradv,3)>=grid%nE)then
@@ -51,9 +51,6 @@ contains
     !$omp parallel do default(shared)&
     !$omp& private(nNeib,iNeib,dx,dv,lwork,work,iwork,stat,rank,ier,j,k,l,n)
     do i=1,grid%nE
-      if(i>grid%nC.and.findCellOnly)then
-        cycle
-      end if
       ! list of neighbors
       if(i>grid%nC)then ! at non-cell
         if(findCellOnly)then
