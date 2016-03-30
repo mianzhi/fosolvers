@@ -6,12 +6,12 @@ ADD_EXECUTABLE(foeuler ${foeuler_src})
 
 TARGET_LINK_LIBRARIES(foeuler
   fosolvers
-  cgns
+  ${CGNS_LIBRARIES}
   ${HDF5_LIBRARIES}
-  blas
-  lapack
-  ${CVODE_LIBRARIES}
-  matheval
+  ${BLAS_LIBRARIES}
+  ${LAPACK_LIBRARIES}
+  ${SUNDIALS_LIBRARIES}
+  ${MATHEVAL_LIBRARIES}
 )
 
 INSTALL(TARGETS foeuler DESTINATION bin)

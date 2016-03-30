@@ -7,12 +7,12 @@ ADD_EXECUTABLE(fopbc ${fopbc_src})
 
 TARGET_LINK_LIBRARIES(fopbc
   fosolvers
-  cgns
+  ${CGNS_LIBRARIES}
   ${HDF5_LIBRARIES}
-  blas
-  lapack
-  ${CVODE_LIBRARIES}
-  matheval
+  ${BLAS_LIBRARIES}
+  ${LAPACK_LIBRARIES}
+  ${SUNDIALS_LIBRARIES}
+  ${MATHEVAL_LIBRARIES}
 )
 
 INSTALL(TARGETS fopbc DESTINATION bin)
