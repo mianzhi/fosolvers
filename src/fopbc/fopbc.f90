@@ -3,10 +3,12 @@
 !> the pressure-based coupled solver
 program fopbc
   use modPbc
+  character(20)::tmpStr
   
-  !call init()
-  !write(tmpStr,*),iOut
-  !call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
+  call init()
+  write(tmpStr,*),iOut
+  call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
+  stop
   do while(t<tFinal)
     !call fcvode(tNext,t,y,1,ier)
     if(t+tiny(1d0)>=tNext)then
@@ -17,5 +19,5 @@ program fopbc
       tNext=tNext+tInt
     end if
   end do
-  !call clear()
+  call clear()
 end program
