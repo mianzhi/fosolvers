@@ -26,7 +26,17 @@ module modPbc
   double precision,allocatable::u(:,:) !< velocity [m/s]
   double precision,allocatable::temp(:) !< temperature [K]
   double precision,allocatable::Y(:,:) !< mass fraction of species
+  ! state at the beginning of a time step
+  double precision,allocatable::rho0(:),rhou0(:,:),rhoE0(:),p0(:),u0(:,:),temp0(:),Y0(:,:)
   
+  double precision,allocatable::gradP(:,:) !< gradient of p [Pa/m]
+  double precision,allocatable::visc(:) !< viscosity [Pa*s]
+  double precision,allocatable::cond(:) !< thermal conductivity [W/m/K]
+  
+  double precision,allocatable::x(:) !< solution vector of the nonlinear system of equations
+  double precision,allocatable::xscale(:) !< scaling factors for the solution
+  double precision,allocatable::rscale(:) !< scaling factors for the residual
+  double precision,allocatable::noscale(:) !< fake scaling for KINSOL's potential scaling issue
   integer(C_LONG)::nEq !< number of equations
   integer(C_LONG)::ioutFKIN(100) !< integer output of FKINSOL
   double precision::routFKIN(100) !< real output of FKINSOL
@@ -37,8 +47,8 @@ contains
   subroutine init()
     use modFileIO
     integer,parameter::FID=10
-    double precision::p0,u0(DIMS),T0,pE(DIMS)!,tmpD
-    double precision,allocatable::Y0(:)
+    double precision::pInit,uInit(DIMS),TInit,pE(DIMS)!,tmpD
+    double precision,allocatable::YInit(:)
     integer::ier!,udfIc,udfBc,iUdf(5)
     
     ! read inputs
@@ -60,11 +70,11 @@ contains
     !open(FID,file='ic',action='read')
     !read(FID,*),udfIC
     !if(udfIc==0)then
-    !  read(FID,*),p0
-    !  read(FID,*),T0
-    !  read(FID,*),u0(1)
-    !  read(FID,*),u0(2)
-    !  read(FID,*),u0(3)
+    !  read(FID,*),pInit
+    !  read(FID,*),TInit
+    !  read(FID,*),uInit(1)
+    !  read(FID,*),uInit(2)
+    !  read(FID,*),uInit(3)
     !else
     !  read(FID,*),tmpD
     !  iUdf(1)=int(tmpD)
@@ -109,48 +119,75 @@ contains
     call fkinspgmr(50,20,ier)
     call fkinsetrin('FNORM_TOL',1d-5,ier)
     call fkinsetrin('SSTEP_TOL',1d-9,ier)
+    allocate(x(nEq))
+    allocate(xscale(nEq))
+    allocate(rscale(nEq))
+    allocate(noscale(nEq))
+    noscale(:)=1d0
     ! work space and initial state
     allocate(rho(grid%nE))
+    allocate(rho0(grid%nE))
     allocate(rhou(DIMS,grid%nE))
+    allocate(rhou0(DIMS,grid%nE))
     allocate(rhoE(grid%nE))
+    allocate(rhoE0(grid%nE))
     allocate(p(grid%nE))
+    allocate(p0(grid%nE))
     allocate(u(DIMS,grid%nE))
+    allocate(u0(DIMS,grid%nE))
     allocate(temp(grid%nE))
+    allocate(temp0(grid%nE))
     ! FIXME fix nSp
     allocate(Y(1,grid%nE))
-    allocate(Y0(1))
+    allocate(Y0(1,grid%nE))
+    allocate(YInit(1))
+    allocate(gradP(DIMS,grid%nC))
+    allocate(visc(grid%nC))
+    allocate(cond(grid%nC))
     do i=1,grid%nE
     !  if(udfIc/=0)then
     !    pE(:)=grid%p(:,i)
-    !    p0=udf%eval(iUdf(1),pE,0d0)
-    !    T0=udf%eval(iUdf(2),pE,0d0)
-    !    u0(1)=udf%eval(iUdf(3),pE,0d0)
-    !    u0(2)=udf%eval(iUdf(4),pE,0d0)
-    !    u0(3)=udf%eval(iUdf(5),pE,0d0)
+    !    pInit=udf%eval(iUdf(1),pE,0d0)
+    !    TInit=udf%eval(iUdf(2),pE,0d0)
+    !    uInit(1)=udf%eval(iUdf(3),pE,0d0)
+    !    uInit(2)=udf%eval(iUdf(4),pE,0d0)
+    !    uInit(3)=udf%eval(iUdf(5),pE,0d0)
     !  end if
       ! FIXME remove below
       pE(:)=grid%p(:,i)
-      p0=merge(1d5,0.9d5,pE(3)<0.5d0)
-      u0(:)=[0d0,0d0,0d0]
-      T0=298d0
-      Y0=[1d0]
+      pInit=merge(1d5,0.9d5,pE(3)<0.5d0)
+      uInit(:)=[0d0,0d0,0d0]
+      TInit=298d0
+      YInit=[1d0]
       ! FIXME remove above
       ! FIXME calculation of rho, rhoE based on cantera
-      p(i)=p0
-      u(:,i)=u0(:)
-      temp(i)=T0
-      Y(:,i)=Y0(:)
+      p(i)=pInit
+      u(:,i)=uInit(:)
+      temp(i)=TInit
+      Y(:,i)=YInit(:)
     end do
     call recoverState(p,u,temp,Y,rho,rhou,rhoE)
     t=0d0
     tNext=tInt
     iOut=0
-    deallocate(Y0)
+    deallocate(YInit)
   end subroutine
   
   !> clear the simulation environment
   subroutine clear()
     call grid%clear()
+    call fkinfree()
+  end subroutine
+  
+  !> record {rho,rhoU,rhoE,p,u,temp,Y} in {rho0,rhoU0,rhoE0,p0,u0,temp0,Y0}
+  subroutine recordState0()
+    rho0(:)=rho(:)
+    rhou0(:,:)=rhou(:,:)
+    rhoE0(:)=rhoE(:)
+    p0(:)=p(:)
+    u0(:,:)=u(:,:)
+    temp0(:)=temp(:)
+    Y0(:,:)=Y(:,:)
   end subroutine
   
   !> derive primitive state {p,u,T} from conserved state {rho,rhou,rhoE}
@@ -202,7 +239,7 @@ contains
     
     !$omp parallel do default(shared)&
     !$omp& private(j)
-    do i=1,grid%nE
+    do i=1,grid%nC
       j=(i-1)*5
       ! FIXME scale the variable
       var(j+1)=pi(i)*1d0
@@ -221,7 +258,7 @@ contains
     
     !$omp parallel do default(shared)&
     !$omp& private(j)
-    do i=1,grid%nE
+    do i=1,grid%nC
       j=(i-1)*5
       ! FIXME de-scale the variable
       po(i)=var(j+1)/1d0
