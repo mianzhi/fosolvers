@@ -15,6 +15,7 @@ module modPbc
   
   double precision::t !< time
   double precision::tFinal !< final time
+  double precision::dt !< time step size [s]
   double precision::tInt !< time interval of output
   double precision::tNext !< time for next output
   integer::iOut !< index of output
@@ -29,7 +30,6 @@ module modPbc
   ! state at the beginning of a time step
   double precision,allocatable::rho0(:),rhou0(:,:),rhoE0(:),p0(:),u0(:,:),temp0(:),Y0(:,:)
   
-  double precision,allocatable::gradP(:,:) !< gradient of p [Pa/m]
   double precision,allocatable::visc(:) !< viscosity [Pa*s]
   double precision,allocatable::cond(:) !< thermal conductivity [W/m/K]
   
@@ -141,9 +141,8 @@ contains
     allocate(Y(1,grid%nE))
     allocate(Y0(1,grid%nE))
     allocate(YInit(1))
-    allocate(gradP(DIMS,grid%nC))
-    allocate(visc(grid%nC))
-    allocate(cond(grid%nC))
+    allocate(visc(grid%nE))
+    allocate(cond(grid%nE))
     do i=1,grid%nE
     !  if(udfIc/=0)then
     !    pE(:)=grid%p(:,i)

@@ -4,7 +4,6 @@
 program fopbc
   use modPbc
   character(20)::tmpStr
-  double precision::dt !< time step size [s]
   integer::ier !< error signal
   
   call init()

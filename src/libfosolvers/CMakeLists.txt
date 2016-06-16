@@ -19,6 +19,7 @@ SET(libfosolvers_src
   FVM/advection.f90
   FVM/diffusion.f90
   FVM/Newtonian.f90
+  FVM/RhieChow.f90
 )
 
 SET(libfosolvers_lib
