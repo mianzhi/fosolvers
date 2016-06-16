@@ -18,6 +18,7 @@ SET(libfosolvers_src
   FVM/gradient.f90
   FVM/advection.f90
   FVM/diffusion.f90
+  FVM/Newtonian.f90
 )
 
 SET(libfosolvers_lib
