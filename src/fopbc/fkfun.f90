@@ -6,6 +6,8 @@ subroutine fkfun(s,r,ier)
   use modPolyFvGrid
   use modGradient
   use modAdvection
+  use modNewtonian
+  use modPressure
   use modRhieChow
   double precision::s(*)
   double precision::r(*)
@@ -18,21 +20,21 @@ subroutine fkfun(s,r,ier)
     deallocate(gradP)
     allocate(gradP(DIMS,grid%nC))
   end if
-  ! {rho,rhou,rhoE,rhoKE}
+  ! {rho,rhou,rhoH,rhoKE}
   if(.not.allocated(tmp1))then
     allocate(tmp1(6,grid%nE))
   else if(size(tmp1,2)/=grid%nE)then
     deallocate(tmp1)
     allocate(tmp1(6,grid%nE))
   end if
-  ! flux of {rho,rhou,rhoE,rhoKE}
+  ! flux of {rho,rhou,rhoH,rhoKE}
   if(.not.allocated(tmp2))then
     allocate(tmp2(DIMS,6,grid%nE))
   else if(size(tmp2,3)/=grid%nE)then
     deallocate(tmp2)
     allocate(tmp2(DIMS,6,grid%nE))
   end if
-  ! flow rate of {rho,rhou,rhoE,rhoKE}
+  ! flow rate of {rho,rhou,rhoH,rhoKE}
   if(.not.allocated(tmp3))then
     allocate(tmp3(6,grid%nC))
   else if(size(tmp3,2)/=grid%nC)then
@@ -45,7 +47,7 @@ subroutine fkfun(s,r,ier)
   call recoverState(p,u,temp,Y,rho,rhou,rhoE)
   call findGrad(grid,p(1:grid%nC),gradP)
   forall(i=1:grid%nE)
-    tmp1(:,i)=[rho(i),rhou(:,i),rhoE(i),0.5d0*rho(i)*dot_product(u(:,i),u(:,i))]
+    tmp1(:,i)=[rho(i),rhou(:,i),rhoE(i)+p(i),0.5d0*rho(i)*dot_product(u(:,i),u(:,i))]
     forall(j=1:6)
       tmp2(:,j,i)=tmp1(j,i)*u(:,i)
     end forall
