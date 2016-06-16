@@ -6,12 +6,14 @@ subroutine fkfun(s,r,ier)
   use modPolyFvGrid
   use modGradient
   use modAdvection
+  use modDiffusion
   use modNewtonian
   use modPressure
   use modRhieChow
   double precision::s(*)
   double precision::r(*)
-  double precision,save,allocatable::gradP(:,:),tmp1(:,:),tmp2(:,:,:),tmp3(:,:)
+  double precision,save,allocatable::gradP(:,:),viscF(:,:),presF(:,:),condQ(:),&
+  &                                  tmp1(:,:),tmp2(:,:,:),tmp3(:,:)
   integer::ier
   
   if(.not.allocated(gradP))then
@@ -19,6 +21,24 @@ subroutine fkfun(s,r,ier)
   else if(size(gradP,2)/=grid%nC)then
     deallocate(gradP)
     allocate(gradP(DIMS,grid%nC))
+  end if
+  if(.not.allocated(viscF))then
+    allocate(viscF(DIMS,grid%nC))
+  else if(size(viscF,2)/=grid%nC)then
+    deallocate(viscF)
+    allocate(viscF(DIMS,grid%nC))
+  end if
+  if(.not.allocated(presF))then
+    allocate(presF(DIMS,grid%nC))
+  else if(size(presF,2)/=grid%nC)then
+    deallocate(presF)
+    allocate(presF(DIMS,grid%nC))
+  end if
+  if(.not.allocated(condQ))then
+    allocate(condQ(grid%nC))
+  else if(size(condQ)/=grid%nC)then
+    deallocate(condQ)
+    allocate(condQ(grid%nC))
   end if
   ! {rho,rhou,rhoH,rhoKE}
   if(.not.allocated(tmp1))then
@@ -54,5 +74,8 @@ subroutine fkfun(s,r,ier)
   end forall
   call findAdv(grid,tmp1,tmp2,tmp3)
   call addRhieChow(grid,tmp1,p,gradP,rho,dt,tmp3)
+  call findViscForce(grid,u,visc,viscF)
+  call findPresForce(grid,p,presF)
+  call findDiff(grid,temp,cond,condQ)
   ier=0
 end subroutine
