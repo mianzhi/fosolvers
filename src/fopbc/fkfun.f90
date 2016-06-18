@@ -40,26 +40,26 @@ subroutine fkfun(s,r,ier)
     deallocate(condQ)
     allocate(condQ(grid%nC))
   end if
-  ! {rho,rhou,rhoH,rhoKE}
+  ! {rho,rhou,rhoH+rhoKE}
   if(.not.allocated(tmp1))then
-    allocate(tmp1(6,grid%nE))
+    allocate(tmp1(5,grid%nE))
   else if(size(tmp1,2)/=grid%nE)then
     deallocate(tmp1)
-    allocate(tmp1(6,grid%nE))
+    allocate(tmp1(5,grid%nE))
   end if
-  ! flux of {rho,rhou,rhoH,rhoKE}
+  ! flux of {rho,rhou,rhoH+rhoKE}
   if(.not.allocated(tmp2))then
-    allocate(tmp2(DIMS,6,grid%nE))
+    allocate(tmp2(DIMS,5,grid%nE))
   else if(size(tmp2,3)/=grid%nE)then
     deallocate(tmp2)
-    allocate(tmp2(DIMS,6,grid%nE))
+    allocate(tmp2(DIMS,5,grid%nE))
   end if
-  ! flow rate of {rho,rhou,rhoH,rhoKE}
+  ! flow rate of {rho,rhou,rhoH+rhoKE}
   if(.not.allocated(tmp3))then
-    allocate(tmp3(6,grid%nC))
+    allocate(tmp3(5,grid%nC))
   else if(size(tmp3,2)/=grid%nC)then
     deallocate(tmp3)
-    allocate(tmp3(6,grid%nC))
+    allocate(tmp3(5,grid%nC))
   end if
   
   call extractVar(s(1:nEq),p,u,temp)
@@ -67,8 +67,8 @@ subroutine fkfun(s,r,ier)
   call recoverState(p,u,temp,Y,rho,rhou,rhoE)
   call findGrad(grid,p(1:grid%nC),gradP)
   forall(i=1:grid%nE)
-    tmp1(:,i)=[rho(i),rhou(:,i),rhoE(i)+p(i),0.5d0*rho(i)*dot_product(u(:,i),u(:,i))]
-    forall(j=1:6)
+    tmp1(:,i)=[rho(i),rhou(:,i),rhoE(i)+p(i)+0.5d0*rho(i)*dot_product(u(:,i),u(:,i))]
+    forall(j=1:5)
       tmp2(:,j,i)=tmp1(j,i)*u(:,i)
     end forall
   end forall
@@ -77,5 +77,12 @@ subroutine fkfun(s,r,ier)
   call findViscForce(grid,u,visc,viscF)
   call findPresForce(grid,p,presF)
   call findDiff(grid,temp,cond,condQ)
+  do i=1,grid%nC
+    j=(i-1)*5
+    r(j+1)=(rho(i)-rho0(i))-dt/grid%v(i)*tmp3(1,i)
+    r(j+2:j+4)=rhou(:,i)-rhou0(:,i)-dt/grid%v(i)*(tmp3(2:4,i)+presF(:,i)+viscF(:,i))
+    r(j+5)=rhoE(i)-rhoE0(i)-dt/grid%v(i)*(tmp3(5,i)+condQ(i))
+  end do
+  r(1:nEq)=r(1:nEq)*rscale(1:nEq)
   ier=0
 end subroutine
