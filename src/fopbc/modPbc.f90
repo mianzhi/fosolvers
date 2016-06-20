@@ -283,4 +283,40 @@ contains
     close(FID)
   end subroutine
   
+  !> calculate time step size and scaling vectors
+  subroutine preSolve(dt,xscale,rscale)
+    double precision,intent(out)::dt !< time step size
+    double precision,intent(inout)::xscale(:) !< state variable scale
+    double precision,intent(inout)::rscale(:) !< residual scale
+    
+    ! TODO adaptive dt and scales
+    dt=1d-4
+    do i=1,grid%nC
+      j=(i-1)*5
+      xscale(j+1)=1d5
+      xscale(j+2:j+4)=10d0
+      xscale(j+5)=300d0
+      rscale(j+1)=1d0
+      rscale(j+2:j+4)=10d0
+      rscale(j+5)=1d5
+    end do
+  end subroutine
+  
+  !> set the boundary conditions
+  subroutine setBC()
+    
+    do i=1,grid%nP
+      m=grid%iEP(1,i)
+      n=grid%iEP(2,i)
+      if(n>grid%nC)then
+        if(.true.)then ! default wall boundary
+          p(n)=p(m)
+          u(:,n)=u(:,m)-2d0*dot_product(u(:,m),grid%normP(:,i))*grid%normP(:,i)
+          temp(n)=temp(m)
+          Y(:,n)=Y(:,m)
+        end if
+      end if
+    end do
+  end subroutine
+  
 end module

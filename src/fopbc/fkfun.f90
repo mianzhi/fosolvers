@@ -40,21 +40,21 @@ subroutine fkfun(s,r,ier)
     deallocate(condQ)
     allocate(condQ(grid%nC))
   end if
-  ! {rho,rhou,rhoH+rhoKE}
+  ! {rho,rhou,rhoH}, H is mass-specific stagnation enthalpy
   if(.not.allocated(tmp1))then
     allocate(tmp1(5,grid%nE))
   else if(size(tmp1,2)/=grid%nE)then
     deallocate(tmp1)
     allocate(tmp1(5,grid%nE))
   end if
-  ! flux of {rho,rhou,rhoH+rhoKE}
+  ! flux of {rho,rhou,rhoH}
   if(.not.allocated(tmp2))then
     allocate(tmp2(DIMS,5,grid%nE))
   else if(size(tmp2,3)/=grid%nE)then
     deallocate(tmp2)
     allocate(tmp2(DIMS,5,grid%nE))
   end if
-  ! flow rate of {rho,rhou,rhoH+rhoKE}
+  ! flow rate of {rho,rhou,rhoH}
   if(.not.allocated(tmp3))then
     allocate(tmp3(5,grid%nC))
   else if(size(tmp3,2)/=grid%nC)then
@@ -63,11 +63,11 @@ subroutine fkfun(s,r,ier)
   end if
   
   call extractVar(s(1:nEq),p,u,temp)
-  ! FIXME apply BC on p,u,temp here
+  call setBC()
   call recoverState(p,u,temp,Y,rho,rhou,rhoE)
   call findGrad(grid,p(1:grid%nC),gradP)
   forall(i=1:grid%nE)
-    tmp1(:,i)=[rho(i),rhou(:,i),rhoE(i)+p(i)+0.5d0*rho(i)*dot_product(u(:,i),u(:,i))]
+    tmp1(:,i)=[rho(i),rhou(:,i),rhoE(i)+p(i)]
     forall(j=1:5)
       tmp2(:,j,i)=tmp1(j,i)*u(:,i)
     end forall
