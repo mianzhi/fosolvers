@@ -16,7 +16,6 @@ program fopbc
     visc(:)=20d-6
     cond(:)=30d-3
     call preSolve(dt,xscale,rscale)
-    dt=1d-4
     call fillVar(p,u,temp,x)
     write(*,*),'start'
     call fkinsol(x,1,noscale,noscale,ier)

@@ -241,9 +241,9 @@ contains
     do i=1,grid%nC
       j=(i-1)*5
       ! FIXME scale the variable
-      var(j+1)=pi(i)*xscale(j+1)
-      var(j+2:j+4)=ui(:,i)*xscale(j+2:j+4)
-      var(j+5)=tempi(i)*xscale(j+5)
+      var(j+1)=pi(i)/xscale(j+1)
+      var(j+2:j+4)=ui(:,i)/xscale(j+2:j+4)
+      var(j+5)=tempi(i)/xscale(j+5)
     end do
     !$omp end parallel do
   end subroutine
@@ -260,9 +260,9 @@ contains
     do i=1,grid%nC
       j=(i-1)*5
       ! FIXME de-scale the variable
-      po(i)=var(j+1)/xscale(j+1)
-      uo(:,i)=var(j+2:j+4)/xscale(j+2:j+4)
-      tempo(i)=var(j+5)/xscale(j+5)
+      po(i)=var(j+1)*xscale(j+1)
+      uo(:,i)=var(j+2:j+4)*xscale(j+2:j+4)
+      tempo(i)=var(j+5)*xscale(j+5)
     end do
     !$omp end parallel do
   end subroutine
@@ -290,7 +290,7 @@ contains
     double precision,intent(inout)::rscale(:) !< residual scale
     
     ! TODO adaptive dt and scales
-    dt=1d-4
+    dt=1d-5
     do i=1,grid%nC
       j=(i-1)*5
       xscale(j+1)=1d5

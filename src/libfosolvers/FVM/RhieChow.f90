@@ -39,7 +39,7 @@ contains
         eps=norm2(vPN)/(norm2(vMP)+norm2(vPN))
         flow(:)=-(eps*s(:,m)+(1d0-eps)*s(:,n))/(eps*rho(m)+(1d0-eps)*rho(n))*dt*grid%aP(i)&
         &        *dot_product(grid%normP(:,i),eps*gradP(:,m)+(1d0-eps)*gradP(:,n)&
-        &                                     -vMN(:)*(p(n)-p(m))/norm2(vMN))
+        &                                     -vMN(:)*(p(n)-p(m))/dot_product(vMN,vMN))
         r(:,m)=r(:,m)+flow(:)
         r(:,n)=r(:,n)-flow(:)
       end if

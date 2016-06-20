@@ -79,10 +79,10 @@ subroutine fkfun(s,r,ier)
   call findDiff(grid,temp,cond,condQ)
   do i=1,grid%nC
     j=(i-1)*5
-    r(j+1)=(rho(i)-rho0(i))-dt/grid%v(i)*tmp3(1,i)
+    r(j+1)=rho(i)-rho0(i)-dt/grid%v(i)*tmp3(1,i)
     r(j+2:j+4)=rhou(:,i)-rhou0(:,i)-dt/grid%v(i)*(tmp3(2:4,i)+presF(:,i)+viscF(:,i))
     r(j+5)=rhoE(i)-rhoE0(i)-dt/grid%v(i)*(tmp3(5,i)+condQ(i))
   end do
-  r(1:nEq)=r(1:nEq)*rscale(1:nEq)
+  r(1:nEq)=r(1:nEq)/rscale(1:nEq)
   ier=0
 end subroutine
