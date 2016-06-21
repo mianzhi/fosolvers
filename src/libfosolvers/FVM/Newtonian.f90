@@ -33,7 +33,7 @@ contains
     end if
     dRhou(:,:)=0d0
     allocate(tau(DIMS,DIMS,grid%nC))
-    call findGrad(grid,u(:,1:grid%nC),tau)
+    call findGrad(grid,u,tau)
     forall(i=1:grid%nC)
       tau(:,:,i)=visc(i)*((tau(:,:,i)+transpose(tau(:,:,i)))&
       &                   -2d0/3d0*(tau(1,1,i)+tau(2,2,i)+tau(3,3,i))&

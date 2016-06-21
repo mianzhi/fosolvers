@@ -116,10 +116,10 @@ contains
     nEq=5*grid%nC
     call fnvinits(3,nEq,ier)
     call fkinmalloc(ioutFKIN,routFKIN,ier)
-    call fkinspgmr(50,20,ier)
+    call fkinspgmr(50,4,ier)
     !call fkindense(nEq,ier)
-    call fkinsetrin('FNORM_TOL',1d-5,ier)
-    call fkinsetrin('SSTEP_TOL',1d-9,ier)
+    !call fkinsetrin('FNORM_TOL',1d-5,ier)
+    !call fkinsetrin('SSTEP_TOL',1d-9,ier)
     call fkinsetiin('PRNT_LEVEL',1,ier)
     allocate(x(nEq))
     allocate(xscale(nEq))
@@ -156,7 +156,7 @@ contains
     !  end if
       ! FIXME remove below
       pE(:)=grid%p(:,i)
-      pInit=merge(1d5,0.9d5,pE(3)<0.5d0)
+      pInit=min(max(0.9d5,-0.5d5*(pE(3)-0.5d0)+0.95d5),1d5)
       uInit(:)=[0d0,0d0,0d0]
       TInit=298d0
       YInit=[1d0]
@@ -292,7 +292,7 @@ contains
     double precision,intent(inout)::rscale(:) !< residual scale
     
     ! TODO adaptive dt and scales
-    dt=1d-4
+    dt=1d-5
     do i=1,grid%nC
       j=(i-1)*5
       xscale(j+1)=1d5
@@ -300,7 +300,7 @@ contains
       xscale(j+5)=300d0
       rscale(j+1)=1d0
       rscale(j+2:j+4)=10d0
-      rscale(j+5)=1d6
+      rscale(j+5)=1d5
     end do
   end subroutine
   
@@ -313,7 +313,7 @@ contains
       if(n>grid%nC)then
         if(.true.)then ! default wall boundary
           p(n)=p(m)
-          u(:,n)=u(:,m)-2d0*dot_product(u(:,m),grid%normP(:,i))*grid%normP(:,i)
+          u(:,n)=-u(:,m)
           temp(n)=temp(m)
           Y(:,n)=Y(:,m)
         end if

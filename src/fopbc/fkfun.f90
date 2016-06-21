@@ -65,7 +65,7 @@ subroutine fkfun(s,r,ier)
   call extractVar(s(1:nEq),p,u,temp)
   call setBC()
   call recoverState(p,u,temp,Y,rho,rhou,rhoE)
-  call findGrad(grid,p(1:grid%nC),gradP)
+  call findGrad(grid,p,gradP)
   forall(i=1:grid%nE)
     tmp1(:,i)=[rho(i),rhou(:,i),rhoE(i)+p(i)]
     forall(j=1:5)

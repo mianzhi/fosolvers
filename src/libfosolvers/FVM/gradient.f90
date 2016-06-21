@@ -22,6 +22,7 @@ contains
   subroutine findGradPolyVect(grid,v,gradv)
     use modPolyFvGrid
     use modPolyGrid
+    use modGeometry
     class(polyFvGrid),intent(inout)::grid !< the grid
     double precision,intent(in)::v(:,:) !< input data
     double precision,allocatable,intent(inout)::gradv(:,:,:) !< gradient output
@@ -32,7 +33,7 @@ contains
     integer,parameter::L_IWORK=200
     integer::nNeib,iNeib(MAX_N_NEIB),lwork,iwork(L_IWORK),rank,ier
     double precision::dx(MAX_N_NEIB,DIMS),dv(MAX_N_NEIB,size(v,1)),stat(DIMS),work(MAX_L_WORK),rcond
-    double precision::tmp
+    double precision::vF(DIMS),tmp
     
     call grid%up()
     m=size(v,1) ! number of components
@@ -49,7 +50,7 @@ contains
     end if
     ! find gradient
     !$omp parallel do default(shared)&
-    !$omp& private(nNeib,iNeib,dx,dv,lwork,work,iwork,stat,rank,ier,j,k,l,n)
+    !$omp& private(nNeib,iNeib,dx,dv,vF,lwork,work,iwork,stat,rank,ier,j,k,l,n)
     do i=1,grid%nE
       ! list of neighbors
       if(i>grid%nC)then ! at non-cell
@@ -88,12 +89,17 @@ contains
         end do
       end if
       ! LSQ method
-      forall(j=1:nNeib)
-        dx(j,:)=grid%p(:,iNeib(j))-grid%p(:,i)
+      do j=1,nNeib
+        if(iNeib(j)<=grid%nC)then
+          dx(j,:)=grid%p(:,iNeib(j))-grid%p(:,i)
+        else
+          vF=n3p(grid%pN(:,grid%iNE(1:3,iNeib(j))))
+          dx(j,:)=2d0*vF(:)*dot_product(grid%p(:,iNeib(j))-grid%p(:,i),vF(:))
+        end if
         dv(j,:)=v(:,iNeib(j))-v(:,i)
         dv(j,:)=dv(j,:)/dot_product(dx(j,:),dx(j,:))
         dx(j,:)=dx(j,:)/dot_product(dx(j,:),dx(j,:))
-      end forall
+      end do
       rcond=-1d0
       lwork=-1
       call DGELSD(nNeib,DIMS,m,dx,MAX_N_NEIB,dv,MAX_N_NEIB,stat,rcond,rank,work,lwork,iwork,ier)
