@@ -117,8 +117,10 @@ contains
     call fnvinits(3,nEq,ier)
     call fkinmalloc(ioutFKIN,routFKIN,ier)
     call fkinspgmr(50,20,ier)
+    !call fkindense(nEq,ier)
     call fkinsetrin('FNORM_TOL',1d-5,ier)
     call fkinsetrin('SSTEP_TOL',1d-9,ier)
+    call fkinsetiin('PRNT_LEVEL',1,ier)
     allocate(x(nEq))
     allocate(xscale(nEq))
     allocate(rscale(nEq))
@@ -290,7 +292,7 @@ contains
     double precision,intent(inout)::rscale(:) !< residual scale
     
     ! TODO adaptive dt and scales
-    dt=1d-5
+    dt=1d-4
     do i=1,grid%nC
       j=(i-1)*5
       xscale(j+1)=1d5
@@ -298,7 +300,7 @@ contains
       xscale(j+5)=300d0
       rscale(j+1)=1d0
       rscale(j+2:j+4)=10d0
-      rscale(j+5)=1d5
+      rscale(j+5)=1d6
     end do
   end subroutine
   

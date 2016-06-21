@@ -9,7 +9,7 @@ program fopbc
   call init()
   write(tmpStr,*),iOut
   call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
-  do while(t<tFinal)
+  !do while(t<tFinal)
     call deriveState(rho,rhou,rhoE,Y,p,u,temp)
     call recordState0()
     ! TODO update transport properties according to state0
@@ -30,7 +30,6 @@ program fopbc
       call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
       tNext=tNext+tInt
     !end if
-    stop
-  end do
+  !end do
   call clear()
 end program
