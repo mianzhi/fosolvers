@@ -57,8 +57,8 @@ contains
           cycle
         end if
         write(*,*),'findGradPolyVect: support cell element only'
-        !TODO:nNeib,lNeib at non-cell
-        !TODO check useCellOnly
+        ! TODO nNeib,lNeib at non-cell
+        ! TODO check useCellOnly
       else ! at cell
         nNeib=0
         do j=1,nF(grid%sE(i))
@@ -73,15 +73,17 @@ contains
           n=nNeib
           do k=1,n
             l=iNeib(k)
-            do j=1,nF(grid%sE(l))
-              if(nNeib<MAX_N_NEIB.and.grid%neib(j,l)>0&
-              &  .and.(grid%neib(j,l)<=grid%nC.or..not.useCellOnly)&
-              &  .and.all(iNeib(1:nNeib)/=grid%neib(j,l))&
-              &  .and.grid%neib(j,l)/=i)then
-                nNeib=nNeib+1
-                iNeib(nNeib)=grid%neib(j,l)
-              end if
-            end do
+            if(l<=grid%nC)then
+              do j=1,nF(grid%sE(l))
+                if(nNeib<MAX_N_NEIB.and.grid%neib(j,l)>0&
+                &  .and.(grid%neib(j,l)<=grid%nC.or..not.useCellOnly)&
+                &  .and.all(iNeib(1:nNeib)/=grid%neib(j,l))&
+                &  .and.grid%neib(j,l)/=i)then
+                  nNeib=nNeib+1
+                  iNeib(nNeib)=grid%neib(j,l)
+                end if
+              end do
+            end if
           end do
         end do
       end if
