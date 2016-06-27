@@ -231,25 +231,6 @@ contains
     !$omp end parallel do
   end subroutine
   
-  !> scale and fill primitive state {p,u,T} into variable vector
-  subroutine fillVar(pi,ui,tempi,var)
-    double precision,intent(in)::pi(:) !< pressure
-    double precision,intent(in)::ui(:,:) !< velocity
-    double precision,intent(in)::tempi(:) !< temperature
-    double precision,intent(inout)::var(:) !< variable vector of the nonlinear problem
-    
-    !$omp parallel do default(shared)&
-    !$omp& private(j)
-    do i=1,grid%nC
-      j=(i-1)*5
-      ! FIXME scale the variable
-      var(j+1)=pi(i)/xscale(j+1)
-      var(j+2:j+4)=ui(:,i)/xscale(j+2:j+4)
-      var(j+5)=tempi(i)/xscale(j+5)
-    end do
-    !$omp end parallel do
-  end subroutine
-  
   !> extract and de-scale primitive state {p,u,T} from variable vector
   subroutine extractVar(var,po,uo,tempo)
     double precision,intent(in)::var(:) !< variable vector of the nonlinear problem
@@ -285,23 +266,30 @@ contains
     close(FID)
   end subroutine
   
-  !> calculate time step size and scaling vectors
-  subroutine preSolve(dt,xscale,rscale)
-    double precision,intent(out)::dt !< time step size
-    double precision,intent(inout)::xscale(:) !< state variable scale
-    double precision,intent(inout)::rscale(:) !< residual scale
+  !> calculate time step size, scaling vectors and initial solution vector
+  subroutine preSolve()
     
     ! TODO adaptive dt and scales
-    dt=1d-5
+    dt=1d-4
     do i=1,grid%nC
       j=(i-1)*5
       xscale(j+1)=1d5
       xscale(j+2:j+4)=10d0
       xscale(j+5)=300d0
-      rscale(j+1)=1d0
-      rscale(j+2:j+4)=10d0
-      rscale(j+5)=1d5
+      rscale(j+1)=0.1d0
+      rscale(j+2:j+4)=1d0
+      rscale(j+5)=1d4
     end do
+    !$omp parallel do default(shared)&
+    !$omp& private(j)
+    do i=1,grid%nC
+      j=(i-1)*5
+      ! FIXME scale the variable
+      x(j+1)=p(i)/xscale(j+1)
+      x(j+2:j+4)=u(:,i)/xscale(j+2:j+4)
+      x(j+5)=temp(i)/xscale(j+5)
+    end do
+    !$omp end parallel do
   end subroutine
   
   !> set the boundary conditions

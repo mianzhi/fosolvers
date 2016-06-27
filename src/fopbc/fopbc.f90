@@ -15,14 +15,14 @@ program fopbc
     ! TODO update transport properties according to state0
     visc(:)=20d-6
     cond(:)=30d-3
-    call preSolve(dt,xscale,rscale)
-    call fillVar(p,u,temp,x)
-    write(*,*),'start'
+    call preSolve()
+    write(*,*),'start',t
     call fkinsol(x,1,noscale,noscale,ier)
-    write(*,*),'done solve'
+    write(*,*),'done'
     call extractVar(x,p,u,temp)
     ! TODO solve Y transport here
     call recoverState(p,u,temp,Y,rho,rhou,rhoE)
+    call setBC()
     t=t+dt
     if(t+tiny(1d0)>=tNext)then
       iOut=iOut+1
