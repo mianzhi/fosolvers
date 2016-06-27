@@ -118,6 +118,7 @@ contains
     call fkinmalloc(ioutFKIN,routFKIN,ier)
     call fkinspgmr(50,4,ier)
     !call fkindense(nEq,ier)
+    call fkinsetrin('MAX_STEP',huge(1d0),ier)
     !call fkinsetrin('FNORM_TOL',1d-5,ier)
     !call fkinsetrin('SSTEP_TOL',1d-9,ier)
     call fkinsetiin('PRNT_LEVEL',1,ier)
@@ -243,9 +244,9 @@ contains
     do i=1,grid%nC
       j=(i-1)*5
       ! FIXME de-scale the variable
-      po(i)=var(j+1)*xscale(j+1)
-      uo(:,i)=var(j+2:j+4)*xscale(j+2:j+4)
-      tempo(i)=var(j+5)*xscale(j+5)
+      po(i)=p0(i)+var(j+1)*xscale(j+1)
+      uo(:,i)=u0(:,i)+var(j+2:j+4)*xscale(j+2:j+4)
+      tempo(i)=temp0(i)+var(j+5)*xscale(j+5)
     end do
     !$omp end parallel do
   end subroutine
@@ -273,9 +274,9 @@ contains
     dt=1d-4
     do i=1,grid%nC
       j=(i-1)*5
-      xscale(j+1)=1d5
+      xscale(j+1)=0.1d5
       xscale(j+2:j+4)=10d0
-      xscale(j+5)=300d0
+      xscale(j+5)=10d0
       rscale(j+1)=0.1d0
       rscale(j+2:j+4)=1d0
       rscale(j+5)=1d4
@@ -285,9 +286,9 @@ contains
     do i=1,grid%nC
       j=(i-1)*5
       ! FIXME scale the variable
-      x(j+1)=p(i)/xscale(j+1)
-      x(j+2:j+4)=u(:,i)/xscale(j+2:j+4)
-      x(j+5)=temp(i)/xscale(j+5)
+      x(j+1)=0d0!p(i)/xscale(j+1)
+      x(j+2:j+4)=[0d0,0d0,0d0]!u(:,i)/xscale(j+2:j+4)
+      x(j+5)=0d0!temp(i)/xscale(j+5)
     end do
     !$omp end parallel do
   end subroutine
