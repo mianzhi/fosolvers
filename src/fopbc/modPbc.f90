@@ -116,7 +116,7 @@ contains
     nEq=5*grid%nC
     call fnvinits(3,nEq,ier)
     call fkinmalloc(ioutFKIN,routFKIN,ier)
-    call fkinspgmr(50,4,ier)
+    call fkinspgmr(0,0,ier)
     !call fkindense(nEq,ier)
     call fkinsetrin('MAX_STEP',huge(1d0),ier)
     !call fkinsetrin('FNORM_TOL',1d-5,ier)

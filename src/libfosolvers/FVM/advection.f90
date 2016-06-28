@@ -52,10 +52,18 @@ contains
       n=grid%iEP(2,i)
       if(m<=size(s,2).and.m<=size(f,3).and.n<=size(s,2).and.n<=size(f,3))then
         do j=1,size(s,1)
-          if(abs(s(j,m)-s(j,n))<=tiny(1d0))then
-            up=m
-            dn=n
-          else if(dot_product((f(:,j,m)-f(:,j,n))/(s(j,m)-s(j,n)),grid%normP(:,i))>=0d0)then
+          if(norm2(f(:,j,m)+f(:,j,n))<=tiny(1d0))then ! skip canceling flux
+            cycle
+          else if(abs(s(j,m)-s(j,n))<=tiny(1d0))then ! upwinding by flux
+            if(dot_product(f(:,j,m)+f(:,j,n),grid%normP(:,i))>=0d0)then
+              up=m
+              dn=n
+            else
+              up=n
+              dn=m
+            end if
+          else if(dot_product((f(:,j,m)-f(:,j,n))/(s(j,m)-s(j,n)),&
+          &                   grid%normP(:,i))>=0d0)then ! upwinding by velocity
             up=m
             dn=n
           else
