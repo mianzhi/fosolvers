@@ -244,9 +244,9 @@ contains
     do i=1,grid%nC
       j=(i-1)*5
       ! FIXME de-scale the variable
-      po(i)=p0(i)+var(j+1)*xscale(j+1)
-      uo(:,i)=u0(:,i)+var(j+2:j+4)*xscale(j+2:j+4)
-      tempo(i)=temp0(i)+var(j+5)*xscale(j+5)
+      po(i)=p0(i)+var(j+1)
+      uo(:,i)=u0(:,i)+var(j+2:j+4)
+      tempo(i)=temp0(i)+var(j+5)
     end do
     !$omp end parallel do
   end subroutine
@@ -274,9 +274,9 @@ contains
     dt=1d-4
     do i=1,grid%nC
       j=(i-1)*5
-      xscale(j+1)=0.1d5
-      xscale(j+2:j+4)=10d0
-      xscale(j+5)=10d0
+      xscale(j+1)=1d0/0.1d5
+      xscale(j+2:j+4)=1d0/10d0
+      xscale(j+5)=1d0/10d0
       rscale(j+1)=0.1d0
       rscale(j+2:j+4)=1d0
       rscale(j+5)=1d4

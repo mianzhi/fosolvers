@@ -10,14 +10,13 @@ program fopbc
   write(tmpStr,*),iOut
   call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
   do while(t<tFinal)
-    call deriveState(rho,rhou,rhoE,Y,p,u,temp)
     call recordState0()
     ! TODO update transport properties according to state0
     visc(:)=20d-6
     cond(:)=30d-3
     call preSolve()
     write(*,*),'start',t
-    call fkinsol(x,1,noscale,noscale,ier)
+    call fkinsol(x,1,xscale,noscale,ier)
     write(*,*),'done'
     call extractVar(x,p,u,temp)
     ! TODO solve Y transport here
