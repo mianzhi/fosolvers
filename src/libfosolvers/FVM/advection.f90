@@ -52,9 +52,17 @@ contains
       n=grid%iEP(2,i)
       if(m<=size(s,2).and.m<=size(f,3).and.n<=size(s,2).and.n<=size(f,3))then
         do j=1,size(s,1)
-          if(norm2(f(:,j,m)+f(:,j,n))<=tiny(1d0))then ! skip canceling flux
+          if(abs(dot_product(f(:,j,m)+f(:,j,n),grid%normP(:,i)))<=tiny(1d0))then ! canceling flux
             cycle
-          else if(abs(s(j,m)-s(j,n))<=tiny(1d0))then ! upwinding by flux
+          else if(abs(s(j,m))>tiny(1d0).and.abs(s(j,n))>tiny(1d0))then ! upwinding by velocity
+            if(dot_product(f(:,j,m)/s(j,m)+f(:,j,n)/s(j,n),grid%normP(:,i))>=0d0)then
+              up=m
+              dn=n
+            else
+              up=n
+              dn=m
+            end if
+          else ! upwinding by flux
             if(dot_product(f(:,j,m)+f(:,j,n),grid%normP(:,i))>=0d0)then
               up=m
               dn=n
@@ -62,13 +70,6 @@ contains
               up=n
               dn=m
             end if
-          else if(dot_product((f(:,j,m)-f(:,j,n))/(s(j,m)-s(j,n)),&
-          &                   grid%normP(:,i))>=0d0)then ! upwinding by velocity
-            up=m
-            dn=n
-          else
-            up=n
-            dn=m
           end if
           fUp=dot_product(f(:,j,up),grid%normP(:,i))
           fDn=dot_product(f(:,j,dn),grid%normP(:,i))
