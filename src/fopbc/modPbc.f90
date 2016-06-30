@@ -116,8 +116,8 @@ contains
     nEq=5*grid%nC
     call fnvinits(3,nEq,ier)
     call fkinmalloc(ioutFKIN,routFKIN,ier)
-    call fkinspgmr(0,0,ier)
-    !call fkindense(nEq,ier)
+    !call fkinspgmr(0,0,ier)
+    call fkindense(nEq,ier)
     call fkinsetrin('MAX_STEP',huge(1d0),ier)
     !call fkinsetrin('FNORM_TOL',1d-5,ier)
     !call fkinsetrin('SSTEP_TOL',1d-9,ier)
@@ -269,14 +269,18 @@ contains
   
   !> calculate time step size, scaling vectors and initial solution vector
   subroutine preSolve()
+    double precision::ps,us,temps
     
     ! TODO adaptive dt and scales
     dt=1d-4
+    ps=max(maxval(p)-minval(p),maxval(0.5d0*rho*norm2(u,1)**2))
+    us=max(maxval(norm2(u,1)),sqrt(2d0*ps/minval(rho)))
+    temps=max(maxval(temp)-minval(temp),ps/minval(rho)/287.058d0)
     do i=1,grid%nC
       j=(i-1)*5
-      xscale(j+1)=1d0/0.1d5
-      xscale(j+2:j+4)=1d0/10d0
-      xscale(j+5)=1d0/10d0
+      xscale(j+1)=1d0/ps
+      xscale(j+2:j+4)=1d0/us
+      xscale(j+5)=1d0/temps
       rscale(j+1)=0.1d0
       rscale(j+2:j+4)=1d0
       rscale(j+5)=1d4
