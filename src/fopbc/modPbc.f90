@@ -32,6 +32,13 @@ module modPbc
   
   double precision,allocatable::visc(:) !< viscosity [Pa*s]
   double precision,allocatable::cond(:) !< thermal conductivity [W/m/K]
+  double precision,allocatable::gradP(:,:) !< gradient of p [Pa/m]
+  double precision,allocatable::viscF(:,:) !< viscous force applied on cell [N]
+  double precision,allocatable::presF(:,:) !< pressure force applied on cell [N]
+  double precision,allocatable::condQ(:) !< heat conduction into cell [W]
+  double precision,allocatable::carrier(:,:) !< {rho,rhou,rhoH} of each cell [*]
+  double precision,allocatable::flux(:,:,:) !< flux of {rho,rhou,rhoH} [*m/s]
+  double precision,allocatable::flow(:,:) !< flow rate of {rho,rhou,rhoH} into cell [*m^3/s]
   
   double precision,allocatable::x(:) !< solution vector of the nonlinear system of equations
   double precision,allocatable::xscale(:) !< scaling factors for the solution
@@ -146,6 +153,13 @@ contains
     allocate(YInit(1))
     allocate(visc(grid%nE))
     allocate(cond(grid%nE))
+    allocate(gradP(DIMS,grid%nC))
+    allocate(viscF(DIMS,grid%nC))
+    allocate(presF(DIMS,grid%nC))
+    allocate(condQ(grid%nC))
+    allocate(carrier(5,grid%nE))
+    allocate(flux(DIMS,5,grid%nE))
+    allocate(flow(5,grid%nC))
     do i=1,grid%nE
     !  if(udfIc/=0)then
     !    pE(:)=grid%p(:,i)
@@ -271,9 +285,14 @@ contains
   subroutine preSolve()
     double precision::ps,us,temps
     
-    ! TODO adaptive dt and scales
+    ! TODO calculate dt
     dt=1d-4
-    ps=max(maxval(p)-minval(p),maxval(0.5d0*rho*norm2(u,1)**2))
+    
+    ! estimate the solution vector
+    x(:)=0d0
+    
+    ! solution and residual scaling
+    ps=max(maxval(p)-minval(p),maxval(0.5d0*rho*norm2(u,1)**2),1d0)
     us=max(maxval(norm2(u,1)),sqrt(2d0*ps/minval(rho)))
     temps=max(maxval(temp)-minval(temp),ps/minval(rho)/287.058d0)
     do i=1,grid%nC
@@ -285,16 +304,6 @@ contains
       rscale(j+2:j+4)=1d0
       rscale(j+5)=1d4
     end do
-    !$omp parallel do default(shared)&
-    !$omp& private(j)
-    do i=1,grid%nC
-      j=(i-1)*5
-      ! FIXME scale the variable
-      x(j+1)=0d0!p(i)/xscale(j+1)
-      x(j+2:j+4)=[0d0,0d0,0d0]!u(:,i)/xscale(j+2:j+4)
-      x(j+5)=0d0!temp(i)/xscale(j+5)
-    end do
-    !$omp end parallel do
   end subroutine
   
   !> set the boundary conditions

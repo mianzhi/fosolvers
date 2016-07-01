@@ -10,6 +10,7 @@ program fopbc
   write(tmpStr,*),iOut
   call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
   do while(t<tFinal)
+    call setBC()
     call recordState0()
     ! TODO update transport properties according to state0
     visc(:)=20d-6
