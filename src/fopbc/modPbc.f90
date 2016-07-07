@@ -257,7 +257,6 @@ contains
     !$omp& private(j)
     do i=1,grid%nC
       j=(i-1)*5
-      ! FIXME de-scale the variable
       po(i)=p0(i)+var(j+1)
       uo(:,i)=u0(:,i)+var(j+2:j+4)
       tempo(i)=temp0(i)+var(j+5)
@@ -284,8 +283,17 @@ contains
   !> calculate time step size, scaling vectors and initial solution vector
   subroutine preSolve()
     double precision::ps,us,temps
+    double precision,parameter::CFL_ACCOUSTIC=10d0
+    double precision,parameter::CFL_FLOW=0.5d0
+    double precision,parameter::CFL_DIFFUSION=0.5d0
     
-    ! TODO calculate dt
+    ! TODO calculate dt, cantera sound speed
+    dt=min(tNext-t,minval(CFL_ACCOUSTIC*grid%v(:)**(1d0/3d0)&
+    &                     /sqrt(1.4d0*p(1:grid%nC)/rho(1:grid%nC))))
+    dt=min(dt,minval(CFL_FLOW*grid%v(:)**(1d0/3d0)&
+    &                /norm2(u(:,1:grid%nC),1)))
+    dt=min(dt,minval(CFL_DIFFUSION*grid%v(:)**(2d0/3d0)&
+    &                /(visc(1:grid%nC)/rho(1:grid%nC))))
     dt=1d-4
     
     ! estimate the solution vector
