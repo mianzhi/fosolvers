@@ -11,7 +11,7 @@ function polyFvGrid1() result(ierr)
   call grid%up()
   open(10,file='polyFvGrid1.rst',action='write')
   do i=1,grid%nP
-    write(10,'(i6,7g14.7)'),i,grid%aP(i),grid%pP(:,i),grid%normP(:,i)
+    write(10,'(i6,7g14.7)')i,grid%aP(i),grid%pP(:,i),grid%normP(:,i)
   end do
   close(10)
 end function

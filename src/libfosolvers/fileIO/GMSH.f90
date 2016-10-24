@@ -16,16 +16,16 @@ subroutine readGMSHPolyGrid(fid,grid)
   ierr=0
   do while(ierr==0)
     tmpStr=''
-    read(fid,'(a)',iostat=ierr),tmpStr
+    read(fid,'(a)',iostat=ierr)tmpStr
     if(tmpStr(1:6)=='$Nodes')then
-      read(fid,*),n
+      read(fid,*)n
       allocate(p(3,n))
       do i=1,n
-        read(fid,*),j,p(:,i)
+        read(fid,*)j,p(:,i)
       end do
     end if
     if(tmpStr(1:9)=='$Elements')then
-      read(fid,*),m
+      read(fid,*)m
       allocate(c(MAX_N_PER_E,m))
       allocate(t(m))
       allocate(np(m))
@@ -33,10 +33,10 @@ subroutine readGMSHPolyGrid(fid,grid)
       c(:,:)=0
       do i=1,m
         tmpStr=''
-        read(fid,'(a)'),tmpStr
-        read(tmpStr,*),j,t(i),l
+        read(fid,'(a)')tmpStr
+        read(tmpStr,*)j,t(i),l
         call transShape(t(i),np(i))
-        read(tmpStr,*),j,k,tmpIArr(1:l+1),c(1:np(i),i)
+        read(tmpStr,*)j,k,tmpIArr(1:l+1),c(1:np(i),i)
         g(i)=tmpIArr(3)
       end do
       m=count(np(:)>0) ! exclude un-supported elements
@@ -44,7 +44,7 @@ subroutine readGMSHPolyGrid(fid,grid)
       if(allocated(p))then
         grid%pN(:,:)=p(:,1:grid%nN)
       else
-        write(*,'(a)'),"[E] readGMSHPolyGrid(): reading elements before nodes"
+        write(*,'(a)')"[E] readGMSHPolyGrid(): reading elements before nodes"
       end if
       j=0
       do i=1,size(np)

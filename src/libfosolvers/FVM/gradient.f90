@@ -57,7 +57,7 @@ contains
         if(findCellOnly)then
           cycle
         end if
-        write(*,*),'findGradPolyVect: support cell element only'
+        write(*,*)'findGradPolyVect: support cell element only'
         ! TODO nNeib,lNeib at non-cell
         ! TODO check useCellOnly
       else ! at cell

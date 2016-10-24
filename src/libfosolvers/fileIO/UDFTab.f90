@@ -10,11 +10,11 @@ subroutine readUDFTab(fid,udf)
   character(STR_LEN)::str
   integer(C_LONG)::evaluator_create_
   
-  read(fid,*),n
+  read(fid,*)n
   call udf%init(n)
   do i=1,n
     str=''
-    read(fid,'(a)'),str
+    read(fid,'(a)')str
     udf%ptr(i)=evaluator_create_(trim(adjustl(str)))
   end do
 end subroutine

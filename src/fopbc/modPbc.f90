@@ -96,8 +96,8 @@ contains
     !end if
     !close(FID)
     open(FID,file='sim',action='read')
-    read(FID,*),tFinal
-    read(FID,*),tInt
+    read(FID,*)tFinal
+    read(FID,*)tInt
     close(FID)
     !open(FID,file='fl',action='read')
     !read(FID,*),r
@@ -123,8 +123,8 @@ contains
     nEq=5*grid%nC
     call fnvinits(3,nEq,ier)
     call fkinmalloc(ioutFKIN,routFKIN,ier)
-    !call fkinspgmr(0,0,ier)
-    call fkindense(nEq,ier)
+    call fkinspgmr(0,0,ier)
+    !call fkindense(nEq,ier)
     call fkinsetrin('MAX_STEP',huge(1d0),ier)
     !call fkinsetrin('FNORM_TOL',1d-5,ier)
     !call fkinsetrin('SSTEP_TOL',1d-9,ier)

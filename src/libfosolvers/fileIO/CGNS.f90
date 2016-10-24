@@ -13,7 +13,7 @@ subroutine readCGNSPolyGrid(fname,grid)
   
   call cg_open_f(trim(adjustl(fname)),CG_MODE_READ,fid,ier)
   if(ier/=CG_OK)then
-    write(*,'(a,a)'),'[E] readCGNSPolyGrid(): cannot open ',trim(adjustl(fname))
+    write(*,'(a,a)')'[E] readCGNSPolyGrid(): cannot open ',trim(adjustl(fname))
     call cg_error_exit_f()
   end if
   ! assumed 1 base, 1 zone

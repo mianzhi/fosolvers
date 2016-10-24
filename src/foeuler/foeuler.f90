@@ -84,33 +84,33 @@ contains
     end if
     close(FID)
     open(FID,file='ic',action='read')
-    read(FID,*),udfIC
+    read(FID,*)udfIC
     if(udfIc==0)then
-      read(FID,*),p0
-      read(FID,*),T0
-      read(FID,*),u0(1)
-      read(FID,*),u0(2)
-      read(FID,*),u0(3)
+      read(FID,*)p0
+      read(FID,*)T0
+      read(FID,*)u0(1)
+      read(FID,*)u0(2)
+      read(FID,*)u0(3)
     else
-      read(FID,*),tmpD
+      read(FID,*)tmpD
       iUdf(1)=int(tmpD)
-      read(FID,*),tmpD
+      read(FID,*)tmpD
       iUdf(2)=int(tmpD)
-      read(FID,*),tmpD
+      read(FID,*)tmpD
       iUdf(3)=int(tmpD)
-      read(FID,*),tmpD
+      read(FID,*)tmpD
       iUdf(4)=int(tmpD)
-      read(FID,*),tmpD
+      read(FID,*)tmpD
       iUdf(5)=int(tmpD)
     end if
     close(FID)
     open(FID,file='sim',action='read')
-    read(FID,*),tFinal
-    read(FID,*),tInt
+    read(FID,*)tFinal
+    read(FID,*)tInt
     close(FID)
     open(FID,file='fl',action='read')
-    read(FID,*),r
-    read(FID,*),gamm
+    read(FID,*)r
+    read(FID,*)gamm
     close(FID)
     if(udfIc/=0.or.udfBc/=0)then
       open(FID,file='udf',action='read')
@@ -366,13 +366,13 @@ program foeuler
   integer::ier
   
   call init()
-  write(tmpStr,*),iOut
+  write(tmpStr,*)iOut
   call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
   do while(t<tFinal)
     call fcvode(tNext,t,y,1,ier)
     if(t+tiny(1d0)>=tNext)then
       iOut=iOut+1
-      write(tmpStr,*),iOut
+      write(tmpStr,*)iOut
       call syncState(y)
       call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
       tNext=tNext+tInt

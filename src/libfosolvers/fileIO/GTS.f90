@@ -8,7 +8,7 @@ subroutine readGTS(fid,mesh)
   integer::nPoint,nEdge,nTri
   integer,allocatable::lEdge(:,:),lTri(:,:)
   
-  read(fid,*),nPoint,nEdge,nTri
+  read(fid,*)nPoint,nEdge,nTri
   allocate(lEdge(2,nEdge))
   allocate(lTri(3,nTri))
   call mesh%init(nPoint,nTri,TRI_N)
@@ -16,13 +16,13 @@ subroutine readGTS(fid,mesh)
   mesh%nNE(:)=TRI_N
   mesh%iNE(:,:)=0
   do i=1,nPoint
-    read(fid,*),mesh%pN(:,i)
+    read(fid,*)mesh%pN(:,i)
   end do
   do i=1,nEdge
-    read(fid,*),lEdge(:,i)
+    read(fid,*)lEdge(:,i)
   end do
   do i=1,nTri
-    read(fid,*),lTri(:,i)
+    read(fid,*)lTri(:,i)
   end do
   do i=1,nTri
     if(all(lEdge(:,lTri(2,i))/=lEdge(1,lTri(1,i))))then

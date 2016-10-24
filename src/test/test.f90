@@ -27,7 +27,7 @@ program test
   call try('eulerJac',eulerJac)
   call try('UDF1',UDF1)
   
-  write(*,'(a)'),'check md5 of output files:'
+  write(*,'(a)')'check md5 of output files:'
   call system('md5sum -c sums.md5')
   
 contains
@@ -38,11 +38,11 @@ contains
     
     i=item()
     if(i<0)then
-      write(*,'(a,a,a,i3)'),'[P]: "',trim(adjustl(str)),'", epsilon < 1E',i
+      write(*,'(a,a,a,i3)')'[P]: "',trim(adjustl(str)),'", epsilon < 1E',i
     else if(i==0)then
-      write(*,'(a,a,a)'),'[P]: "',trim(adjustl(str)),'"'
+      write(*,'(a,a,a)')'[P]: "',trim(adjustl(str)),'"'
     else
-      write(*,'(a,a,a,i6)'),'[FAIL]: "',trim(adjustl(str)),'", ERR=',i
+      write(*,'(a,a,a,i6)')'[FAIL]: "',trim(adjustl(str)),'", ERR=',i
     end if
   end subroutine
   
