@@ -32,8 +32,7 @@ subroutine fkfun(s,r,ier)
   do i=1,grid%nC
     j=(i-1)*5
     r(j+1)=rho(i)-rho0(i)-dt/grid%v(i)*flow(1,i)
-    r(j+2:j+4)=rho0(i)*s(j+2:j+4)&
-    &          -dt/grid%v(i)*(flow(2:4,i)-u(:,i)*flow(1,i)+presF(:,i)+viscF(:,i))
+    r(j+2:j+4)=rhou(:,i)-rhou0(:,i)-dt/grid%v(i)*(flow(2:4,i)+presF(:,i)+viscF(:,i))
     r(j+5)=rhoE(i)*rho0(i)/rho(i)-rhoE0(i)&
     &      -dt/grid%v(i)*(flow(5,i)-rhoE(i)/rho(i)*flow(1,i)+condQ(i))
   end do
