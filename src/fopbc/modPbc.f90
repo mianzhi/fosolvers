@@ -39,6 +39,7 @@ module modPbc
   double precision,allocatable::carrier(:,:) !< {rho,rhou,rhoH} of each cell [*]
   double precision,allocatable::flux(:,:,:) !< flux of {rho,rhou,rhoH} [*m/s]
   double precision,allocatable::flow(:,:) !< flow rate of {rho,rhou,rhoH} into cell [*m^3/s]
+  double precision,allocatable::localPrec(:,:,:) !< local preconditioner and its invertion
   
   double precision,allocatable::x(:) !< solution vector of the nonlinear system of equations
   double precision,allocatable::xscale(:) !< scaling factors for the solution
@@ -161,6 +162,7 @@ contains
     allocate(carrier(5,grid%nE))
     allocate(flux(DIMS,5,grid%nE))
     allocate(flow(5,grid%nC))
+    allocate(localPrec(5,5,grid%nC))
     do i=1,grid%nE
     !  if(udfIc/=0)then
     !    pE(:)=grid%p(:,i)
