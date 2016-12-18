@@ -26,7 +26,7 @@ program fopbc
     cond(:)=30d-3
     call preSolve()
     write(*,*)'start',t
-    call fkinsol(x,1,xscale,noscale,ier)
+    call fkinsol(x,1,xscale,rscale,ier)
     write(*,*)'done'
     call extractVar(x,p,u,temp)
     ! TODO solve Y transport here

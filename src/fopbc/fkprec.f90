@@ -42,6 +42,10 @@ subroutine fkpset(s,ss,r,rs,tmp1,tmp2,ier)
     &                 -u(2,i)/rho0(i)/tmp2(i)/temp(i),&
     &                 -u(3,i)/rho0(i)/tmp2(i)/temp(i),&
     &                 1d0/rho0(i)/tmp2(i)]
+    j=(i-1)*5
+    forall(m=1:5,n=1:5)
+      localPrec(m,n,i)=localPrec(m,n,i)*ss(j+m)/rs(j+n)
+    end forall
   end do
   ier=0
 end subroutine
@@ -57,7 +61,7 @@ subroutine fkpsol(s,ss,r,rs,v,tmp,ier)
   double precision::tmp(*) !< work space
   integer::ier !< error indicator
   
-  tmp(1:nEq)=v(1:nEq)*rscale(1:nEq)
+  tmp(1:nEq)=v(1:nEq)
   do i=1,grid%nC
     j=(i-1)*5
     v(j+1:j+5)=matmul(localPrec(:,:,i),tmp(j+1:j+5))

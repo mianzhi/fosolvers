@@ -44,7 +44,6 @@ module modPbc
   double precision,allocatable::x(:) !< solution vector of the nonlinear system of equations
   double precision,allocatable::xscale(:) !< scaling factors for the solution
   double precision,allocatable::rscale(:) !< scaling factors for the residual
-  double precision,allocatable::noscale(:) !< fake scaling for KINSOL's potential scaling issue
   integer(C_LONG)::nEq !< number of equations
   integer(C_LONG)::ioutFKIN(100) !< integer output of FKINSOL
   double precision::routFKIN(100) !< real output of FKINSOL
@@ -124,9 +123,9 @@ contains
     nEq=5*grid%nC
     call fnvinits(3,nEq,ier)
     call fkinmalloc(ioutFKIN,routFKIN,ier)
-    call fkinspgmr(0,0,ier)
-    call fkinspilssetprec(1,ier)
-    !call fkindense(nEq,ier)
+    !call fkinspgmr(0,0,ier)
+    !call fkinspilssetprec(1,ier)
+    call fkindense(nEq,ier)
     call fkinsetrin('MAX_STEP',huge(1d0),ier)
     !call fkinsetrin('FNORM_TOL',1d-5,ier)
     !call fkinsetrin('SSTEP_TOL',1d-9,ier)
@@ -134,8 +133,6 @@ contains
     allocate(x(nEq))
     allocate(xscale(nEq))
     allocate(rscale(nEq))
-    allocate(noscale(nEq))
-    noscale(:)=1d0
     ! work space and initial state
     allocate(rho(grid%nE))
     allocate(rho0(grid%nE))
@@ -249,7 +246,7 @@ contains
     !$omp end parallel do
   end subroutine
   
-  !> extract and de-scale primitive state {p,u,T} from variable vector
+  !> extract primitive state {p,u,T} from variable vector
   subroutine extractVar(var,po,uo,tempo)
     double precision,intent(in)::var(:) !< variable vector of the nonlinear problem
     double precision,intent(inout)::po(:) !< pressure
@@ -311,9 +308,9 @@ contains
       xscale(j+1)=1d0/ps
       xscale(j+2:j+4)=1d0/us
       xscale(j+5)=1d0/temps
-      rscale(j+1)=0.1d0
-      rscale(j+2:j+4)=1d0
-      rscale(j+5)=1d4
+      rscale(j+1)=1d0/0.1d0
+      rscale(j+2:j+4)=1d0/1d0
+      rscale(j+5)=1d0/1d4
     end do
   end subroutine
   

@@ -36,6 +36,5 @@ subroutine fkfun(s,r,ier)
     r(j+5)=rhoE(i)*rho0(i)/rho(i)-rhoE0(i)&
     &      -dt/grid%v(i)*(flow(5,i)-rhoE(i)/rho(i)*flow(1,i)+condQ(i))
   end do
-  r(1:nEq)=r(1:nEq)/rscale(1:nEq)
   ier=0
 end subroutine
