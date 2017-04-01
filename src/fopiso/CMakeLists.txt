@@ -1,0 +1,20 @@
+SET(fopiso_src
+  fopiso.f90
+  modPiso.f90
+  fkfun.f90
+  fkprec.f90
+)
+
+ADD_EXECUTABLE(fopiso ${fopiso_src})
+
+TARGET_LINK_LIBRARIES(fopiso
+  fosolvers
+  ${CGNS_LIBRARIES}
+  ${HDF5_LIBRARIES}
+  ${BLAS_LIBRARIES}
+  ${LAPACK_LIBRARIES}
+  ${SUNDIALS_LIBRARIES}
+  ${MATHEVAL_LIBRARIES}
+)
+
+INSTALL(TARGETS fopiso DESTINATION bin)
