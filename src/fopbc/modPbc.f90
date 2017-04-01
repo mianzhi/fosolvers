@@ -282,7 +282,7 @@ contains
   
   !> calculate time step size, scaling vectors and initial solution vector
   subroutine preSolve()
-    double precision::ps,us,temps
+    double precision::ps,us,temps,rhos,rhous,rhoEs
     double precision,parameter::CFL_ACCOUSTIC=10d0
     double precision,parameter::CFL_FLOW=0.5d0
     double precision,parameter::CFL_DIFFUSION=0.5d0
@@ -303,14 +303,17 @@ contains
     ps=max(maxval(p)-minval(p),maxval(0.5d0*rho*norm2(u,1)**2),1d0)
     us=max(maxval(norm2(u,1)),sqrt(2d0*ps/minval(rho)))
     temps=max(maxval(temp)-minval(temp),ps/minval(rho)/287.058d0)
+    rhos=maxval(rho)
+    rhous=rhos*us
+    rhoEs=max(rhos*287.058*temps,0.5d0*rhos*us**2)
     do i=1,grid%nC
       j=(i-1)*5
       xscale(j+1)=1d0/ps
       xscale(j+2:j+4)=1d0/us
       xscale(j+5)=1d0/temps
-      rscale(j+1)=1d0/0.1d0
-      rscale(j+2:j+4)=1d0/1d0
-      rscale(j+5)=1d0/1d4
+      rscale(j+1)=1d0/rhos
+      rscale(j+2:j+4)=1d0/rhous
+      rscale(j+5)=1d0/rhoEs
     end do
   end subroutine
   
