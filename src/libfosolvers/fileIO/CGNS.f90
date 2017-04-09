@@ -3,7 +3,7 @@
 !> read CGNS from fname into polyGrid
 subroutine readCGNSPolyGrid(fname,grid)
   use modPolyGrid
-  include 'cgnslib_f.h'
+  use CGNS
   character(*),intent(in)::fname !< file name
   class(polyGrid),intent(inout)::grid !< result
   integer::fid,ier,isize(3)

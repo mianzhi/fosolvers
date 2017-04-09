@@ -13,6 +13,7 @@ find_path(CGNS_INCLUDE_DIR cgnslib.h
 find_library(CGNS_LIBRARY cgns
   /usr/local/lib
   /usr/lib
+  /usr/lib64
 )
 
 set(CGNS_FOUND "NO")
