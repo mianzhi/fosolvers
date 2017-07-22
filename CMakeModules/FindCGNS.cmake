@@ -5,9 +5,20 @@
 # CGNS_LIBRARIES   - List of fully qualified libraries to link against when using CGNS.
 # CGNS_FOUND       - Do not attempt to use CGNS if "no" or undefined.
 
-find_path(CGNS_INCLUDE_DIR cgnslib.h
+find_path(CGNS_INCLUDE_DIR1 cgnslib.h
   /usr/local/include
   /usr/include
+)
+
+find_path(CGNS_INCLUDE_DIR2 cgns.mod
+  /usr/lib64/gfortran/modules
+  /usr/local/include
+  /usr/include
+)
+
+set(CGNS_INCLUDE_DIR
+  ${CGNS_INCLUDE_DIR1}
+  ${CGNS_INCLUDE_DIR2}
 )
 
 find_library(CGNS_LIBRARY cgns
