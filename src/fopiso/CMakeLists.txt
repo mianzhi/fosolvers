@@ -1,8 +1,6 @@
 SET(fopiso_src
   fopiso.f90
   modPiso.f90
-  fkfun.f90
-  fkprec.f90
 )
 
 ADD_EXECUTABLE(fopiso ${fopiso_src})

@@ -27,26 +27,32 @@ module modPiso
   double precision,allocatable::u(:,:) !< velocity [m/s]
   double precision,allocatable::temp(:) !< temperature [K]
   double precision,allocatable::Y(:,:) !< mass fraction of species
+  
   ! state at the beginning of a time step
   double precision,allocatable::rho0(:),rhou0(:,:),rhoE0(:),p0(:),u0(:,:),temp0(:),Y0(:,:)
   
   double precision,allocatable::visc(:) !< viscosity [Pa*s]
   double precision,allocatable::cond(:) !< thermal conductivity [W/m/K]
   double precision,allocatable::gradP(:,:) !< gradient of p [Pa/m]
+  double precision,allocatable::laP(:) !< Laplacian of p [Pa/m^2] by diffusion scheme
   double precision,allocatable::viscF(:,:) !< viscous force applied on cell [N]
   double precision,allocatable::presF(:,:) !< pressure force applied on cell [N]
   double precision,allocatable::condQ(:) !< heat conduction into cell [W]
   double precision,allocatable::carrier(:,:) !< {rho,rhou,rhoH} of each cell [*]
-  double precision,allocatable::flux(:,:,:) !< flux of {rho,rhou,rhoH} [*m/s]
-  double precision,allocatable::flow(:,:) !< flow rate of {rho,rhou,rhoH} into cell [*m^3/s]
-  double precision,allocatable::localPrec(:,:,:) !< local preconditioner and its invertion
+  double precision,allocatable::fluxRhou(:,:,:) !< flux of rhou [kg/m/s^2]
+  double precision,allocatable::flowRhou(:,:) !< flow rate of rhou into cell [kg*m/s^2]
+  double precision,allocatable::fluxRhoH(:,:) !< flux of rhoH [J/m^2/s]
+  double precision,allocatable::flowRhoH(:) !< flow rate of rhoH into cell [J/s]
   
-  double precision,allocatable::x(:) !< solution vector of the nonlinear system of equations
-  double precision,allocatable::xscale(:) !< scaling factors for the solution
-  double precision,allocatable::rscale(:) !< scaling factors for the residual
-  integer(C_LONG)::nEq !< number of equations
-  integer(C_LONG)::ioutFKIN(100) !< integer output of FKINSOL
-  double precision::routFKIN(100) !< real output of FKINSOL
+  ! auxiliary variables for the PISO iteration
+  double precision,allocatable::rho1(:),p1(:),laP1(:),presF1(:,:),dRho(:)
+  
+  !double precision,allocatable::x(:) !< solution vector of the nonlinear system of equations
+  !double precision,allocatable::xscale(:) !< scaling factors for the solution
+  !double precision,allocatable::rscale(:) !< scaling factors for the residual
+  !integer(C_LONG)::nEq !< number of equations
+  !integer(C_LONG)::ioutFKIN(100) !< integer output of FKINSOL
+  !double precision::routFKIN(100) !< real output of FKINSOL
   
 contains
   
@@ -120,28 +126,28 @@ contains
     !  end do
     !end do
     ! initialize nonlinear solver
-    nEq=5*grid%nC
-    call fnvinits(3,nEq,ier)
-    call fkinmalloc(ioutFKIN,routFKIN,ier)
+    !nEq=5*grid%nC
+    !call fnvinits(3,nEq,ier)
+    !call fkinmalloc(ioutFKIN,routFKIN,ier)
     !call fkinspgmr(0,0,ier)
     !call fkinspilssetprec(1,ier)
-    call fkindense(nEq,ier)
-    call fkinsetrin('MAX_STEP',huge(1d0),ier)
-    !call fkinsetrin('FNORM_TOL',1d-5,ier)
-    !call fkinsetrin('SSTEP_TOL',1d-9,ier)
-    call fkinsetiin('PRNT_LEVEL',1,ier)
-    allocate(x(nEq))
-    allocate(xscale(nEq))
-    allocate(rscale(nEq))
+    !call fkindense(nEq,ier)
+    !call fkinsetrin('MAX_STEP',huge(1d0),ier)
+    !call fkinsetiin('PRNT_LEVEL',1,ier)
+    !allocate(x(nEq))
+    !allocate(xscale(nEq))
+    !allocate(rscale(nEq))
     ! work space and initial state
     allocate(rho(grid%nE))
     allocate(rho0(grid%nE))
+    allocate(rho1(grid%nE))
     allocate(rhou(DIMS,grid%nE))
     allocate(rhou0(DIMS,grid%nE))
     allocate(rhoE(grid%nE))
     allocate(rhoE0(grid%nE))
     allocate(p(grid%nE))
     allocate(p0(grid%nE))
+    allocate(p1(grid%nE))
     allocate(u(DIMS,grid%nE))
     allocate(u0(DIMS,grid%nE))
     allocate(temp(grid%nE))
@@ -152,14 +158,18 @@ contains
     allocate(YInit(1))
     allocate(visc(grid%nE))
     allocate(cond(grid%nE))
+    allocate(fluxRhou(DIMS,DIMS,grid%nE))
+    allocate(fluxRhoH(DIMS,grid%nE))
     allocate(gradP(DIMS,grid%nC))
+    allocate(laP(grid%nC))
+    allocate(laP1(grid%nC))
     allocate(viscF(DIMS,grid%nC))
     allocate(presF(DIMS,grid%nC))
+    allocate(presF1(DIMS,grid%nC))
     allocate(condQ(grid%nC))
-    allocate(carrier(5,grid%nE))
-    allocate(flux(DIMS,5,grid%nE))
-    allocate(flow(5,grid%nC))
-    allocate(localPrec(5,5,grid%nC))
+    allocate(flowRhou(DIMS,grid%nC))
+    allocate(flowRhoH(grid%nC))
+    allocate(dRho(grid%nC))
     do i=1,grid%nE
     !  if(udfIc/=0)then
     !    pE(:)=grid%p(:,i)
@@ -192,7 +202,7 @@ contains
   !> clear the simulation environment
   subroutine clear()
     call grid%clear()
-    call fkinfree()
+    !call fkinfree()
   end subroutine
   
   !> record {rho,rhoU,rhoE,p,u,temp,Y} in {rho0,rhoU0,rhoE0,p0,u0,temp0,Y0}
@@ -280,9 +290,8 @@ contains
     close(FID)
   end subroutine
   
-  !> calculate time step size, scaling vectors and initial solution vector
+  !> calculate time step size, etc.
   subroutine preSolve()
-    double precision::ps,us,temps,rhos,rhous,rhoEs
     double precision,parameter::CFL_ACCOUSTIC=10d0
     double precision,parameter::CFL_FLOW=0.5d0
     double precision,parameter::CFL_DIFFUSION=0.5d0
@@ -295,26 +304,6 @@ contains
     dt=min(dt,minval(CFL_DIFFUSION*grid%v(:)**(2d0/3d0)&
     &                /(visc(1:grid%nC)/rho(1:grid%nC))))
     dt=1d-4
-    
-    ! estimate the solution vector
-    x(:)=0d0
-    
-    ! solution and residual scaling
-    ps=max(maxval(p)-minval(p),maxval(0.5d0*rho*norm2(u,1)**2),1d0)
-    us=max(maxval(norm2(u,1)),sqrt(2d0*ps/minval(rho)))
-    temps=max(maxval(temp)-minval(temp),ps/minval(rho)/287.058d0)
-    rhos=maxval(rho)
-    rhous=rhos*us
-    rhoEs=max(rhos*287.058*temps,0.5d0*rhos*us**2)
-    do i=1,grid%nC
-      j=(i-1)*5
-      xscale(j+1)=1d0/ps
-      xscale(j+2:j+4)=1d0/us
-      xscale(j+5)=1d0/temps
-      rscale(j+1)=1d0/rhos
-      rscale(j+2:j+4)=1d0/rhous
-      rscale(j+5)=1d0/rhoEs
-    end do
   end subroutine
   
   !> set the boundary conditions
