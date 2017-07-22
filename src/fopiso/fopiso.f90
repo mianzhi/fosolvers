@@ -10,7 +10,7 @@ program fopiso
   call init()
   write(tmpStr,*)iOut
   call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
-  do while(t<tFinal)
+  do l=1,20!while(t<tFinal)
     write(*,*)'start',t
     call setBC()
     call recordState0()

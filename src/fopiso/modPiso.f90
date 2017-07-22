@@ -47,6 +47,15 @@ module modPiso
   ! auxiliary variables for the PISO iteration
   double precision,allocatable::rho1(:),p1(:),laP1(:),presF1(:,:),dRho(:)
   
+  
+  ! scales
+  double precision,allocatable::rhoScale !< density scale [kg/m^3]
+  double precision,allocatable::rhouScale !< momentum scale [kg/s/m^2]
+  double precision,allocatable::rhoEScale !< total energy scale [J/m^3]
+  double precision,allocatable::pScale !< pressure scale [Pa]
+  double precision,allocatable::uScale !< velocity scale [m/s]
+  double precision,allocatable::tempScale !< temperature scale [K]
+  
   !double precision,allocatable::x(:) !< solution vector of the nonlinear system of equations
   !double precision,allocatable::xscale(:) !< scaling factors for the solution
   !double precision,allocatable::rscale(:) !< scaling factors for the residual
@@ -290,9 +299,9 @@ contains
     close(FID)
   end subroutine
   
-  !> calculate time step size, etc.
+  !> calculate time step size, scales etc.
   subroutine preSolve()
-    double precision,parameter::CFL_ACCOUSTIC=10d0
+    double precision,parameter::CFL_ACCOUSTIC=2d0
     double precision,parameter::CFL_FLOW=0.5d0
     double precision,parameter::CFL_DIFFUSION=0.5d0
     
@@ -303,7 +312,15 @@ contains
     &                /norm2(u(:,1:grid%nC),1)))
     dt=min(dt,minval(CFL_DIFFUSION*grid%v(:)**(2d0/3d0)&
     &                /(visc(1:grid%nC)/rho(1:grid%nC))))
-    dt=1d-4
+    !dt=2d-5
+    
+    ! solution and residual scales
+    pScale=max(maxval(p)-minval(p),maxval(0.5d0*rho*norm2(u,1)**2),1d0)
+    uScale=max(maxval(norm2(u,1)),sqrt(2d0*pScale/minval(rho)))
+    tempScale=max(maxval(temp)-minval(temp),pScale/minval(rho)/287.058d0)
+    rhoScale=maxval(rho)
+    rhouScale=rhoScale*uScale
+    rhoEScale=max(rhoScale*287.058*tempScale,0.5d0*rhoScale*uScale**2)
   end subroutine
   
   !> set the boundary conditions
@@ -331,8 +348,17 @@ contains
     use modNewtonian
     use modPressure
     use modRhieChow
-    integer,parameter::MAXIT_MOMENTUM=100 !< maximum number of momentum iteration
+    integer,parameter::MAXIT_MOMENTUM=50 !< maximum number of momentum iteration
+    double precision,parameter::TOL_MOMENTUM=1d-4 !< normalized momentum tolerance
+    double precision,allocatable,save::tmpRhou(:,:)
     
+    if(.not.allocated(tmpRhou))then
+      allocate(tmpRhou(DIMS,grid%nC))
+    else if(size(tmpRhou,2)/=grid%nC)then
+      deallocate(tmpRhou)
+      allocate(tmpRhou(DIMS,grid%nC))
+    end if
+    tmpRhou(:,:)=rhou(:,1:grid%nC)
     call setBC()
     call findPresForce(grid,p,presF)
     call findGrad(grid,p,gradP)
@@ -344,12 +370,18 @@ contains
       call findAdv(grid,rhou,fluxRhou,flowRhou)
       call addRhieChow(grid,rhou,p,gradP,rho,dt,flowRhou)
       forall(i=1:grid%nC)
-        rhou(:,i)=rhou0(:,i)+dt/grid%v(i)*(flowRhou(:,i)+presF(:,i)+viscF(:,i))
+        rhou(:,i)=(rhou0(:,i)+dt/grid%v(i)*(flowRhou(:,i)+presF(:,i)+viscF(:,i)))*0.5d0+tmpRhou(:,i)*0.5d0
       end forall
       forall(i=1:grid%nE)
         u(:,i)=rhou(:,i)/rho(i)
       end forall
       call setBC()
+      write(*,*)maxval(norm2(rhou(:,1:grid%nC)-tmpRhou(:,:),1))/rhouScale
+      if(maxval(norm2(rhou(:,1:grid%nC)-tmpRhou(:,:),1))/rhouScale<=TOL_MOMENTUM)then
+        exit
+      else
+        tmpRhou(:,:)=rhou(:,1:grid%nC)
+      end if
     end do
   end subroutine
   
