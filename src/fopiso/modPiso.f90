@@ -323,4 +323,34 @@ contains
     end do
   end subroutine
   
+  !> predict the rhou and u, during which the presF is updated
+  subroutine predictMomentum()
+    use modGradient
+    use modAdvection
+    use modDiffusion
+    use modNewtonian
+    use modPressure
+    use modRhieChow
+    integer,parameter::MAXIT_MOMENTUM=100 !< maximum number of momentum iteration
+    
+    call setBC()
+    call findPresForce(grid,p,presF)
+    call findGrad(grid,p,gradP)
+    do l=1,MAXIT_MOMENTUM
+      call findViscForce(grid,u,visc,viscF)
+      forall(i=1:grid%nE,j=1:DIMS)
+        fluxRhou(:,j,i)=rhou(j,i)*u(:,i)
+      end forall
+      call findAdv(grid,rhou,fluxRhou,flowRhou)
+      call addRhieChow(grid,rhou,p,gradP,rho,dt,flowRhou)
+      forall(i=1:grid%nC)
+        rhou(:,i)=rhou0(:,i)+dt/grid%v(i)*(flowRhou(:,i)+presF(:,i)+viscF(:,i))
+      end forall
+      forall(i=1:grid%nE)
+        u(:,i)=rhou(:,i)/rho(i)
+      end forall
+      call setBC()
+    end do
+  end subroutine
+  
 end module

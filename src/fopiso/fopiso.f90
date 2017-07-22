@@ -18,7 +18,7 @@ program fopiso
     visc(:)=20d-6
     cond(:)=30d-3
     call preSolve()
-    call setBC()
+    call predictMomentum()
     t=t+dt
     write(*,*)'done'
     if(t+tiny(1d0)>=tNext)then
