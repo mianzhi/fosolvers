@@ -69,8 +69,8 @@ set( SUNDIALS_VALID_COMPONENTS
     sundials_kinsol
     sundials_fnvecserial
     sundials_nvecserial
-#    sundials_fnvecopenmp
-#    sundials_nvecopenmp
+    sundials_fnvecopenmp
+    sundials_nvecopenmp
 )
 
 

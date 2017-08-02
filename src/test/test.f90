@@ -7,8 +7,10 @@ program test
   &                 readCondTab1,&
   &                 gradient1,advection1,advection2,euler,eulerJac,&
   &                 diffusion1,&
-  &                 UDF1
+  &                 UDF1,&
+  &                 fixPt
   
+  call try('fixPt',fixPt)
   call try('otGrid1',otGrid1)
   call try('otGrid2',otGrid2)
   call try('polyX1',polyX1)

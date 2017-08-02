@@ -17,17 +17,19 @@ SET(tests_src
   euler.f90
   eulerJac.f90
   UDF1.f90
+  fixPt.f90
 )
 
 ADD_EXECUTABLE(tests ${tests_src})
 
 TARGET_LINK_LIBRARIES(tests
   fosolvers
-  cgns
+  ${CGNS_LIBRARIES}
   ${HDF5_LIBRARIES}
-  blas
-  lapack
-  matheval
+  ${BLAS_LIBRARIES}
+  ${LAPACK_LIBRARIES}
+  ${SUNDIALS_LIBRARIES}
+  ${MATHEVAL_LIBRARIES}
 )
 
 ADD_CUSTOM_COMMAND(
