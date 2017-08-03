@@ -27,6 +27,18 @@ module modNumerics
       type(C_PTR)::n_vnew_serial !< value of the N_Vector pointer
     end function
     
+    !> NVECTOR destroy N_Vector object, without nullify pointer value
+    subroutine n_vdestroy_serial(vector) bind(c,name='N_VDestroy_Serial')
+      use iso_c_binding
+      type(C_PTR),value::vector !< pointer to the N_Vector to be destroyed
+    end subroutine
+    
+    function n_vgetlength_serial(vector) bind(c,name='N_VGetLength_Serial')
+      use iso_c_binding
+      type(C_PTR),value::vector !< pointer to the N_Vector
+      integer(C_LONG)::n_vgetlength_serial !< the length of vector
+    end function
+    
     !> KINSOL create memory object
     function kincreate() bind(c,name='KINCreate')
       use iso_c_binding
@@ -58,7 +70,31 @@ module modNumerics
     
   end interface
   
+  ! public procedures
+  public::extractVector
+  public::exportVector
+  
 contains
+  
+  !> extract the values of N_Vector vector into array v
+  subroutine extractVector(vector,v)
+    type(C_PTR)::vector !< the N_Vector object
+    double precision,intent(inout)::v(*) !< fortran array
+    integer(C_LONG)::n
+    
+    n=n_vgetlength_serial(vector)
+    write(*,*)'aaa',n
+  end subroutine
+  
+  !> export the values of v into N_Vector vector
+  subroutine exportVector(v,vector)
+    type(C_PTR)::vector !< the N_Vector object
+    double precision,intent(inout)::v(*) !< fortran array
+    integer(C_LONG)::n
+    
+    n=n_vgetlength_serial(vector)
+    write(*,*)'bbb',n
+  end subroutine
   
   !> initialize the problem of fixed point equations
   subroutine initFixPtEq(this,nEq,f,maa)
@@ -89,7 +125,7 @@ contains
         stop
       end if
     end if
-    info=kininit(this%work,this%f,this%tmpl) ! FIXME should use a dummy function compatible with KINSOL
+    info=kininit(this%work,this%f,this%tmpl)
     if(info/=0)then
       write(*,'(a,i3)')"[E] initFixPtEq(): KINInit error code ",info
       stop
@@ -103,6 +139,10 @@ contains
     this%nEq=0
     this%f=C_NULL_FUNPTR
     if(c_associated(this%work)) call kinfree(this%work)
+    if(c_associated(this%tmpl))then
+      call n_vdestroy_serial(this%tmpl)
+      this%tmpl=C_NULL_PTR ! NOTE: NVECTOR does not nullify pointer value
+    end if
   end subroutine
   
   !> destructor of fixPtEq
