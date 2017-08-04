@@ -10,10 +10,13 @@ module modNumerics
     integer(C_INT),private::nEq=0 !< number of equations
     type(C_FUNPTR),private::f=C_NULL_FUNPTR !< pointer to the RHS function
     type(C_PTR),private::work=C_NULL_PTR !< pointer to KINSOL problem object
-    type(C_PTR),private::tmpl=C_NULL_PTR !< pointer to a template N_Vector
+    type(C_PTR),private::x=C_NULL_PTR !< pointer to the solution N_Vector
+    type(C_PTR),private::xScale=C_NULL_PTR !< pointer to the solution scaling N_Vector
+    type(C_PTR),private::rScale=C_NULL_PTR !< pointer to the residual scaling N_Vector
   contains
     procedure,public::init=>initFixPtEq
     procedure,public::clear=>clearFixPtEq
+    procedure,public::solve=>solveFixPtEq
     final::purgeFixPtEq
   end type
   
@@ -21,22 +24,37 @@ module modNumerics
   interface
     
     !> NVECTOR create N_Vector object
-    function n_vnew_serial(nEq) bind(c,name='N_VNew_Serial')
+    function n_vnew(nEq) bind(c,name='N_VNew_Serial')
       use iso_c_binding
       integer(C_INT),value::nEq !< number of equations
-      type(C_PTR)::n_vnew_serial !< value of the N_Vector pointer
+      type(C_PTR)::n_vnew !< value of the N_Vector pointer
     end function
     
     !> NVECTOR destroy N_Vector object, without nullify pointer value
-    subroutine n_vdestroy_serial(vector) bind(c,name='N_VDestroy_Serial')
+    subroutine n_vdestroy(vector) bind(c,name='N_VDestroy_Serial')
       use iso_c_binding
       type(C_PTR),value::vector !< pointer to the N_Vector to be destroyed
     end subroutine
     
-    function n_vgetlength_serial(vector) bind(c,name='N_VGetLength_Serial')
+    !> NVECTOR set constant value in entries of the N_Vector object
+    subroutine n_vconst(val,vector) bind(c,name='N_VConst_Serial')
+      use iso_c_binding
+      real(C_DOUBLE),value::val !< the constant value
+      type(C_PTR),value::vector !< pointer to the N_Vector
+    end subroutine
+    
+    !> NVECTOR get the vector length of the N_Vector object
+    function n_vgetlength(vector) bind(c,name='N_VGetLength_Serial')
       use iso_c_binding
       type(C_PTR),value::vector !< pointer to the N_Vector
-      integer(C_LONG)::n_vgetlength_serial !< the length of vector
+      integer(C_LONG)::n_vgetlength !< the length of vector
+    end function
+    
+    !> NVECTOR get the data pointer of the N_Vector object, assuming data is contagious
+    function n_vgetarraypointer(vector) bind(c,name='N_VGetArrayPointer_Serial')
+      use iso_c_binding
+      type(C_PTR),value::vector !< pointer to the N_Vector
+      type(C_PTR)::n_vgetarraypointer !< the pointer to the contagious array
     end function
     
     !> KINSOL create memory object
@@ -60,6 +78,17 @@ module modNumerics
       type(C_PTR)::mem !< location of memory pointer
     end subroutine
     
+    !> KINSOL solve
+    function kinsol(mem,x,method,xScale,rScale) bind(c,name='KINSol')
+      use iso_c_binding
+      type(C_PTR),value::mem !< memory pointer
+      type(C_PTR),value::x !< solution N_Vector
+      integer(C_INT),value::method !< method code
+      type(C_PTR),value::xScale !< solution scaling N_Vector
+      type(C_PTR),value::rScale !< residual scaling N_Vector
+      integer(C_INT)::kinsol !< returns error code
+    end function
+    
     !> KINSOL set number of iterations for Anderson acceleration
     function kinsetmaa(mem,maa) bind(c,name='KINSetMAA')
       use iso_c_binding
@@ -71,29 +100,20 @@ module modNumerics
   end interface
   
   ! public procedures
-  public::extractVector
-  public::exportVector
+  public::associateVector
   
 contains
   
-  !> extract the values of N_Vector vector into array v
-  subroutine extractVector(vector,v)
+  !> associate fortran pointer v with N_Vector vector
+  subroutine associateVector(vector,v)
     type(C_PTR)::vector !< the N_Vector object
-    double precision,intent(inout)::v(*) !< fortran array
+    double precision,pointer,intent(inout)::v(:) !< fortran pointer
+    type(C_PTR)::ptr
     integer(C_LONG)::n
     
-    n=n_vgetlength_serial(vector)
-    write(*,*)'aaa',n
-  end subroutine
-  
-  !> export the values of v into N_Vector vector
-  subroutine exportVector(v,vector)
-    type(C_PTR)::vector !< the N_Vector object
-    double precision,intent(inout)::v(*) !< fortran array
-    integer(C_LONG)::n
-    
-    n=n_vgetlength_serial(vector)
-    write(*,*)'bbb',n
+    n=n_vgetlength(vector)
+    ptr=n_vgetarraypointer(vector)
+    call c_f_pointer(ptr,v,shape=[n])
   end subroutine
   
   !> initialize the problem of fixed point equations
@@ -112,9 +132,19 @@ contains
       write(*,'(a)')"[E] initFixPtEq(): KINSOL memory object not created"
       stop
     end if
-    this%tmpl=n_vnew_serial(this%nEq)
-    if(.not.c_associated(this%tmpl))then
-      write(*,'(a)')"[E] initFixPtEq(): template N_Vector not allocated"
+    this%x=n_vnew(this%nEq)
+    if(.not.c_associated(this%x))then
+      write(*,'(a)')"[E] initFixPtEq(): solution N_Vector not allocated"
+      stop
+    end if
+    this%xScale=n_vnew(this%nEq)
+    if(.not.c_associated(this%xScale))then
+      write(*,'(a)')"[E] initFixPtEq(): solution scaling N_Vector not allocated"
+      stop
+    end if
+    this%rScale=n_vnew(this%nEq)
+    if(.not.c_associated(this%rScale))then
+      write(*,'(a)')"[E] initFixPtEq(): residual scaling N_Vector not allocated"
       stop
     end if
     if(present(maa))then
@@ -125,11 +155,14 @@ contains
         stop
       end if
     end if
-    info=kininit(this%work,this%f,this%tmpl)
+    info=kininit(this%work,this%f,this%x) ! use solution vector as template
     if(info/=0)then
       write(*,'(a,i3)')"[E] initFixPtEq(): KINInit error code ",info
       stop
     end if
+    ! no scaling by default
+    call n_vconst(1d0,this%xScale)
+    call n_vconst(1d0,this%rScale)
   end subroutine
   
   !> clear this system of fixed point equations
@@ -139,10 +172,36 @@ contains
     this%nEq=0
     this%f=C_NULL_FUNPTR
     if(c_associated(this%work)) call kinfree(this%work)
-    if(c_associated(this%tmpl))then
-      call n_vdestroy_serial(this%tmpl)
-      this%tmpl=C_NULL_PTR ! NOTE: NVECTOR does not nullify pointer value
+    if(c_associated(this%x))then
+      call n_vdestroy(this%x)
+      this%x=C_NULL_PTR ! NOTE: NVECTOR does not nullify pointer value
     end if
+    if(c_associated(this%xScale))then
+      call n_vdestroy(this%xScale)
+      this%xScale=C_NULL_PTR ! NOTE: NVECTOR does not nullify pointer value
+    end if
+    if(c_associated(this%rScale))then
+      call n_vdestroy(this%rScale)
+      this%rScale=C_NULL_PTR ! NOTE: NVECTOR does not nullify pointer value
+    end if
+  end subroutine
+  
+  !> solve this system of fixed point equations
+  subroutine solveFixPtEq(this,x)
+    class(fixPtEq),intent(inout)::this !< this fixPtEq
+    double precision,intent(inout)::x(:) !< the initial guess and solution
+    double precision,pointer::xPtr(:)
+    integer(C_INT)::info
+    integer(C_INT),parameter::KIN_FP=3
+    
+    call associateVector(this%x,xPtr)
+    xPtr(1:this%nEq)=x(1:this%nEq)
+    info=kinsol(this%work,this%x,KIN_FP,this%xScale,this%rScale)
+    if(info/=0)then
+      write(*,'(a,i3)')"[E] solveFixPtEq(): KINSol error code ",info
+      stop
+    end if
+    x(1:this%nEq)=xPtr(1:this%nEq)
   end subroutine
   
   !> destructor of fixPtEq
