@@ -4,6 +4,7 @@
 program fopiso
   use modPiso
   use modFileIO
+  use modDiffusion
   character(20)::tmpStr
   
   call init()
@@ -18,6 +19,13 @@ program fopiso
     cond(:)=30d-3
     call preSolve()
     call predictMomentum()
+    call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
+    do k=1,ITMAX_PISO
+      laP1(:)=laP(:)
+      presF1(:,:)=presF(:,:)
+      p1(:)=p(:)
+      rho1(:)=rho(:)
+    end do
     t=t+dt
     write(*,*)'done'
     if(t+tiny(1d0)>=tNext)then

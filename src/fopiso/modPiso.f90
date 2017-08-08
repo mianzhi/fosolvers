@@ -11,6 +11,7 @@ module modPiso
   public
   
   integer,parameter::DIMS=3 !< three dimensions
+  integer,parameter::ITMAX_PISO=20 !< max number of PISO iterations
   
   type(polyFvGrid)::grid !< computational grid
   
