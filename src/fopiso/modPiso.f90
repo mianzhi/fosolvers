@@ -57,14 +57,8 @@ module modPiso
   double precision,allocatable::uScale !< velocity scale [m/s]
   double precision,allocatable::tempScale !< temperature scale [K]
   
-  type(fixPtEq)::momentumEq !< momentum equation as a fix point problem
-  
-  !double precision,allocatable::x(:) !< solution vector of the nonlinear system of equations
-  !double precision,allocatable::xscale(:) !< scaling factors for the solution
-  !double precision,allocatable::rscale(:) !< scaling factors for the residual
-  !integer(C_LONG)::nEq !< number of equations
-  !integer(C_LONG)::ioutFKIN(100) !< integer output of FKINSOL
-  !double precision::routFKIN(100) !< real output of FKINSOL
+  ! data for algebraic solver
+  type(fixPtEq)::momentumEq !< momentum equation as a fix point problem  
   
 contains
   
@@ -137,18 +131,8 @@ contains
     !    end if
     !  end do
     !end do
-    ! initialize nonlinear solver
-    !nEq=5*grid%nC
-    !call fnvinits(3,nEq,ier)
-    !call fkinmalloc(ioutFKIN,routFKIN,ier)
-    !call fkinspgmr(0,0,ier)
-    !call fkinspilssetprec(1,ier)
-    !call fkindense(nEq,ier)
-    !call fkinsetrin('MAX_STEP',huge(1d0),ier)
-    !call fkinsetiin('PRNT_LEVEL',1,ier)
-    !allocate(x(nEq))
-    !allocate(xscale(nEq))
-    !allocate(rscale(nEq))
+    ! initialize algebraic solver
+    call momentumEq%init(grid%nC*DIMS,momentumRHS,maa=10)
     ! work space and initial state
     allocate(rho(grid%nE))
     allocate(rho0(grid%nE))
@@ -205,7 +189,6 @@ contains
       Y(:,i)=YInit(:)
     end do
     call recoverState(p,u,temp,Y,rho,rhou,rhoE)
-    call momentumEq%init(grid%nC*DIMS,momentumRHS,maa=10)
     t=0d0
     tNext=tInt
     iOut=0
@@ -386,6 +369,7 @@ contains
     call associateVector(newVector,y)
     
     rhou(:,1:grid%nC)=reshape(x,[DIMS,grid%nC])
+    call setBC()
     call findViscForce(grid,u,visc,viscF)
     forall(i=1:grid%nE,j=1:DIMS)
       fluxRhou(:,j,i)=rhou(j,i)*u(:,i)
