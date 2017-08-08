@@ -5,6 +5,7 @@ module modPiso
   use modPolyFvGrid
   use modCondition
   use modUDF
+  use modNumerics
   use iso_c_binding
   
   public
@@ -47,7 +48,6 @@ module modPiso
   ! auxiliary variables for the PISO iteration
   double precision,allocatable::rho1(:),p1(:),laP1(:),presF1(:,:),dRho(:)
   
-  
   ! scales
   double precision,allocatable::rhoScale !< density scale [kg/m^3]
   double precision,allocatable::rhouScale !< momentum scale [kg/s/m^2]
@@ -55,6 +55,8 @@ module modPiso
   double precision,allocatable::pScale !< pressure scale [Pa]
   double precision,allocatable::uScale !< velocity scale [m/s]
   double precision,allocatable::tempScale !< temperature scale [K]
+  
+  type(fixPtEq)::momentumEq !< momentum equation as a fix point problem
   
   !double precision,allocatable::x(:) !< solution vector of the nonlinear system of equations
   !double precision,allocatable::xscale(:) !< scaling factors for the solution
@@ -202,6 +204,7 @@ contains
       Y(:,i)=YInit(:)
     end do
     call recoverState(p,u,temp,Y,rho,rhou,rhoE)
+    call momentumEq%init(grid%nC*DIMS,momentumRHS,maa=10)
     t=0d0
     tNext=tInt
     iOut=0
@@ -211,7 +214,7 @@ contains
   !> clear the simulation environment
   subroutine clear()
     call grid%clear()
-    !call fkinfree()
+    call momentumEq%clear()
   end subroutine
   
   !> record {rho,rhoU,rhoE,p,u,temp,Y} in {rho0,rhoU0,rhoE0,p0,u0,temp0,Y0}
@@ -312,7 +315,7 @@ contains
     &                /norm2(u(:,1:grid%nC),1)))
     dt=min(dt,minval(CFL_DIFFUSION*grid%v(:)**(2d0/3d0)&
     &                /(visc(1:grid%nC)/rho(1:grid%nC))))
-    !dt=2d-5
+    dt=2d-5
     
     ! solution and residual scales
     pScale=max(maxval(p)-minval(p),maxval(0.5d0*rho*norm2(u,1)**2),1d0)
@@ -343,46 +346,59 @@ contains
   !> predict the rhou and u, during which the presF is updated
   subroutine predictMomentum()
     use modGradient
+    use modPressure
+    integer,parameter::MAXIT_MOMENTUM=50 !< maximum number of momentum iteration
+    double precision,parameter::TOL_MOMENTUM=1d-4 !< normalized momentum tolerance
+    double precision,allocatable,save::tmpRhou(:)
+    
+    if(.not.allocated(tmpRhou))then
+      allocate(tmpRhou(DIMS*grid%nC))
+    else if(size(tmpRhou)/=DIMS*grid%nC)then
+      deallocate(tmpRhou)
+      allocate(tmpRhou(DIMS*grid%nC))
+    end if
+    tmpRhou=reshape(rhou(:,1:grid%nC),[DIMS*grid%nC])
+    call setBC()
+    call findPresForce(grid,p,presF)
+    call findGrad(grid,p,gradP)
+    call momentumEq%solve(tmpRhou)
+    rhou(:,1:grid%nC)=reshape(tmpRhou,[DIMS,grid%nC])
+  end subroutine
+  
+  !> RHS of the momentum equation in the form of a fix point problem
+  function momentumRHS(oldVector,newVector,dat)
+    use iso_c_binding
+    use modNumerics
     use modAdvection
     use modDiffusion
     use modNewtonian
     use modPressure
     use modRhieChow
-    integer,parameter::MAXIT_MOMENTUM=50 !< maximum number of momentum iteration
-    double precision,parameter::TOL_MOMENTUM=1d-4 !< normalized momentum tolerance
-    double precision,allocatable,save::tmpRhou(:,:)
+    type(C_PTR),value::oldVector !< old N_Vector
+    type(C_PTR),value::newVector !< new N_Vector
+    type(C_PTR),value::dat !< optional user data object
+    integer(C_INT)::momentumRHS !< error code
+    double precision,pointer::x(:) !< fortran pointer associated with oldVector
+    double precision,pointer::y(:) !< fortran pointer associated with newVector
     
-    if(.not.allocated(tmpRhou))then
-      allocate(tmpRhou(DIMS,grid%nC))
-    else if(size(tmpRhou,2)/=grid%nC)then
-      deallocate(tmpRhou)
-      allocate(tmpRhou(DIMS,grid%nC))
-    end if
-    tmpRhou(:,:)=rhou(:,1:grid%nC)
-    call setBC()
-    call findPresForce(grid,p,presF)
-    call findGrad(grid,p,gradP)
-    do l=1,MAXIT_MOMENTUM
-      call findViscForce(grid,u,visc,viscF)
-      forall(i=1:grid%nE,j=1:DIMS)
-        fluxRhou(:,j,i)=rhou(j,i)*u(:,i)
-      end forall
-      call findAdv(grid,rhou,fluxRhou,flowRhou)
-      call addRhieChow(grid,rhou,p,gradP,rho,dt,flowRhou)
-      forall(i=1:grid%nC)
-        rhou(:,i)=(rhou0(:,i)+dt/grid%v(i)*(flowRhou(:,i)+presF(:,i)+viscF(:,i)))*0.5d0+tmpRhou(:,i)*0.5d0
-      end forall
-      forall(i=1:grid%nE)
-        u(:,i)=rhou(:,i)/rho(i)
-      end forall
-      call setBC()
-      write(*,*)maxval(norm2(rhou(:,1:grid%nC)-tmpRhou(:,:),1))/rhouScale
-      if(maxval(norm2(rhou(:,1:grid%nC)-tmpRhou(:,:),1))/rhouScale<=TOL_MOMENTUM)then
-        exit
-      else
-        tmpRhou(:,:)=rhou(:,1:grid%nC)
-      end if
-    end do
-  end subroutine
+    call associateVector(oldVector,x)
+    call associateVector(newVector,y)
+    
+    rhou(:,1:grid%nC)=reshape(x,[DIMS,grid%nC])
+    call findViscForce(grid,u,visc,viscF)
+    forall(i=1:grid%nE,j=1:DIMS)
+      fluxRhou(:,j,i)=rhou(j,i)*u(:,i)
+    end forall
+    call findAdv(grid,rhou,fluxRhou,flowRhou)
+    call addRhieChow(grid,rhou,p,gradP,rho,dt,flowRhou)
+    forall(i=1:grid%nC)
+      rhou(:,i)=rhou0(:,i)+dt/grid%v(i)*(flowRhou(:,i)+presF(:,i)+viscF(:,i))
+    end forall
+    forall(i=1:grid%nE)
+      u(:,i)=rhou(:,i)/rho(i)
+    end forall
+    y=reshape(rhou(:,1:grid%nC),[grid%nC*DIMS])
+    momentumRHS=0
+  end function
   
 end module

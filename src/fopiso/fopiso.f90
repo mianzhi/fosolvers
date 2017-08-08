@@ -5,7 +5,6 @@ program fopiso
   use modPiso
   use modFileIO
   character(20)::tmpStr
-  integer::ier !< error signal
   
   call init()
   write(tmpStr,*)iOut
