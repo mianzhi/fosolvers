@@ -17,7 +17,7 @@ SET(tests_src
   euler.f90
   eulerJac.f90
   UDF1.f90
-  fixPt.f90
+  fixPt1.f90
 )
 
 ADD_EXECUTABLE(tests ${tests_src})

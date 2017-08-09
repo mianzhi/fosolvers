@@ -5,8 +5,8 @@ module modNumerics
   use iso_c_binding
   private
   
-  !> non-linear fixed point equations, i.e. x=f(x), solved by KINSOL fixed point iteration
-  type,public::fixPtEq
+  !> generic non-linear equations, i.e. x=f(x), solved by KINSOL
+  type,public::noLinEq
     integer(C_INT),private::nEq=0 !< number of equations
     type(C_FUNPTR),private::f=C_NULL_FUNPTR !< pointer to the RHS function
     type(C_PTR),private::work=C_NULL_PTR !< pointer to KINSOL problem object
@@ -14,10 +14,16 @@ module modNumerics
     type(C_PTR),private::xScale=C_NULL_PTR !< pointer to the solution scaling N_Vector
     type(C_PTR),private::rScale=C_NULL_PTR !< pointer to the residual scaling N_Vector
   contains
-    procedure,public::init=>initFixPtEq
-    procedure,public::clear=>clearFixPtEq
-    procedure,public::solve=>solveFixPtEq
-    final::purgeFixPtEq
+    procedure,public::initNoLinEq ! specific class uses different arguments, saved the init() name
+    procedure,public::clear=>clearNoLinEq
+    final::purgeNoLinEq
+  end type
+  
+  !> non-linear fixed point equations, i.e. x=f(x), solved by KINSOL fixed point iteration
+  type,extends(noLinEq),public::fixPt
+  contains
+    procedure,public::init=>initFixPt
+    procedure,public::solve=>solveFixPt
   end type
   
   !> interface to SUNDIALS C functions
@@ -116,48 +122,32 @@ contains
     call c_f_pointer(ptr,v,shape=[n])
   end subroutine
   
-  !> initialize the problem of fixed point equations
-  subroutine initFixPtEq(this,nEq,f,maa)
-    class(fixPtEq),intent(inout)::this !< this fixPtEq
+  !> generic constructor of noLinEq
+  subroutine initNoLinEq(this,nEq,f)
+    class(noLinEq),intent(inout)::this !< this noLinEq
     integer,intent(in)::nEq !< number of equations
     external::f !< the RHS subroutine in Fortran
-    integer,intent(in),optional::maa !< number of iterations for Anderson acceleration
-    integer(C_LONG)::c_maa
-    integer(C_INT)::info
     
     this%nEq=nEq
     this%f=c_funloc(f)
     this%work=kincreate()
     if(.not.c_associated(this%work))then
-      write(*,'(a)')"[E] initFixPtEq(): KINSOL memory object not created"
+      write(*,'(a)')"[E] initNoLinEq(): KINSOL memory object not created"
       stop
     end if
     this%x=n_vnew(this%nEq)
     if(.not.c_associated(this%x))then
-      write(*,'(a)')"[E] initFixPtEq(): solution N_Vector not allocated"
+      write(*,'(a)')"[E] initNoLinEq(): solution N_Vector not allocated"
       stop
     end if
     this%xScale=n_vnew(this%nEq)
     if(.not.c_associated(this%xScale))then
-      write(*,'(a)')"[E] initFixPtEq(): solution scaling N_Vector not allocated"
+      write(*,'(a)')"[E] initNoLinEq(): solution scaling N_Vector not allocated"
       stop
     end if
     this%rScale=n_vnew(this%nEq)
     if(.not.c_associated(this%rScale))then
-      write(*,'(a)')"[E] initFixPtEq(): residual scaling N_Vector not allocated"
-      stop
-    end if
-    if(present(maa))then
-      c_maa=maa
-      info=kinsetmaa(this%work,c_maa)
-      if(info/=0)then
-        write(*,'(a,i3)')"[E] initFixPtEq(): KINSetMAA error code ",info
-        stop
-      end if
-    end if
-    info=kininit(this%work,this%f,this%x) ! use solution vector as template
-    if(info/=0)then
-      write(*,'(a,i3)')"[E] initFixPtEq(): KINInit error code ",info
+      write(*,'(a)')"[E] initNoLinEq(): residual scaling N_Vector not allocated"
       stop
     end if
     ! no scaling by default
@@ -165,9 +155,9 @@ contains
     call n_vconst(1d0,this%rScale)
   end subroutine
   
-  !> clear this system of fixed point equations
-  subroutine clearFixPtEq(this)
-    class(fixPtEq),intent(inout)::this !< this fixPtEq
+  !> clear this generic noLinEq
+  subroutine clearNoLinEq(this)
+    class(noLinEq),intent(inout)::this !< this noLinEq
     
     this%nEq=0
     this%f=C_NULL_FUNPTR
@@ -186,9 +176,41 @@ contains
     end if
   end subroutine
   
+  !> generic destructor of noLinEq
+  subroutine purgeNoLinEq(this)
+    type(noLinEq),intent(inout)::this !< this noLinEq
+    
+    call this%clear()
+  end subroutine
+  
+  !> initialize the problem of fixed point equations
+  subroutine initFixPt(this,nEq,f,maa)
+    class(fixPt),intent(inout)::this !< this fixPt
+    integer,intent(in)::nEq !< number of equations
+    external::f !< the RHS subroutine in Fortran
+    integer,intent(in),optional::maa !< number of iterations for Anderson acceleration
+    integer(C_LONG)::c_maa
+    integer(C_INT)::info
+    
+    call this%noLinEq%initNoLinEq(nEq,f)
+    if(present(maa))then
+      c_maa=maa
+      info=kinsetmaa(this%work,c_maa)
+      if(info/=0)then
+        write(*,'(a,i3)')"[E] initFixPt(): KINSetMAA error code ",info
+        stop
+      end if
+    end if
+    info=kininit(this%work,this%f,this%x) ! use solution vector as template
+    if(info/=0)then
+      write(*,'(a,i3)')"[E] initFixPt(): KINInit error code ",info
+      stop
+    end if
+  end subroutine
+  
   !> solve this system of fixed point equations
-  subroutine solveFixPtEq(this,x)
-    class(fixPtEq),intent(inout)::this !< this fixPtEq
+  subroutine solveFixPt(this,x)
+    class(fixPt),intent(inout)::this !< this fixPt
     double precision,intent(inout)::x(:) !< the initial guess and solution
     double precision,pointer::xPtr(:)
     integer(C_INT)::info
@@ -198,17 +220,10 @@ contains
     xPtr(1:this%nEq)=x(1:this%nEq)
     info=kinsol(this%work,this%x,KIN_FP,this%xScale,this%rScale)
     if(info/=0)then
-      write(*,'(a,i3)')"[E] solveFixPtEq(): KINSol error code ",info
+      write(*,'(a,i3)')"[E] solveFixPt(): KINSol error code ",info
       stop
     end if
     x(1:this%nEq)=xPtr(1:this%nEq)
-  end subroutine
-  
-  !> destructor of fixPtEq
-  subroutine purgeFixPtEq(this)
-    type(fixPtEq),intent(inout)::this !< this fixPtEq
-    
-    call this%clear()
   end subroutine
   
 end module

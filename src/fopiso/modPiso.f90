@@ -58,7 +58,7 @@ module modPiso
   double precision,allocatable::tempScale !< temperature scale [K]
   
   ! data for algebraic solver
-  type(fixPtEq)::momentumEq !< momentum equation as a fix point problem  
+  type(fixPt)::momentumEq !< momentum equation as a fix point problem  
   
 contains
   

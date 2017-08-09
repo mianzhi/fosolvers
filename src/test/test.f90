@@ -8,7 +8,7 @@ program test
   &                 gradient1,advection1,advection2,euler,eulerJac,&
   &                 diffusion1,&
   &                 UDF1,&
-  &                 fixPt
+  &                 fixPt1
   
   call try('otGrid1',otGrid1)
   call try('otGrid2',otGrid2)
@@ -27,7 +27,7 @@ program test
   call try('euler',euler)
   call try('eulerJac',eulerJac)
   call try('UDF1',UDF1)
-  call try('fixPt',fixPt)
+  call try('fixPt1',fixPt1)
   
   write(*,'(a)')'check md5 of output files:'
   call system('md5sum -c sums.md5')
