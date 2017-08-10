@@ -18,6 +18,7 @@ SET(tests_src
   eulerJac.f90
   UDF1.f90
   fixPt1.f90
+  NewtonKrylov1.f90
 )
 
 ADD_EXECUTABLE(tests ${tests_src})

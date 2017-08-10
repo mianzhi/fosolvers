@@ -6,7 +6,7 @@ module modNumerics
   private
   
   !> generic non-linear equations, i.e. x=f(x), solved by KINSOL
-  type,public::noLinEq
+  type::noLinEq
     integer(C_INT),private::nEq=0 !< number of equations
     type(C_FUNPTR),private::f=C_NULL_FUNPTR !< pointer to the RHS function
     type(C_PTR),private::work=C_NULL_PTR !< pointer to KINSOL problem object
@@ -14,7 +14,7 @@ module modNumerics
     type(C_PTR),private::xScale=C_NULL_PTR !< pointer to the solution scaling N_Vector
     type(C_PTR),private::rScale=C_NULL_PTR !< pointer to the residual scaling N_Vector
   contains
-    procedure,public::initNoLinEq ! specific class uses different arguments, saved the init() name
+    procedure::initNoLinEq ! specific class uses different arguments, saved the init() name
     procedure,public::clear=>clearNoLinEq
     final::purgeNoLinEq
   end type
@@ -24,6 +24,15 @@ module modNumerics
   contains
     procedure,public::init=>initFixPt
     procedure,public::solve=>solveFixPt
+  end type
+  
+  !> non-linear equations, i.e. f(x)=0, solved by KINSOL Newton-Krylov method
+  type,extends(noLinEq),public::NewtonKrylov
+    type(C_FUNPTR),private::pSet=C_NULL_FUNPTR !< pointer to the preconditioner setter
+    type(C_FUNPTR),private::pSolve=C_NULL_FUNPTR !< pointer to the preconditioner solver
+  contains
+    procedure,public::init=>initNewtonKrylov
+    procedure,public::solve=>solveNewtonKrylov
   end type
   
   !> interface to SUNDIALS C functions
@@ -99,8 +108,24 @@ module modNumerics
     function kinsetmaa(mem,maa) bind(c,name='KINSetMAA')
       use iso_c_binding
       type(C_PTR),value::mem !< memory pointer
-      integer(C_LONG)::maa !< number of iterations for Anderson acceleration
+      integer(C_LONG),value::maa !< number of iterations for Anderson acceleration
       integer(C_INT)::kinsetmaa !< error code
+    end function
+    
+    !> KINSOL initialize direct dense linear solver
+    function kindense(mem,nEq) bind(c,name='KINDense')
+      use iso_c_binding
+      type(C_PTR),value::mem !< memory pointer
+      integer(C_LONG),value::nEq !< dimension of the problem
+      integer(C_INT)::kindense !< error code
+    end function
+    
+    !> KINSOL initialize GMRES linear solver
+    function kinspgmr(mem,maxl) bind(c,name='KINSpgmr')
+      use iso_c_binding
+      type(C_PTR),value::mem !< memory pointer
+      integer(C_INT),value::maxl !< maximum dimension of the Krylov subspace
+      integer(C_INT)::kinspgmr !< error code
     end function
     
   end interface
@@ -208,6 +233,32 @@ contains
     end if
   end subroutine
   
+  !> initialize the Newton-Krylov problem
+  subroutine initNewtonKrylov(this,nEq,f,maxl)
+    class(NewtonKrylov),intent(inout)::this !< this NewtonKrylov
+    integer,intent(in)::nEq !< number of equations
+    external::f !< the RHS subroutine in Fortran
+    integer,intent(in),optional::maxl !< maximum dimension of the Krylov subspace
+    integer(C_INT)::c_maxl,info
+    
+    call this%noLinEq%initNoLinEq(nEq,f)
+    info=kininit(this%work,this%f,this%x) ! use solution vector as template
+    if(info/=0)then
+      write(*,'(a,i3)')"[E] initNewtonKrylov(): KINInit error code ",info
+      stop
+    end if
+    if(present(maxl))then
+      c_maxl=maxl
+    else
+      c_maxl=0
+    end if
+    info=kinspgmr(this%work,c_maxl)
+    if(info/=0)then
+      write(*,'(a,i3)')"[E] initNewtonKrylov(): KINSpgmr error code ",info
+      stop
+    end if
+  end subroutine
+  
   !> solve this system of fixed point equations
   subroutine solveFixPt(this,x)
     class(fixPt),intent(inout)::this !< this fixPt
@@ -221,6 +272,24 @@ contains
     info=kinsol(this%work,this%x,KIN_FP,this%xScale,this%rScale)
     if(info/=0)then
       write(*,'(a,i3)')"[E] solveFixPt(): KINSol error code ",info
+      stop
+    end if
+    x(1:this%nEq)=xPtr(1:this%nEq)
+  end subroutine
+  
+  !> solve this Newton-Krylov problem
+  subroutine solveNewtonKrylov(this,x)
+    class(NewtonKrylov),intent(inout)::this !< this NewtonKrylov
+    double precision,intent(inout)::x(:) !< the initial guess and solution
+    double precision,pointer::xPtr(:)
+    integer(C_INT)::info
+    integer(C_INT),parameter::KIN_LINESEARCH=1
+    
+    call associateVector(this%x,xPtr)
+    xPtr(1:this%nEq)=x(1:this%nEq)
+    info=kinsol(this%work,this%x,KIN_LINESEARCH,this%xScale,this%rScale)
+    if(info/=0)then
+      write(*,'(a,i3)')"[E] solveNewtonKrylov(): KINSol error code ",info
       stop
     end if
     x(1:this%nEq)=xPtr(1:this%nEq)
