@@ -41,6 +41,8 @@ module modPiso
   double precision,allocatable::presF(:,:) !< pressure force applied on cell [N]
   double precision,allocatable::condQ(:) !< heat conduction into cell [W]
   double precision,allocatable::carrier(:,:) !< {rho,rhou,rhoH} of each cell [*]
+  double precision,allocatable::fluxRho(:,:) !< flux of rho [kg/m^2/s]
+  double precision,allocatable::flowRho(:) !< flow rate of rho [kg/s]
   double precision,allocatable::fluxRhou(:,:,:) !< flux of rhou [kg/m/s^2]
   double precision,allocatable::flowRhou(:,:) !< flow rate of rhou into cell [kg*m/s^2]
   double precision,allocatable::fluxRhoH(:,:) !< flux of rhoH [J/m^2/s]
@@ -58,7 +60,8 @@ module modPiso
   double precision,allocatable::tempScale !< temperature scale [K]
   
   ! data for algebraic solver
-  type(fixPt)::momentumEq !< momentum equation as a fix point problem  
+  type(fixPt)::momentumEq !< momentum equation as a fix point problem
+  type(NewtonKrylov)::pressureEq !< pressure correction problem to be solved by Newton-GMRES
   
 contains
   
@@ -68,7 +71,6 @@ contains
     integer,parameter::FID=10
     double precision::pInit,uInit(DIMS),TInit,pE(DIMS)!,tmpD
     double precision,allocatable::YInit(:)
-    integer::ier!,udfIc,udfBc,iUdf(5)
     
     ! read inputs
     open(FID,file='grid.msh',action='read')
@@ -133,6 +135,7 @@ contains
     !end do
     ! initialize algebraic solver
     call momentumEq%init(grid%nC*DIMS,momentumRHS,maa=10)
+    call pressureEq%init(grid%nC,pressureRHS)
     ! work space and initial state
     allocate(rho(grid%nE))
     allocate(rho0(grid%nE))
@@ -154,6 +157,7 @@ contains
     allocate(YInit(1))
     allocate(visc(grid%nE))
     allocate(cond(grid%nE))
+    allocate(fluxRho(DIMS,grid%nE))
     allocate(fluxRhou(DIMS,DIMS,grid%nE))
     allocate(fluxRhoH(DIMS,grid%nE))
     allocate(gradP(DIMS,grid%nC))
@@ -163,6 +167,7 @@ contains
     allocate(presF(DIMS,grid%nC))
     allocate(presF1(DIMS,grid%nC))
     allocate(condQ(grid%nC))
+    allocate(flowRho(grid%nC))
     allocate(flowRhou(DIMS,grid%nC))
     allocate(flowRhoH(grid%nC))
     allocate(dRho(grid%nC))
@@ -199,6 +204,7 @@ contains
   subroutine clear()
     call grid%clear()
     call momentumEq%clear()
+    call pressureEq%clear()
   end subroutine
   
   !> record {rho,rhoU,rhoE,p,u,temp,Y} in {rho0,rhoU0,rhoE0,p0,u0,temp0,Y0}
@@ -299,7 +305,7 @@ contains
     &                /norm2(u(:,1:grid%nC),1)))
     dt=min(dt,minval(CFL_DIFFUSION*grid%v(:)**(2d0/3d0)&
     &                /(visc(1:grid%nC)/rho(1:grid%nC))))
-    dt=2d-5
+    !dt=2d-5
     
     ! solution and residual scales
     pScale=max(maxval(p)-minval(p),maxval(0.5d0*rho*norm2(u,1)**2),1d0)
@@ -331,8 +337,6 @@ contains
   subroutine predictMomentum()
     use modGradient
     use modPressure
-    integer,parameter::MAXIT_MOMENTUM=50 !< maximum number of momentum iteration
-    double precision,parameter::TOL_MOMENTUM=1d-4 !< normalized momentum tolerance
     double precision,allocatable,save::tmpRhou(:)
     
     if(.not.allocated(tmpRhou))then
@@ -347,6 +351,23 @@ contains
     call findGrad(grid,p,gradP)
     call momentumEq%solve(tmpRhou)
     rhou(:,1:grid%nC)=reshape(tmpRhou,[DIMS,grid%nC])
+    forall(i=1:grid%nE)
+      u(:,i)=rhou(:,i)/rho(i)
+    end forall
+  end subroutine
+  
+  !> solve the pressure, during which the laP is updated
+  subroutine solvePressure()
+    double precision,allocatable,save::tmpP(:)
+    
+    if(.not.allocated(tmpP))then
+      allocate(tmpP(grid%nC))
+    else if(size(tmpP)/=grid%nC)then
+      deallocate(tmpP)
+      allocate(tmpP(grid%nC))
+    end if
+    call pressureEq%solve(tmpP)
+    p(1:grid%nC)=tmpP(:)
   end subroutine
   
   !> RHS of the momentum equation in the form of a fix point problem
@@ -354,7 +375,6 @@ contains
     use iso_c_binding
     use modNumerics
     use modAdvection
-    use modDiffusion
     use modNewtonian
     use modPressure
     use modRhieChow
@@ -369,6 +389,9 @@ contains
     call associateVector(newVector,y)
     
     rhou(:,1:grid%nC)=reshape(x,[DIMS,grid%nC])
+    forall(i=1:grid%nE)
+      u(:,i)=rhou(:,i)/rho(i)
+    end forall
     call setBC()
     call findViscForce(grid,u,visc,viscF)
     forall(i=1:grid%nE,j=1:DIMS)
@@ -379,11 +402,39 @@ contains
     forall(i=1:grid%nC)
       rhou(:,i)=rhou0(:,i)+dt/grid%v(i)*(flowRhou(:,i)+presF(:,i)+viscF(:,i))
     end forall
-    forall(i=1:grid%nE)
-      u(:,i)=rhou(:,i)/rho(i)
-    end forall
     y=reshape(rhou(:,1:grid%nC),[grid%nC*DIMS])
     momentumRHS=0
+  end function
+  
+  !> residual function of the pressure equation
+  function pressureRHS(oldVector,newVector,dat)
+    use iso_c_binding
+    use modNumerics
+    use modGradient
+    use modAdvection
+    use modDiffusion
+    use modRhieChow
+    type(C_PTR),value::oldVector !< old N_Vector
+    type(C_PTR),value::newVector !< new N_Vector
+    type(C_PTR),value::dat !< optional user data object
+    integer(C_INT)::pressureRHS !< error code
+    double precision,pointer::x(:) !< fortran pointer associated with oldVector
+    double precision,pointer::y(:) !< fortran pointer associated with newVector
+    
+    call associateVector(oldVector,x)
+    call associateVector(newVector,y)
+    
+    p(1:grid%nC)=x(1:grid%nC)
+    call setBC()
+    call findGrad(grid,p,gradP)
+    forall(i=1:grid%nE)
+      fluxRho(:,i)=rho(i)*u(:,i)
+    end forall
+    call findAdv(grid,rho,fluxRho,flowRho)
+    call addRhieChow(grid,rho,p,gradP,rho,dt,flowRho)
+    call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
+    ! blah blah
+    pressureRHS=0
   end function
   
 end module

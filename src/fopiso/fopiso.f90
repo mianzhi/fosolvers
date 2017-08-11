@@ -25,6 +25,7 @@ program fopiso
       presF1(:,:)=presF(:,:)
       p1(:)=p(:)
       rho1(:)=rho(:)
+      call solvePressure()
     end do
     t=t+dt
     write(*,*)'done'
