@@ -426,6 +426,7 @@ contains
     double precision,pointer::x(:) !< fortran pointer associated with oldVector
     double precision,pointer::y(:) !< fortran pointer associated with newVector
     double precision,allocatable,save::tmpFlowRho(:)
+    double precision,parameter::R_AIR=286.9d0 ! TODO fluid data
     
     call associateVector(oldVector,x)
     call associateVector(newVector,y)
@@ -442,7 +443,10 @@ contains
     tmpFlowRho(:)=flowRho(:)
     call addRhieChow(grid,rho,p,gradP,rho,dt,tmpFlowRho)
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
-    ! blah blah
+    forall(i=1:grid%nC)
+      y(i)=p(i)-R_AIR*temp(i)*dt**2/grid%v(i)*(laP(i)-laP1(i))-R_AIR*temp(i)/R_AIR/temp0(i)*p1(i)&
+      &    +R_AIR*temp(i)*(rho1(i)-rho0(i))+R_AIR*temp(i)*dt/grid%v(i)*tmpFlowRho(i)
+    end forall
     pressureRHS=0
   end function
   
