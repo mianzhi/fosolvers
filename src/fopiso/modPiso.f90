@@ -358,6 +358,7 @@ contains
   
   !> solve the pressure, during which the laP is updated
   subroutine solvePressure()
+    use modAdvection
     double precision,allocatable,save::tmpP(:)
     
     if(.not.allocated(tmpP))then
@@ -366,6 +367,11 @@ contains
       deallocate(tmpP)
       allocate(tmpP(grid%nC))
     end if
+    tmpP(:)=p(1:grid%nC)
+    forall(i=1:grid%nE)
+      fluxRho(:,i)=rho(i)*u(:,i)
+    end forall
+    call findAdv(grid,rho,fluxRho,flowRho) ! vary only the Rhie-Chow part of flowRho in RHS
     call pressureEq%solve(tmpP)
     p(1:grid%nC)=tmpP(:)
   end subroutine
@@ -411,7 +417,6 @@ contains
     use iso_c_binding
     use modNumerics
     use modGradient
-    use modAdvection
     use modDiffusion
     use modRhieChow
     type(C_PTR),value::oldVector !< old N_Vector
@@ -420,6 +425,7 @@ contains
     integer(C_INT)::pressureRHS !< error code
     double precision,pointer::x(:) !< fortran pointer associated with oldVector
     double precision,pointer::y(:) !< fortran pointer associated with newVector
+    double precision,allocatable,save::tmpFlowRho(:)
     
     call associateVector(oldVector,x)
     call associateVector(newVector,y)
@@ -427,11 +433,14 @@ contains
     p(1:grid%nC)=x(1:grid%nC)
     call setBC()
     call findGrad(grid,p,gradP)
-    forall(i=1:grid%nE)
-      fluxRho(:,i)=rho(i)*u(:,i)
-    end forall
-    call findAdv(grid,rho,fluxRho,flowRho)
-    call addRhieChow(grid,rho,p,gradP,rho,dt,flowRho)
+    if(.not.allocated(tmpFlowRho))then
+      allocate(tmpFlowRho(grid%nC))
+    else if(size(tmpFlowRho)/=grid%nC)then
+      deallocate(tmpFlowRho)
+      allocate(tmpFlowRho(grid%nC))
+    end if
+    tmpFlowRho(:)=flowRho(:)
+    call addRhieChow(grid,rho,p,gradP,rho,dt,tmpFlowRho)
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
     ! blah blah
     pressureRHS=0
