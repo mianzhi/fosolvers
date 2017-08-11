@@ -26,6 +26,8 @@ program fopiso
       p1(:)=p(:)
       rho1(:)=rho(:)
       call solvePressure()
+      call correctMomentum()
+      rho(1:grid%nC)=p(1:grid%nC)/286.9d0/temp(1:grid%nC) ! TODO gas property
     end do
     t=t+dt
     write(*,*)'done'

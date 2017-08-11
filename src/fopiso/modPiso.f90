@@ -376,13 +376,24 @@ contains
     p(1:grid%nC)=tmpP(:)
   end subroutine
   
+  !> correct the momentum with updated pressure, during which presF and u is updated
+  subroutine correctMomentum()
+    use modPressure
+    
+    call setBC()
+    call findPresForce(grid,p,presF)
+    forall(i=1:grid%nC)
+      rhou(:,i)=rhou(:,i)+dt/grid%v*(presF(:,i)-presF1(:,i))
+      u(:,i)=rhou(:,i)/rho(i)
+    end forall
+  end subroutine
+  
   !> RHS of the momentum equation in the form of a fix point problem
   function momentumRHS(oldVector,newVector,dat)
     use iso_c_binding
     use modNumerics
     use modAdvection
     use modNewtonian
-    use modPressure
     use modRhieChow
     type(C_PTR),value::oldVector !< old N_Vector
     type(C_PTR),value::newVector !< new N_Vector
@@ -409,6 +420,7 @@ contains
       rhou(:,i)=rhou0(:,i)+dt/grid%v(i)*(flowRhou(:,i)+presF(:,i)+viscF(:,i))
     end forall
     y=reshape(rhou(:,1:grid%nC),[grid%nC*DIMS])
+    write(*,*)'momentum',maxval(abs(y(1:grid%nC*DIMS)-x(1:grid%nC*DIMS)))
     momentumRHS=0
   end function
   
@@ -447,7 +459,7 @@ contains
       y(i)=p(i)-R_AIR*temp(i)*dt**2/grid%v(i)*(laP(i)-laP1(i))-R_AIR*temp(i)/R_AIR/temp0(i)*p1(i)&
       &    +R_AIR*temp(i)*(rho1(i)-rho0(i))+R_AIR*temp(i)*dt/grid%v(i)*tmpFlowRho(i)
     end forall
-    pressureRHS=0
+    write(*,*)'pressure',maxval(abs(y(1:grid%nC)))
   end function
   
 end module
