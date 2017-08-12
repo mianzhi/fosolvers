@@ -16,6 +16,7 @@ module modNumerics
   contains
     procedure::initNoLinEq ! specific class uses different arguments, saved the init() name
     procedure,public::clear=>clearNoLinEq
+    procedure,public::setTol=>setTolNoLinEq
     final::purgeNoLinEq
   end type
   
@@ -102,6 +103,14 @@ module modNumerics
       type(C_PTR),value::xScale !< solution scaling N_Vector
       type(C_PTR),value::rScale !< residual scaling N_Vector
       integer(C_INT)::kinsol !< returns error code
+    end function
+    
+    !> KINSOL set tolerance of the residual
+    function kinsetfuncnormtol(mem,tol) bind(c,name='KINSetFuncNormTol')
+      use iso_c_binding
+      type(C_PTR),value::mem !< memory pointer
+      real(C_DOUBLE),value::tol !< residual tolerance
+      integer(C_INT)::kinsetfuncnormtol !< error code
     end function
     
     !> KINSOL set number of iterations for Anderson acceleration
@@ -198,6 +207,21 @@ contains
     if(c_associated(this%rScale))then
       call n_vdestroy(this%rScale)
       this%rScale=C_NULL_PTR ! NOTE: NVECTOR does not nullify pointer value
+    end if
+  end subroutine
+  
+  !> set the residual tolerance for this noLinEq
+  subroutine setTolNoLinEq(this,tol)
+    class(noLinEq),intent(inout)::this !< this noLinEq
+    double precision,intent(in)::tol !< residual tolerance
+    real(C_DOUBLE)::c_tol
+    integer(C_INT)::info
+    
+    c_tol=tol
+    info=kinsetfuncnormtol(this%work,c_tol)
+    if(info/=0)then
+      write(*,'(a,i3)')"[E] setTolNoLinEq(): KINSetFuncNormTol error code ",info
+      stop
     end if
   end subroutine
   
