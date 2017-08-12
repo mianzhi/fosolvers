@@ -20,7 +20,7 @@ program fopiso
     call preSolve()
     call predictMomentum()
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
-    do k=1,1!ITMAX_PISO
+    do k=1,5!ITMAX_PISO
       laP1(:)=laP(:)
       presF1(:,:)=presF(:,:)
       p1(:)=p(:)

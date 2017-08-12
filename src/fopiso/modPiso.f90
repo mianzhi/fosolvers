@@ -305,7 +305,6 @@ contains
     &                /norm2(u(:,1:grid%nC),1)))
     dt=min(dt,minval(CFL_DIFFUSION*grid%v(:)**(2d0/3d0)&
     &                /(visc(1:grid%nC)/rho(1:grid%nC))))
-    !dt=2d-5
     
     ! solution and residual scales
     pScale=max(maxval(p)-minval(p),maxval(0.5d0*rho*norm2(u,1)**2),1d0)
@@ -314,6 +313,10 @@ contains
     rhoScale=maxval(rho)
     rhouScale=rhoScale*uScale
     rhoEScale=max(rhoScale*287.058*tempScale,0.5d0*rhoScale*uScale**2)
+    
+    ! set tolerance
+    call momentumEq%setTol(rhoScale/1d4)
+    call pressureEq%setTol(pScale/1d4)
   end subroutine
   
   !> set the boundary conditions
@@ -457,9 +460,10 @@ contains
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
     forall(i=1:grid%nC)
       y(i)=p(i)-R_AIR*temp(i)*dt**2/grid%v(i)*(laP(i)-laP1(i))-R_AIR*temp(i)/R_AIR/temp0(i)*p1(i)&
-      &    +R_AIR*temp(i)*(rho1(i)-rho0(i))+R_AIR*temp(i)*dt/grid%v(i)*tmpFlowRho(i)
+      &    +R_AIR*temp(i)*(rho1(i)-rho0(i))-R_AIR*temp(i)*dt/grid%v(i)*tmpFlowRho(i)
     end forall
     write(*,*)'pressure',maxval(abs(y(1:grid%nC)))
+    pressureRHS=0
   end function
   
 end module
