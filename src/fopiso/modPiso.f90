@@ -62,6 +62,7 @@ module modPiso
   ! data for algebraic solver
   type(fixPt)::momentumEq !< momentum equation as a fix point problem
   type(NewtonKrylov)::pressureEq !< pressure correction problem to be solved by Newton-GMRES
+  type(fixPt)::energyEq !< energy equation as a fix point problem
   
 contains
   
@@ -136,6 +137,7 @@ contains
     ! initialize algebraic solver
     call momentumEq%init(grid%nC*DIMS,momentumRHS,maa=10)
     call pressureEq%init(grid%nC,pressureRHS)
+    call energyEq%init(grid%nC,energyRHS,maa=10)
     ! work space and initial state
     allocate(rho(grid%nE))
     allocate(rho0(grid%nE))
@@ -205,6 +207,7 @@ contains
     call grid%clear()
     call momentumEq%clear()
     call pressureEq%clear()
+    call energyEq%clear()
   end subroutine
   
   !> record {rho,rhoU,rhoE,p,u,temp,Y} in {rho0,rhoU0,rhoE0,p0,u0,temp0,Y0}
@@ -316,7 +319,8 @@ contains
     
     ! set tolerance
     call momentumEq%setTol(rhoScale/1d4)
-    call pressureEq%setTol(pScale/1d4)
+    call pressureEq%setTol(pScale/1d5)
+    call energyEq%setTol(rhoScale/1d4)
   end subroutine
   
   !> set the boundary conditions
@@ -331,6 +335,9 @@ contains
           u(:,n)=-u(:,m)
           temp(n)=temp(m)
           Y(:,n)=Y(:,m)
+          rho(n)=rho(m)
+          rhou(:,n)=-rhou(:,m)
+          rhoE(n)=rhoE(m)
         end if
       end if
     end do
@@ -391,6 +398,23 @@ contains
     end forall
   end subroutine
   
+  !> solve the (total) energy, during which T is updated
+  subroutine solveEnergy()
+    use modAdvection
+    use modDiffusion
+    double precision,allocatable,save::tmpRhoE(:)
+    
+    if(.not.allocated(tmpRhoE))then
+      allocate(tmpRhoE(grid%nC))
+    else if(size(tmpRhoE)/=grid%nC)then
+      deallocate(tmpRhoE)
+      allocate(tmpRhoE(grid%nC))
+    end if
+    tmpRhoE(:)=rhoE(1:grid%nC)
+    call energyEq%solve(tmpRhoE)
+    rhoE(1:grid%nC)=tmpRhoE(:)
+  end subroutine
+  
   !> RHS of the momentum equation in the form of a fix point problem
   function momentumRHS(oldVector,newVector,dat)
     use iso_c_binding
@@ -418,7 +442,7 @@ contains
       fluxRhou(:,j,i)=rhou(j,i)*u(:,i)
     end forall
     call findAdv(grid,rhou,fluxRhou,flowRhou)
-    call addRhieChow(grid,rhou,p,gradP,rho,dt,flowRhou)
+    !call addRhieChow(grid,rhou,p,gradP,rho,dt,flowRhou)
     forall(i=1:grid%nC)
       rhou(:,i)=rhou0(:,i)+dt/grid%v(i)*(flowRhou(:,i)+presF(:,i)+viscF(:,i))
     end forall
@@ -441,7 +465,7 @@ contains
     double precision,pointer::x(:) !< fortran pointer associated with oldVector
     double precision,pointer::y(:) !< fortran pointer associated with newVector
     double precision,allocatable,save::tmpFlowRho(:)
-    double precision,parameter::R_AIR=286.9d0 ! TODO fluid data
+    double precision,parameter::R_AIR=287.058d0 ! TODO fluid data
     
     call associateVector(oldVector,x)
     call associateVector(newVector,y)
@@ -460,10 +484,46 @@ contains
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
     forall(i=1:grid%nC)
       y(i)=p(i)-R_AIR*temp(i)*dt**2/grid%v(i)*(laP(i)-laP1(i))-R_AIR*temp(i)/R_AIR/temp0(i)*p1(i)&
-      &    +R_AIR*temp(i)*(rho1(i)-rho0(i))-R_AIR*temp(i)*dt/grid%v(i)*tmpFlowRho(i)
+      &    +R_AIR*temp(i)*(rho1(i)-rho0(i))-R_AIR*temp(i)*dt/grid%v(i)*FlowRho(i)!tmpFlowRho(i)
     end forall
     write(*,*)'pressure',maxval(abs(y(1:grid%nC)))
     pressureRHS=0
+  end function
+  
+  !> RHS of the energy equation in the form of a fix point problem
+  function energyRHS(oldVector,newVector,dat)
+    use iso_c_binding
+    use modNumerics
+    use modAdvection
+    use modDiffusion
+    use modRhieChow
+    type(C_PTR),value::oldVector !< old N_Vector
+    type(C_PTR),value::newVector !< new N_Vector
+    type(C_PTR),value::dat !< optional user data object
+    integer(C_INT)::energyRHS !< error code
+    double precision,pointer::x(:) !< fortran pointer associated with oldVector
+    double precision,pointer::y(:) !< fortran pointer associated with newVector
+    double precision,parameter::R_AIR=287.058d0 ! TODO fluid data
+    
+    call associateVector(oldVector,x)
+    call associateVector(newVector,y)
+    
+    rhoE(1:grid%nC)=x(1:grid%nC)
+    forall(i=1:grid%nE)
+      temp(i)=(rhoE(i)/rho(i)-0.5d0*dot_product(u(:,i),u(:,i)))/(1d0/(1.4d0-1d0))/R_AIR
+    end forall
+    call setBC()
+    forall(i=1:grid%nE)
+      fluxRhoH(:,i)=(rhoE(i)+p(i))*u(:,i)
+    end forall
+    call findAdv(grid,rhoE+p,fluxRhoH,flowRhoH)
+    !call addRhieChow(grid,rhoE+p,p,gradP,rho,dt,flowRhoH)
+    call findDiff(grid,temp,cond,condQ)
+    forall(i=1:grid%nC)
+      y(i)=rhoE0(i)+dt/grid%v(i)*(flowRhoH(i)+condQ(i)) ! TODO add viscous heating
+    end forall
+    write(*,*)'energy',maxval(abs(y(1:grid%nC)-x(1:grid%nC)))
+    energyRHS=0
   end function
   
 end module

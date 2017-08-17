@@ -20,14 +20,28 @@ program fopiso
     call preSolve()
     call predictMomentum()
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
-    do k=1,5!ITMAX_PISO
+    
+    !iOut=iOut+1
+    !write(tmpStr,*)iOut
+    !write(*,*)'writing: rst_'//trim(adjustl(tmpStr))//'.vtk'
+    !call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
+    
+    do k=1,3!ITMAX_PISO
       laP1(:)=laP(:)
       presF1(:,:)=presF(:,:)
       p1(:)=p(:)
       rho1(:)=rho(:)
       call solvePressure()
-      call correctMomentum()
-      rho(1:grid%nC)=p(1:grid%nC)/286.9d0/temp(1:grid%nC) ! TODO gas property
+      !call correctMomentum()
+      call predictMomentum()
+      rho(1:grid%nC)=p(1:grid%nC)/287.058d0/temp(1:grid%nC) ! TODO gas property
+      !call solveEnergy()
+      
+      !iOut=iOut+1
+      !write(tmpStr,*)iOut
+      !write(*,*)'writing: rst_'//trim(adjustl(tmpStr))//'.vtk'
+      !call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
+      
     end do
     t=t+dt
     write(*,*)'done'
