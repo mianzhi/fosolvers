@@ -62,6 +62,7 @@ module modPiso
   ! data for algebraic solver
   type(fixPt)::momentumEq !< momentum equation as a fix point problem
   type(NewtonKrylov)::pressureEq !< pressure correction problem to be solved by Newton-GMRES
+  type(fixPt)::densityEq !< density equation as a fix point problem
   type(fixPt)::energyEq !< energy equation as a fix point problem
   
 contains
@@ -137,6 +138,7 @@ contains
     ! initialize algebraic solver
     call momentumEq%init(grid%nC*DIMS,momentumRHS,maa=10)
     call pressureEq%init(grid%nC,pressureRHS)
+    call densityEq%init(grid%nC,densityRHS,maa=10)
     call energyEq%init(grid%nC,energyRHS,maa=10)
     ! work space and initial state
     allocate(rho(grid%nE))
@@ -207,6 +209,7 @@ contains
     call grid%clear()
     call momentumEq%clear()
     call pressureEq%clear()
+    call densityEq%clear()
     call energyEq%clear()
   end subroutine
   
@@ -398,6 +401,21 @@ contains
     end forall
   end subroutine
   
+  !> solve the density
+  subroutine solveDensity()
+    double precision,allocatable,save::tmpRho(:)
+    
+    if(.not.allocated(tmpRho))then
+      allocate(tmpRho(grid%nC))
+    else if(size(tmpRho)/=grid%nC)then
+      deallocate(tmpRho)
+      allocate(tmpRho(grid%nC))
+    end if
+    tmpRho(:)=rho(1:grid%nC)
+    call densityEq%solve(tmpRho)
+    rho(1:grid%nC)=tmpRho(:)
+  end subroutine
+  
   !> solve the (total) energy, during which T is updated
   subroutine solveEnergy()
     use modAdvection
@@ -488,6 +506,36 @@ contains
     end forall
     write(*,*)'pressure',maxval(abs(y(1:grid%nC)))
     pressureRHS=0
+  end function
+  
+  !> RHS of the density equation in the form of a fix point problem
+  function densityRHS(oldVector,newVector,dat)
+    use iso_c_binding
+    use modNumerics
+    use modAdvection
+    use modRhieChow
+    type(C_PTR),value::oldVector !< old N_Vector
+    type(C_PTR),value::newVector !< new N_Vector
+    type(C_PTR),value::dat !< optional user data object
+    integer(C_INT)::densityRHS !< error code
+    double precision,pointer::x(:) !< fortran pointer associated with oldVector
+    double precision,pointer::y(:) !< fortran pointer associated with newVector
+    
+    call associateVector(oldVector,x)
+    call associateVector(newVector,y)
+    
+    rho(1:grid%nC)=x(1:grid%nC)
+    forall(i=1:grid%nE)
+      rhou(:,i)=rho(i)*u(:,i)
+    end forall
+    call setBC()
+    call findAdv(grid,rho,rhou,flowRho)
+    !call addRhieChow(grid,rho,p,gradP,rho,dt,flowRho)
+    forall(i=1:grid%nC)
+      y(i)=rho0(i)+dt/grid%v(i)*flowRho(i)
+    end forall
+    write(*,*)'density',maxval(abs(y(1:grid%nC)-x(1:grid%nC)))
+    densityRHS=0
   end function
   
   !> RHS of the energy equation in the form of a fix point problem

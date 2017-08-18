@@ -10,7 +10,7 @@ program fopiso
   call init()
   write(tmpStr,*)iOut
   call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
-  do l=1,20!while(t<tFinal)
+  do l=1,40!while(t<tFinal)
     write(*,*)'start',t
     call setBC()
     call recordState0()
@@ -26,7 +26,7 @@ program fopiso
     !write(*,*)'writing: rst_'//trim(adjustl(tmpStr))//'.vtk'
     !call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
     
-    do k=1,3!ITMAX_PISO
+    do k=1,5!ITMAX_PISO
       laP1(:)=laP(:)
       presF1(:,:)=presF(:,:)
       p1(:)=p(:)
@@ -34,8 +34,10 @@ program fopiso
       call solvePressure()
       !call correctMomentum()
       call predictMomentum()
-      rho(1:grid%nC)=p(1:grid%nC)/287.058d0/temp(1:grid%nC) ! TODO gas property
-      !call solveEnergy()
+      !rho(1:grid%nC)=p(1:grid%nC)/287.058d0/temp(1:grid%nC) ! TODO gas property
+      call solveDensity()
+      !p(1:grid%nC)=rho(1:grid%nC)*287.058d0*temp(1:grid%nC)
+      call solveEnergy()
       
       !iOut=iOut+1
       !write(tmpStr,*)iOut
