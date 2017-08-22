@@ -32,8 +32,8 @@ program fopiso
       p1(:)=p(:)
       rho1(:)=rho(:)
       call solvePressure()
-      !call correctMomentum()
-      call predictMomentum()
+      call correctMomentum()
+      !call predictMomentum()
       !rho(1:grid%nC)=p(1:grid%nC)/287.058d0/temp(1:grid%nC) ! TODO gas property
       call solveDensity()
       !p(1:grid%nC)=rho(1:grid%nC)*287.058d0*temp(1:grid%nC)

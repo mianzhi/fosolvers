@@ -323,7 +323,8 @@ contains
     ! set tolerance
     call momentumEq%setTol(rhoScale/1d4)
     call pressureEq%setTol(pScale/1d5)
-    call energyEq%setTol(rhoScale/1d4)
+    call densityEq%setTol(rhoScale/1d6)
+    call energyEq%setTol(rhoEScale/1d6)
   end subroutine
   
   !> set the boundary conditions
