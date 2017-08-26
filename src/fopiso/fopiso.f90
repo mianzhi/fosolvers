@@ -27,7 +27,7 @@ program fopiso
     !write(*,*)'writing: rst_'//trim(adjustl(tmpStr))//'.vtk'
     !call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
     
-    do k=1,5!ITMAX_PISO
+    do k=1,ITMAX_PISO
       laP1(:)=laP(:)
       presF1(:,:)=presF(:,:)
       p1(:)=p(:)

@@ -493,7 +493,7 @@ contains
     
     p(1:grid%nC)=x(1:grid%nC)
     call setBC()
-    call findGrad(grid,p,gradP)
+    !call findGrad(grid,p,gradP)
     if(.not.allocated(tmpFlowRho))then
       allocate(tmpFlowRho(grid%nC))
     else if(size(tmpFlowRho)/=grid%nC)then
@@ -505,7 +505,7 @@ contains
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
     forall(i=1:grid%nC)
       y(i)=p(i)-R_AIR*temp(i)*dt**2/grid%v(i)*(laP(i)-laP1(i))-R_AIR*temp(i)/R_AIR/temp1(i)*p1(i)& ! FIXME derive the pressure correction eq!
-      &    +R_AIR*temp(i)*(rho1(i)-rho0(i))-R_AIR*temp(i)*dt/grid%v(i)*FlowRho(i)!tmpFlowRho(i)
+      &    +R_AIR*temp(i)*(rho1(i)-rho0(i))-R_AIR*temp(i)*dt/grid%v(i)*tmpFlowRho(i)!tmpFlowRho(i)
     end forall
     write(*,*)'pressure',maxval(abs(y(1:grid%nC)))
     pressureRHS=0
@@ -533,7 +533,7 @@ contains
     end forall
     call setBC()
     call findAdv(grid,rho,rhou,flowRho)
-    !call addRhieChow(grid,rho,p,gradP,rho,dt,flowRho)
+    call addRhieChow(grid,rho,p,gradP,rho,dt,flowRho)
     forall(i=1:grid%nC)
       y(i)=rho0(i)+dt/grid%v(i)*flowRho(i)
     end forall
@@ -568,7 +568,7 @@ contains
       fluxRhoH(:,i)=(rhoE(i)+p(i))*u(:,i)
     end forall
     call findAdv(grid,rhoE+p,fluxRhoH,flowRhoH)
-    !call addRhieChow(grid,rhoE+p,p,gradP,rho,dt,flowRhoH)
+    call addRhieChow(grid,rhoE+p,p,gradP,rho,dt,flowRhoH)
     call findDiff(grid,temp,cond,condQ)
     forall(i=1:grid%nC)
       y(i)=rhoE0(i)+dt/grid%v(i)*(flowRhoH(i)+condQ(i)) ! TODO add viscous heating
