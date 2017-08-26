@@ -1,0 +1,8 @@
+title: FOSolverS
+description: A Suite of Free & Open Source Solvers
+google_analytics: 
+show_downloads: true
+theme: jekyll-theme-minimal
+
+gems:
+  - jekyll-mentions
