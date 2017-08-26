@@ -20,6 +20,7 @@ program fopiso
     call preSolve()
     call predictMomentum()
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
+    temp1(:)=temp(:)
     
     !iOut=iOut+1
     !write(tmpStr,*)iOut
@@ -37,6 +38,10 @@ program fopiso
       !rho(1:grid%nC)=p(1:grid%nC)/287.058d0/temp(1:grid%nC) ! TODO gas property
       call solveDensity()
       !p(1:grid%nC)=rho(1:grid%nC)*287.058d0*temp(1:grid%nC)
+      forall(i=1:grid%nC)
+        u(:,i)=rhou(:,i)/rho(i)
+      end forall
+      temp1(:)=temp(:)
       call solveEnergy()
       
       !iOut=iOut+1

@@ -49,7 +49,7 @@ module modPiso
   double precision,allocatable::flowRhoH(:) !< flow rate of rhoH into cell [J/s]
   
   ! auxiliary variables for the PISO iteration
-  double precision,allocatable::rho1(:),p1(:),laP1(:),presF1(:,:),dRho(:)
+  double precision,allocatable::rho1(:),p1(:),laP1(:),presF1(:,:),temp1(:),dRho(:)
   
   ! scales
   double precision,allocatable::rhoScale !< density scale [kg/m^3]
@@ -155,6 +155,7 @@ contains
     allocate(u0(DIMS,grid%nE))
     allocate(temp(grid%nE))
     allocate(temp0(grid%nE))
+    allocate(temp1(grid%nE))
     ! FIXME fix nSp
     allocate(Y(1,grid%nE))
     allocate(Y0(1,grid%nE))
@@ -398,7 +399,7 @@ contains
     call findPresForce(grid,p,presF)
     forall(i=1:grid%nC)
       rhou(:,i)=rhou(:,i)+dt/grid%v*(presF(:,i)-presF1(:,i))
-      u(:,i)=rhou(:,i)/rho(i)
+      !u(:,i)=rhou(:,i)/rho(i)
     end forall
   end subroutine
   
@@ -485,6 +486,7 @@ contains
     double precision,pointer::y(:) !< fortran pointer associated with newVector
     double precision,allocatable,save::tmpFlowRho(:)
     double precision,parameter::R_AIR=287.058d0 ! TODO fluid data
+    ! TODO R*T under-relaxation
     
     call associateVector(oldVector,x)
     call associateVector(newVector,y)
@@ -502,7 +504,7 @@ contains
     call addRhieChow(grid,rho,p,gradP,rho,dt,tmpFlowRho)
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
     forall(i=1:grid%nC)
-      y(i)=p(i)-R_AIR*temp(i)*dt**2/grid%v(i)*(laP(i)-laP1(i))-R_AIR*temp(i)/R_AIR/temp0(i)*p1(i)&
+      y(i)=p(i)-R_AIR*temp(i)*dt**2/grid%v(i)*(laP(i)-laP1(i))-R_AIR*temp(i)/R_AIR/temp1(i)*p1(i)& ! FIXME derive the pressure correction eq!
       &    +R_AIR*temp(i)*(rho1(i)-rho0(i))-R_AIR*temp(i)*dt/grid%v(i)*FlowRho(i)!tmpFlowRho(i)
     end forall
     write(*,*)'pressure',maxval(abs(y(1:grid%nC)))
