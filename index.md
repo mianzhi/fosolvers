@@ -19,6 +19,7 @@ Here is a very brief [user guide](https://drive.google.com/file/d/0B0ArQPxS-HQZW
 * Data structures and procedures for octree grid
 * Geometric computation for polyhedron
 * Grid input, data output procedures
+* Interface to algebraic solvers
 * Finite volume spatial schemes
 * General purpose condition management framework
 * General purpose UDF framework by [libmatheval](http://www.gnu.org/software/libmatheval/)
