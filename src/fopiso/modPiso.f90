@@ -41,7 +41,6 @@ module modPiso
   double precision,allocatable::presF(:,:) !< pressure force applied on cell [N]
   double precision,allocatable::condQ(:) !< heat conduction into cell [W]
   double precision,allocatable::carrier(:,:) !< {rho,rhou,rhoH} of each cell [*]
-  double precision,allocatable::fluxRho(:,:) !< flux of rho [kg/m^2/s]
   double precision,allocatable::flowRho(:) !< flow rate of rho [kg/s]
   double precision,allocatable::fluxRhou(:,:,:) !< flux of rhou [kg/m/s^2]
   double precision,allocatable::flowRhou(:,:) !< flow rate of rhou into cell [kg*m/s^2]
@@ -162,7 +161,6 @@ contains
     allocate(YInit(1))
     allocate(visc(grid%nE))
     allocate(cond(grid%nE))
-    allocate(fluxRho(DIMS,grid%nE))
     allocate(fluxRhou(DIMS,DIMS,grid%nE))
     allocate(fluxRhoH(DIMS,grid%nE))
     allocate(gradP(DIMS,grid%nC))
@@ -383,10 +381,7 @@ contains
       allocate(tmpP(grid%nC))
     end if
     tmpP(:)=p(1:grid%nC)
-    forall(i=1:grid%nE)
-      fluxRho(:,i)=rho(i)*u(:,i)
-    end forall
-    call findAdv(grid,rho,fluxRho,flowRho) ! vary only the Rhie-Chow part of flowRho in RHS
+    call findAdv(grid,rho,rhou,flowRho) ! vary only the Rhie-Chow part of flowRho in RHS
     call pressureEq%solve(tmpP)
     p(1:grid%nC)=tmpP(:)
   end subroutine
@@ -399,7 +394,6 @@ contains
     call findPresForce(grid,p,presF)
     forall(i=1:grid%nC)
       rhou(:,i)=rhou(:,i)+dt/grid%v*(presF(:,i)-presF1(:,i))
-      !u(:,i)=rhou(:,i)/rho(i)
     end forall
   end subroutine
   
@@ -504,8 +498,8 @@ contains
     call addRhieChow(grid,rho,p,gradP,rho,dt,tmpFlowRho)
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
     forall(i=1:grid%nC)
-      y(i)=p(i)-R_AIR*temp(i)*dt**2/grid%v(i)*(laP(i)-laP1(i))-R_AIR*temp(i)/R_AIR/temp1(i)*p1(i)& ! FIXME derive the pressure correction eq!
-      &    +R_AIR*temp(i)*(rho1(i)-rho0(i))-R_AIR*temp(i)*dt/grid%v(i)*tmpFlowRho(i)!tmpFlowRho(i)
+      y(i)=p(i)-R_AIR*temp(i)*dt**2/grid%v(i)*(laP(i)-laP1(i))-R_AIR*temp(i)/R_AIR/temp1(i)*p1(i)&
+      &    +R_AIR*temp(i)*(rho1(i)-rho0(i))-R_AIR*temp(i)*dt/grid%v(i)*tmpFlowRho(i)
     end forall
     write(*,*)'pressure',maxval(abs(y(1:grid%nC)))
     pressureRHS=0
