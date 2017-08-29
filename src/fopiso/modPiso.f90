@@ -310,6 +310,7 @@ contains
     &                /norm2(u(:,1:grid%nC),1)))
     dt=min(dt,minval(CFL_DIFFUSION*grid%v(:)**(2d0/3d0)&
     &                /(visc(1:grid%nC)/rho(1:grid%nC))))
+    dt=2.5d-5
     
     ! solution and residual scales
     pScale=max(maxval(p)-minval(p),maxval(0.5d0*rho*norm2(u,1)**2),1d0)
@@ -456,7 +457,7 @@ contains
       fluxRhou(:,j,i)=rhou(j,i)*u(:,i)
     end forall
     call findAdv(grid,rhou,fluxRhou,flowRhou)
-    !call addRhieChow(grid,rhou,p,gradP,rho,dt,flowRhou)
+    call addRhieChow(grid,rhou,p,gradP,rho,dt,flowRhou)
     forall(i=1:grid%nC)
       rhou(:,i)=rhou0(:,i)+dt/grid%v(i)*(flowRhou(:,i)+presF(:,i)+viscF(:,i))
     end forall
@@ -487,7 +488,7 @@ contains
     
     p(1:grid%nC)=x(1:grid%nC)
     call setBC()
-    !call findGrad(grid,p,gradP)
+    call findGrad(grid,p,gradP)
     if(.not.allocated(tmpFlowRho))then
       allocate(tmpFlowRho(grid%nC))
     else if(size(tmpFlowRho)/=grid%nC)then
