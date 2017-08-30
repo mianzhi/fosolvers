@@ -11,7 +11,15 @@ module modPiso
   public
   
   integer,parameter::DIMS=3 !< three dimensions
-  integer,parameter::ITMAX_PISO=20 !< max number of PISO iterations
+  integer,parameter::MAXIT_MOMENTUM=20 !< max number of momentum prediction equation iteration
+  integer,parameter::MAXIT_PRESSURE=10 !< max number of pressure correction equation iteration
+  integer,parameter::MAXIT_DENSITY=10 !< max number of density equation iteration
+  integer,parameter::MAXIT_ENERGY=10 !< max number of energy equation iteration
+  integer,parameter::MAXIT_PISO=10 !< max number of PISO iterations
+  double precision,parameter::RTOL_MOMENTUM=1d-4 !< momentum prediction relative tolerance
+  double precision,parameter::RTOL_PRESSURE=1d-5 !< pressure correction relative tolerance
+  double precision,parameter::RTOL_DENSITY=1d-6 !< density equation relative tolerance
+  double precision,parameter::RTOL_ENERGY=1d-6 !< energy equation relative tolerance
   
   type(polyFvGrid)::grid !< computational grid
   
@@ -21,6 +29,8 @@ module modPiso
   double precision::tInt !< time interval of output
   double precision::tNext !< time for next output
   integer::iOut !< index of output
+  integer::nRetry !< number of retry for the current time step
+  logical::needRetry !< if retry of the current time step is needed
   
   double precision,allocatable::rho(:) !< density [kg/m^3]
   double precision,allocatable::rhou(:,:) !< momentum [kg/s/m^2]
@@ -200,6 +210,8 @@ contains
     t=0d0
     tNext=tInt
     iOut=0
+    nRetry=0
+    needRetry=.false.
     deallocate(YInit)
   end subroutine
   
@@ -221,6 +233,17 @@ contains
     u0(:,:)=u(:,:)
     temp0(:)=temp(:)
     Y0(:,:)=Y(:,:)
+  end subroutine
+  
+  !> load {rho,rhoU,rhoE,p,u,temp,Y} from {rho0,rhoU0,rhoE0,p0,u0,temp0,Y0}
+  subroutine loadState0()
+    rho(:)=rho0(:)
+    rhou(:,:)=rhou0(:,:)
+    rhoE(:)=rhoE0(:)
+    p(:)=p0(:)
+    u(:,:)=u0(:,:)
+    temp(:)=temp0(:)
+    Y(:,:)=Y0(:,:)
   end subroutine
   
   !> derive primitive state {p,u,T} from conserved state {rho,rhou,rhoE}
@@ -311,6 +334,7 @@ contains
     dt=min(dt,minval(CFL_DIFFUSION*grid%v(:)**(2d0/3d0)&
     &                /(visc(1:grid%nC)/rho(1:grid%nC))))
     dt=2.5d-5
+    dt=dt/2**nRetry
     
     ! solution and residual scales
     pScale=max(maxval(p)-minval(p),maxval(0.5d0*rho*norm2(u,1)**2),1d0)
@@ -321,10 +345,10 @@ contains
     rhoEScale=max(rhoScale*287.058*tempScale,0.5d0*rhoScale*uScale**2)
     
     ! set tolerance
-    call momentumEq%setTol(rhoScale/1d4)
-    call pressureEq%setTol(pScale/1d5)
-    call densityEq%setTol(rhoScale/1d6)
-    call energyEq%setTol(rhoEScale/1d6)
+    call momentumEq%setTol(rhoScale*RTOL_MOMENTUM)
+    call pressureEq%setTol(pScale*RTOL_PRESSURE)
+    call densityEq%setTol(rhoScale*RTOL_DENSITY)
+    call energyEq%setTol(rhoEScale*RTOL_ENERGY)
   end subroutine
   
   !> set the boundary conditions

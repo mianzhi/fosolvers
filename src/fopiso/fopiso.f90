@@ -10,7 +10,14 @@ program fopiso
   call init()
   write(tmpStr,*)iOut
   call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
-  do l=1,40!while(t<tFinal)
+  do while(t<tFinal)
+    if(needRetry)then
+      nRetry=nRetry+1
+      needRetry=.false.
+    end if
+    if(nRetry>0)then
+      call loadState0()
+    end if
     write(*,*)'start',t
     call setBC()
     call recordState0()
@@ -19,40 +26,40 @@ program fopiso
     cond(:)=30d-3
     call preSolve()
     call predictMomentum()
+    if(needRetry) cycle
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
     temp1(:)=temp(:)
-    
-    !iOut=iOut+1
-    !write(tmpStr,*)iOut
-    !write(*,*)'writing: rst_'//trim(adjustl(tmpStr))//'.vtk'
-    !call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
-    
-    do k=1,ITMAX_PISO
+    do k=1,MAXIT_PISO
       laP1(:)=laP(:)
       presF1(:,:)=presF(:,:)
       p1(:)=p(:)
       rho1(:)=rho(:)
       call solvePressure()
+      if(needRetry) exit
       call correctMomentum()
-      !call predictMomentum()
-      !rho(1:grid%nC)=p(1:grid%nC)/287.058d0/temp(1:grid%nC) ! TODO gas property
       call solveDensity()
-      !p(1:grid%nC)=rho(1:grid%nC)*287.058d0*temp(1:grid%nC)
+      if(needRetry) exit
       forall(i=1:grid%nC)
         u(:,i)=rhou(:,i)/rho(i)
       end forall
       temp1(:)=temp(:)
       call solveEnergy()
-      
-      !iOut=iOut+1
-      !write(tmpStr,*)iOut
-      !write(*,*)'writing: rst_'//trim(adjustl(tmpStr))//'.vtk'
-      !call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
-      
+      if(needRetry) exit
+      write(*,*)'PISO',maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale
+      if(maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale<=RTOL_DENSITY)then
+        exit
+      elseif(k==MAXIT_PISO)then
+        needRetry=.true.
+      end if
     end do
+    if(needRetry)then
+      cycle
+    else
+      nRetry=0
+    end if
     t=t+dt
     write(*,*)'done'
-    if(t+tiny(1d0)>=tNext)then
+    if(t*(1d0+tiny(1d0))>=tNext)then
       iOut=iOut+1
       write(tmpStr,*)iOut
       write(*,*)'writing: rst_'//trim(adjustl(tmpStr))//'.vtk'
