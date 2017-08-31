@@ -325,16 +325,18 @@ contains
     double precision,parameter::CFL_ACCOUSTIC=2d0
     double precision,parameter::CFL_FLOW=0.5d0
     double precision,parameter::CFL_DIFFUSION=0.5d0
+    double precision,parameter::MINFRAC_OUT_ALIGN=0.05d0
     
     ! TODO calculate dt, cantera sound speed
-    dt=min(tNext-t,minval(CFL_ACCOUSTIC*grid%v(:)**(1d0/3d0)&
+    dt=2d-5
+    dt=min(dt,minval(CFL_ACCOUSTIC*grid%v(:)**(1d0/3d0)&
     &                     /sqrt(1.4d0*p(1:grid%nC)/rho(1:grid%nC))))
     dt=min(dt,minval(CFL_FLOW*grid%v(:)**(1d0/3d0)&
     &                /norm2(u(:,1:grid%nC),1)))
     dt=min(dt,minval(CFL_DIFFUSION*grid%v(:)**(2d0/3d0)&
     &                /(visc(1:grid%nC)/rho(1:grid%nC))))
-    dt=2.5d-5
     dt=dt/2**nRetry
+    dt=max(min(dt,tNext-t),dt*MINFRAC_OUT_ALIGN)
     
     ! solution and residual scales
     pScale=max(maxval(p)-minval(p),maxval(0.5d0*rho*norm2(u,1)**2),1d0)
@@ -486,7 +488,6 @@ contains
       rhou(:,i)=rhou0(:,i)+dt/grid%v(i)*(flowRhou(:,i)+presF(:,i)+viscF(:,i))
     end forall
     y=reshape(rhou(:,1:grid%nC),[grid%nC*DIMS])
-    write(*,*)'momentum',maxval(abs(y(1:grid%nC*DIMS)-x(1:grid%nC*DIMS)))
     momentumRHS=0
   end function
   
@@ -526,7 +527,6 @@ contains
       y(i)=p(i)-R_AIR*temp(i)*dt**2/grid%v(i)*(laP(i)-laP1(i))-R_AIR*temp(i)/R_AIR/temp1(i)*p1(i)&
       &    +R_AIR*temp(i)*(rho1(i)-rho0(i))-R_AIR*temp(i)*dt/grid%v(i)*tmpFlowRho(i)
     end forall
-    write(*,*)'pressure',maxval(abs(y(1:grid%nC)))
     pressureRHS=0
   end function
   
@@ -556,7 +556,6 @@ contains
     forall(i=1:grid%nC)
       y(i)=rho0(i)+dt/grid%v(i)*flowRho(i)
     end forall
-    write(*,*)'density',maxval(abs(y(1:grid%nC)-x(1:grid%nC)))
     densityRHS=0
   end function
   
@@ -592,7 +591,6 @@ contains
     forall(i=1:grid%nC)
       y(i)=rhoE0(i)+dt/grid%v(i)*(flowRhoH(i)+condQ(i)) ! TODO add viscous heating
     end forall
-    write(*,*)'energy',maxval(abs(y(1:grid%nC)-x(1:grid%nC)))
     energyRHS=0
   end function
   

@@ -9,6 +9,7 @@ program fopiso
   
   call init()
   write(tmpStr,*)iOut
+  write(*,'(a)')'[I] writing: rst_'//trim(adjustl(tmpStr))//'.vtk'
   call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
   do while(t<tFinal)
     if(needRetry)then
@@ -18,13 +19,13 @@ program fopiso
     if(nRetry>0)then
       call loadState0()
     end if
-    write(*,*)'start',t
     call setBC()
     call recordState0()
     ! TODO update transport properties according to state0
     visc(:)=20d-6
     cond(:)=30d-3
     call preSolve()
+    write(*,'(a,g12.6,a,g12.6)')'[I] starting step, t: ',t,' dt: ',dt
     call predictMomentum()
     if(needRetry) cycle
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
@@ -53,16 +54,18 @@ program fopiso
       end if
     end do
     if(needRetry)then
+      write(*,'(a,i2,a,g12.6)')'[W] start retry No. ',nRetry,' at t: ',dt
       cycle
     else
       nRetry=0
     end if
     t=t+dt
-    write(*,*)'done'
+    write(*,'(a,i2,a,i2,a,i2,a,i2,a,i2,a)')'[I] step finished, nIt[rhou,p,rho,rhoE,PISO]: [',&
+    &    1,',',1,',',1,',',1,',',1,']'
     if(t*(1d0+tiny(1d0))>=tNext)then
       iOut=iOut+1
       write(tmpStr,*)iOut
-      write(*,*)'writing: rst_'//trim(adjustl(tmpStr))//'.vtk'
+      write(*,'(a)')'[I] writing: rst_'//trim(adjustl(tmpStr))//'.vtk'
       call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
       tNext=tNext+tInt
     end if
