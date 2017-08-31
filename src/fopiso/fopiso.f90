@@ -25,12 +25,11 @@ program fopiso
     visc(:)=20d-6
     cond(:)=30d-3
     call preSolve()
-    write(*,'(a,g12.6,a,g12.6)')'[I] starting step, t: ',t,' dt: ',dt
     call predictMomentum()
     if(needRetry) cycle
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
     temp1(:)=temp(:)
-    do k=1,MAXIT_PISO
+    do nItPISO=1,MAXIT_PISO
       laP1(:)=laP(:)
       presF1(:,:)=presF(:,:)
       p1(:)=p(:)
@@ -49,7 +48,7 @@ program fopiso
       write(*,*)'PISO',maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale
       if(maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale<=RTOL_DENSITY)then
         exit
-      elseif(k==MAXIT_PISO)then
+      elseif(nItPISO==MAXIT_PISO)then
         needRetry=.true.
       end if
     end do
@@ -60,8 +59,7 @@ program fopiso
       nRetry=0
     end if
     t=t+dt
-    write(*,'(a,i2,a,i2,a,i2,a,i2,a,i2,a)')'[I] step finished, nIt[rhou,p,rho,rhoE,PISO]: [',&
-    &    1,',',1,',',1,',',1,',',1,']'
+    call postSolve()
     if(t*(1d0+tiny(1d0))>=tNext)then
       iOut=iOut+1
       write(tmpStr,*)iOut

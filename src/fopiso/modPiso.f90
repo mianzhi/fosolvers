@@ -73,6 +73,7 @@ module modPiso
   type(NewtonKrylov)::pressureEq !< pressure correction problem to be solved by Newton-GMRES
   type(fixPt)::densityEq !< density equation as a fix point problem
   type(fixPt)::energyEq !< energy equation as a fix point problem
+  integer::nItMomentum,nItPressure,nItDensity,nItEnergy,nItPISO !< number of iterations
   
 contains
   
@@ -208,6 +209,7 @@ contains
     end do
     call recoverState(p,u,temp,Y,rho,rhou,rhoE)
     t=0d0
+    dt=huge(1d0)
     tNext=tInt
     iOut=0
     nRetry=0
@@ -346,11 +348,20 @@ contains
     rhouScale=rhoScale*uScale
     rhoEScale=max(rhoScale*287.058*tempScale,0.5d0*rhoScale*uScale**2)
     
-    ! set tolerance
+    ! set tolerance and maximum number of iterations
     call momentumEq%setTol(rhoScale*RTOL_MOMENTUM)
     call pressureEq%setTol(pScale*RTOL_PRESSURE)
     call densityEq%setTol(rhoScale*RTOL_DENSITY)
     call energyEq%setTol(rhoEScale*RTOL_ENERGY)
+    
+    write(*,'(a,g12.6,a,g12.6)')'[I] starting step, t: ',t,' dt: ',dt
+  end subroutine
+  
+  !> guess next time step size, etc.
+  subroutine postSolve()
+    
+    write(*,'(a,i2,a,i2,a,i2,a,i2,a,i2,a)')'[I] step finished, nIt[rhou,p,rho,rhoE,PISO]: [',&
+    &    1,',',1,',',1,',',1,',',1,']'
   end subroutine
   
   !> set the boundary conditions
