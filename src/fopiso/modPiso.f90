@@ -146,10 +146,14 @@ contains
     !  end do
     !end do
     ! initialize algebraic solver
-    call momentumEq%init(grid%nC*DIMS,momentumRHS,maa=10)
+    call momentumEq%init(grid%nC*DIMS,momentumRHS,maa=MAXIT_MOMENTUM)
+    call momentumEq%setMaxIt(MAXIT_MOMENTUM)
     call pressureEq%init(grid%nC,pressureRHS)
-    call densityEq%init(grid%nC,densityRHS,maa=10)
-    call energyEq%init(grid%nC,energyRHS,maa=10)
+    call pressureEq%setMaxIt(MAXIT_PRESSURE)
+    call densityEq%init(grid%nC,densityRHS,maa=MAXIT_DENSITY)
+    call densityEq%setMaxIt(MAXIT_DENSITY)
+    call energyEq%init(grid%nC,energyRHS,maa=MAXIT_ENERGY)
+    call energyEq%setMaxIt(MAXIT_ENERGY)
     ! work space and initial state
     allocate(rho(grid%nE))
     allocate(rho0(grid%nE))
@@ -348,11 +352,15 @@ contains
     rhouScale=rhoScale*uScale
     rhoEScale=max(rhoScale*287.058*tempScale,0.5d0*rhoScale*uScale**2)
     
-    ! set tolerance and maximum number of iterations
+    ! set tolerance and maximum number of iterations, and etc.
     call momentumEq%setTol(rhoScale*RTOL_MOMENTUM)
     call pressureEq%setTol(pScale*RTOL_PRESSURE)
     call densityEq%setTol(rhoScale*RTOL_DENSITY)
     call energyEq%setTol(rhoEScale*RTOL_ENERGY)
+    nItMomentum=0
+    nItPressure=0
+    nItDensity=0
+    nItEnergy=0
     
     write(*,'(a,g12.6,a,g12.6)')'[I] starting step, t: ',t,' dt: ',dt
   end subroutine
@@ -361,7 +369,7 @@ contains
   subroutine postSolve()
     
     write(*,'(a,i2,a,i2,a,i2,a,i2,a,i2,a)')'[I] step finished, nIt[rhou,p,rho,rhoE,PISO]: [',&
-    &    1,',',1,',',1,',',1,',',1,']'
+    &    nItMomentum,',',nItPressure,',',nItDensity,',',nItEnergy,',',nItPISO,']'
   end subroutine
   
   !> set the boundary conditions
@@ -401,6 +409,8 @@ contains
     call findPresForce(grid,p,presF)
     call findGrad(grid,p,gradP)
     call momentumEq%solve(tmpRhou)
+    call momentumEq%getNIt(n)
+    nItMomentum=max(nItMomentum,n)
     rhou(:,1:grid%nC)=reshape(tmpRhou,[DIMS,grid%nC])
     forall(i=1:grid%nE)
       u(:,i)=rhou(:,i)/rho(i)
@@ -421,6 +431,8 @@ contains
     tmpP(:)=p(1:grid%nC)
     call findAdv(grid,rho,rhou,flowRho) ! vary only the Rhie-Chow part of flowRho in RHS
     call pressureEq%solve(tmpP)
+    call pressureEq%getNIt(n)
+    nItPressure=max(nItPressure,n)
     p(1:grid%nC)=tmpP(:)
   end subroutine
   
@@ -447,6 +459,8 @@ contains
     end if
     tmpRho(:)=rho(1:grid%nC)
     call densityEq%solve(tmpRho)
+    call densityEq%getNIt(n)
+    nItDensity=max(nItDensity,n)
     rho(1:grid%nC)=tmpRho(:)
   end subroutine
   
@@ -464,6 +478,8 @@ contains
     end if
     tmpRhoE(:)=rhoE(1:grid%nC)
     call energyEq%solve(tmpRhoE)
+    call energyEq%getNIt(n)
+    nItEnergy=max(nItEnergy,n)
     rhoE(1:grid%nC)=tmpRhoE(:)
   end subroutine
   

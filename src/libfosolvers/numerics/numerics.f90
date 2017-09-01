@@ -17,6 +17,8 @@ module modNumerics
     procedure::initNoLinEq ! specific class uses different arguments, saved the init() name
     procedure,public::clear=>clearNoLinEq
     procedure,public::setTol=>setTolNoLinEq
+    procedure,public::setMaxIt=>setMaxItNoLinEq
+    procedure,public::getNIt=>getNItNoLinEq
     final::purgeNoLinEq
   end type
   
@@ -113,6 +115,14 @@ module modNumerics
       integer(C_INT)::kinsetfuncnormtol !< error code
     end function
     
+    !> KINSOL set maximum number of iterations for the non-linear system
+    function kinsetnummaxiters(mem,maxit) bind(c,name='KINSetNumMaxIters')
+      use iso_c_binding
+      type(C_PTR),value::mem !< memory pointer
+      integer(C_LONG),value::maxit !< maximum number of iterations
+      integer(C_INT)::kinsetnummaxiters !< error code
+    end function
+    
     !> KINSOL set number of iterations for Anderson acceleration
     function kinsetmaa(mem,maa) bind(c,name='KINSetMAA')
       use iso_c_binding
@@ -135,6 +145,14 @@ module modNumerics
       type(C_PTR),value::mem !< memory pointer
       integer(C_INT),value::maxl !< maximum dimension of the Krylov subspace
       integer(C_INT)::kinspgmr !< error code
+    end function
+    
+    !> KINSOL get number of iterations performed for the non-linear system
+    function kingetnumnonlinsolviters(mem,nit) bind(c,name='KINGetNumNonlinSolvIters')
+      use iso_c_binding
+      type(C_PTR),value::mem !< memory pointer
+      integer(C_LONG)::nit !< number of iterations
+      integer(C_INT)::kingetnumnonlinsolviters !< error code
     end function
     
   end interface
@@ -225,6 +243,36 @@ contains
     end if
   end subroutine
   
+  !> set the maximum number of iterations for this noLinEq
+  subroutine setMaxItNoLinEq(this,maxit)
+    class(noLinEq),intent(inout)::this !< this noLinEq
+    integer,intent(in)::maxit !< maximum number of iterations
+    integer(C_LONG)::c_maxit
+    integer(C_INT)::info
+    
+    c_maxit=maxit
+    info=kinsetnummaxiters(this%work,c_maxit)
+    if(info/=0)then
+      write(*,'(a,i3)')"[E] setMaxItNoLinEq(): KINSetNumMaxIters error code ",info
+      stop
+    end if
+  end subroutine
+  
+  !> get the number of iterations performed for this noLinEq
+  subroutine getNItNoLinEq(this,nit)
+    class(noLinEq),intent(inout)::this !< this noLinEq
+    integer,intent(out)::nit !< number of iterations
+    integer(C_LONG)::c_nit
+    integer(C_INT)::info
+    
+    info=kingetnumnonlinsolviters(this%work,c_nit)
+    nit=int(c_nit)
+    if(info/=0)then
+      write(*,'(a,i3)')"[E] setNItNoLinEq(): KINGetNumNonlinSolvIters error code ",info
+      stop
+    end if
+  end subroutine
+  
   !> generic destructor of noLinEq
   subroutine purgeNoLinEq(this)
     type(noLinEq),intent(inout)::this !< this noLinEq
@@ -295,8 +343,7 @@ contains
     xPtr(1:this%nEq)=x(1:this%nEq)
     info=kinsol(this%work,this%x,KIN_FP,this%xScale,this%rScale)
     if(info/=0)then
-      write(*,'(a,i3)')"[E] solveFixPt(): KINSol error code ",info
-      stop
+      write(*,'(a,i3)')"[W] solveFixPt(): KINSol exit code ",info
     end if
     x(1:this%nEq)=xPtr(1:this%nEq)
   end subroutine
@@ -313,8 +360,7 @@ contains
     xPtr(1:this%nEq)=x(1:this%nEq)
     info=kinsol(this%work,this%x,KIN_LINESEARCH,this%xScale,this%rScale)
     if(info/=0)then
-      write(*,'(a,i3)')"[E] solveNewtonKrylov(): KINSol error code ",info
-      stop
+      write(*,'(a,i3)')"[W] solveNewtonKrylov(): KINSol exit code ",info
     end if
     x(1:this%nEq)=xPtr(1:this%nEq)
   end subroutine

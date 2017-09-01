@@ -45,7 +45,6 @@ program fopiso
       temp1(:)=temp(:)
       call solveEnergy()
       if(needRetry) exit
-      write(*,*)'PISO',maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale
       if(maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale<=RTOL_DENSITY)then
         exit
       elseif(nItPISO==MAXIT_PISO)then
