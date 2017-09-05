@@ -332,35 +332,43 @@ contains
   end subroutine
   
   !> solve this system of fixed point equations
-  subroutine solveFixPt(this,x)
+  subroutine solveFixPt(this,x,info)
     class(fixPt),intent(inout)::this !< this fixPt
     double precision,intent(inout)::x(:) !< the initial guess and solution
+    integer,optional,intent(out)::info !< exit code
     double precision,pointer::xPtr(:)
-    integer(C_INT)::info
+    integer(C_INT)::c_info
     integer(C_INT),parameter::KIN_FP=3
     
     call associateVector(this%x,xPtr)
     xPtr(1:this%nEq)=x(1:this%nEq)
-    info=kinsol(this%work,this%x,KIN_FP,this%xScale,this%rScale)
-    if(info/=0)then
-      write(*,'(a,i3)')"[W] solveFixPt(): KINSol exit code ",info
+    c_info=kinsol(this%work,this%x,KIN_FP,this%xScale,this%rScale)
+    if(c_info/=0)then
+      write(*,'(a,i3)')"[W] solveFixPt(): KINSol exit code ",c_info
+    end if
+    if(present(info))then
+      info=c_info
     end if
     x(1:this%nEq)=xPtr(1:this%nEq)
   end subroutine
   
   !> solve this Newton-Krylov problem
-  subroutine solveNewtonKrylov(this,x)
+  subroutine solveNewtonKrylov(this,x,info)
     class(NewtonKrylov),intent(inout)::this !< this NewtonKrylov
     double precision,intent(inout)::x(:) !< the initial guess and solution
+    integer,optional,intent(out)::info !< exit code
     double precision,pointer::xPtr(:)
-    integer(C_INT)::info
+    integer(C_INT)::c_info
     integer(C_INT),parameter::KIN_LINESEARCH=1
     
     call associateVector(this%x,xPtr)
     xPtr(1:this%nEq)=x(1:this%nEq)
-    info=kinsol(this%work,this%x,KIN_LINESEARCH,this%xScale,this%rScale)
-    if(info/=0)then
-      write(*,'(a,i3)')"[W] solveNewtonKrylov(): KINSol exit code ",info
+    c_info=kinsol(this%work,this%x,KIN_LINESEARCH,this%xScale,this%rScale)
+    if(c_info/=0)then
+      write(*,'(a,i3)')"[W] solveNewtonKrylov(): KINSol exit code ",c_info
+    end if
+    if(present(info))then
+      info=c_info
     end if
     x(1:this%nEq)=xPtr(1:this%nEq)
   end subroutine
