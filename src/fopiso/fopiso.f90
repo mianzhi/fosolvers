@@ -9,12 +9,14 @@ program fopiso
   
   call init()
   write(tmpStr,*)iOut
-  write(*,'(a)')'[I] writing: rst_'//trim(adjustl(tmpStr))//'.vtk'
+  write(*,'(a)')'[i] writing: rst_'//trim(adjustl(tmpStr))//'.vtk'
   call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
   do while(t<tFinal)
     if(needRetry)then
       nRetry=nRetry+1
       needRetry=.false.
+    else
+      nRetry=0
     end if
     if(nRetry>0)then
       call loadState0()
@@ -51,18 +53,13 @@ program fopiso
         needRetry=.true.
       end if
     end do
-    if(needRetry)then
-      write(*,'(a,i2,a,g12.6)')'[W] start retry No. ',nRetry,' at t: ',dt
-      cycle
-    else
-      nRetry=0
-    end if
+    if(needRetry) cycle
     t=t+dt
     call postSolve()
     if(t*(1d0+tiny(1d0))>=tNext)then
       iOut=iOut+1
       write(tmpStr,*)iOut
-      write(*,'(a)')'[I] writing: rst_'//trim(adjustl(tmpStr))//'.vtk'
+      write(*,'(a)')'[i] writing: rst_'//trim(adjustl(tmpStr))//'.vtk'
       call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
       tNext=tNext+tInt
     end if

@@ -213,7 +213,7 @@ contains
     end do
     call recoverState(p,u,temp,Y,rho,rhou,rhoE)
     t=0d0
-    dt=huge(1d0)
+    dt=1d-7 ! TODO replace the good old 1d-7 with user input
     tNext=tInt
     iOut=0
     nRetry=0
@@ -334,14 +334,16 @@ contains
     double precision,parameter::MINFRAC_OUT_ALIGN=0.05d0
     
     ! TODO calculate dt, cantera sound speed
-    dt=2d-5
     dt=min(dt,minval(CFL_ACCOUSTIC*grid%v(:)**(1d0/3d0)&
     &                     /sqrt(1.4d0*p(1:grid%nC)/rho(1:grid%nC))))
     dt=min(dt,minval(CFL_FLOW*grid%v(:)**(1d0/3d0)&
     &                /norm2(u(:,1:grid%nC),1)))
     dt=min(dt,minval(CFL_DIFFUSION*grid%v(:)**(2d0/3d0)&
     &                /(visc(1:grid%nC)/rho(1:grid%nC))))
-    dt=dt/2**nRetry
+    if(nRetry>0)then
+      dt=dt/2d0**nRetry
+      write(*,'(a,i2,a,g12.6)')'[i] starting retry No. ',nRetry,' at t: ',dt
+    end if
     dt=max(min(dt,tNext-t),dt*MINFRAC_OUT_ALIGN)
     
     ! solution and residual scales
@@ -362,13 +364,17 @@ contains
     nItDensity=0
     nItEnergy=0
     
-    write(*,'(a,g12.6,a,g12.6)')'[I] starting step, t: ',t,' dt: ',dt
+    write(*,'(a,g12.6,a,g12.6)')'[i] starting step, t: ',t,' dt: ',dt
   end subroutine
   
   !> guess next time step size, etc.
   subroutine postSolve()
     
-    write(*,'(a,i2,a,i2,a,i2,a,i2,a,i2,a)')'[I] step finished, nIt[rhou,p,rho,rhoE,PISO]: [',&
+    ! the time step size is adjusted to maintain half of the maximum number iterations
+    dt=dt*minval(dble([MAXIT_MOMENTUM,MAXIT_PRESSURE,MAXIT_DENSITY,MAXIT_ENERGY,MAXIT_PISO])/&
+    &            dble([nItMomentum,nItPressure,nItDensity,nItEnergy,nItPISO]))*0.5d0
+    
+    write(*,'(a,i2,a,i2,a,i2,a,i2,a,i2,a)')'[i] finished step, nIt[rhou,p,rho,rhoE,PISO]: [',&
     &    nItMomentum,',',nItPressure,',',nItDensity,',',nItEnergy,',',nItPISO,']'
   end subroutine
   
@@ -397,6 +403,7 @@ contains
     use modGradient
     use modPressure
     double precision,allocatable,save::tmpRhou(:)
+    integer::info
     
     if(.not.allocated(tmpRhou))then
       allocate(tmpRhou(DIMS*grid%nC))
@@ -408,7 +415,8 @@ contains
     call setBC()
     call findPresForce(grid,p,presF)
     call findGrad(grid,p,gradP)
-    call momentumEq%solve(tmpRhou)
+    call momentumEq%solve(tmpRhou,info=info)
+    needRetry=info/=0
     call momentumEq%getNIt(n)
     nItMomentum=max(nItMomentum,n)
     rhou(:,1:grid%nC)=reshape(tmpRhou,[DIMS,grid%nC])
@@ -421,6 +429,7 @@ contains
   subroutine solvePressure()
     use modAdvection
     double precision,allocatable,save::tmpP(:)
+    integer::info
     
     if(.not.allocated(tmpP))then
       allocate(tmpP(grid%nC))
@@ -430,7 +439,8 @@ contains
     end if
     tmpP(:)=p(1:grid%nC)
     call findAdv(grid,rho,rhou,flowRho) ! vary only the Rhie-Chow part of flowRho in RHS
-    call pressureEq%solve(tmpP)
+    call pressureEq%solve(tmpP,info=info)
+    needRetry=info/=0
     call pressureEq%getNIt(n)
     nItPressure=max(nItPressure,n)
     p(1:grid%nC)=tmpP(:)
@@ -450,6 +460,7 @@ contains
   !> solve the density
   subroutine solveDensity()
     double precision,allocatable,save::tmpRho(:)
+    integer::info
     
     if(.not.allocated(tmpRho))then
       allocate(tmpRho(grid%nC))
@@ -458,7 +469,8 @@ contains
       allocate(tmpRho(grid%nC))
     end if
     tmpRho(:)=rho(1:grid%nC)
-    call densityEq%solve(tmpRho)
+    call densityEq%solve(tmpRho,info)
+    needRetry=info/=0
     call densityEq%getNIt(n)
     nItDensity=max(nItDensity,n)
     rho(1:grid%nC)=tmpRho(:)
@@ -469,6 +481,7 @@ contains
     use modAdvection
     use modDiffusion
     double precision,allocatable,save::tmpRhoE(:)
+    integer::info
     
     if(.not.allocated(tmpRhoE))then
       allocate(tmpRhoE(grid%nC))
@@ -477,7 +490,8 @@ contains
       allocate(tmpRhoE(grid%nC))
     end if
     tmpRhoE(:)=rhoE(1:grid%nC)
-    call energyEq%solve(tmpRhoE)
+    call energyEq%solve(tmpRhoE,info)
+    needRetry=info/=0
     call energyEq%getNIt(n)
     nItEnergy=max(nItEnergy,n)
     rhoE(1:grid%nC)=tmpRhoE(:)
