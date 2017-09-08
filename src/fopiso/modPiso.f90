@@ -11,15 +11,15 @@ module modPiso
   public
   
   integer,parameter::DIMS=3 !< three dimensions
-  integer,parameter::MAXIT_MOMENTUM=20 !< max number of momentum prediction equation iteration
-  integer,parameter::MAXIT_PRESSURE=10 !< max number of pressure correction equation iteration
-  integer,parameter::MAXIT_DENSITY=10 !< max number of density equation iteration
-  integer,parameter::MAXIT_ENERGY=10 !< max number of energy equation iteration
-  integer,parameter::MAXIT_PISO=10 !< max number of PISO iterations
-  double precision,parameter::RTOL_MOMENTUM=1d-4 !< momentum prediction relative tolerance
-  double precision,parameter::RTOL_PRESSURE=1d-5 !< pressure correction relative tolerance
-  double precision,parameter::RTOL_DENSITY=1d-6 !< density equation relative tolerance
-  double precision,parameter::RTOL_ENERGY=1d-6 !< energy equation relative tolerance
+  integer,parameter::MAXIT_MOMENTUM=40 !< max number of momentum prediction equation iteration
+  integer,parameter::MAXIT_PRESSURE=20 !< max number of pressure correction equation iteration
+  integer,parameter::MAXIT_DENSITY=20 !< max number of density equation iteration
+  integer,parameter::MAXIT_ENERGY=20 !< max number of energy equation iteration
+  integer,parameter::MAXIT_PISO=20 !< max number of PISO iterations
+  double precision,parameter::RTOL_MOMENTUM=1d-8 !< momentum prediction relative tolerance
+  double precision,parameter::RTOL_PRESSURE=1d-8 !< pressure correction relative tolerance
+  double precision,parameter::RTOL_DENSITY=1d-7 !< density equation relative tolerance
+  double precision,parameter::RTOL_ENERGY=1d-8 !< energy equation relative tolerance
   
   type(polyFvGrid)::grid !< computational grid
   
@@ -536,7 +536,6 @@ contains
   function pressureRHS(oldVector,newVector,dat)
     use iso_c_binding
     use modNumerics
-    use modGradient
     use modDiffusion
     use modRhieChow
     type(C_PTR),value::oldVector !< old N_Vector
@@ -554,7 +553,6 @@ contains
     
     p(1:grid%nC)=x(1:grid%nC)
     call setBC()
-    call findGrad(grid,p,gradP)
     if(.not.allocated(tmpFlowRho))then
       allocate(tmpFlowRho(grid%nC))
     else if(size(tmpFlowRho)/=grid%nC)then
