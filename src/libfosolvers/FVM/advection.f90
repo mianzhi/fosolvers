@@ -47,6 +47,8 @@ contains
     call findGrad(grid,reshape(f(:,:,1:grid%nC),&
     &                          [size(f(:,:,1:grid%nC),1)*size(f(:,:,1:grid%nC),2),&
     &                           size(f(:,:,1:grid%nC),3)]),gradF)
+    !$omp parallel do default(shared)&
+    !$omp& private(m,n,up,dn,fUp,fDn,df,r,flow)
     do i=1,grid%nP
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
@@ -73,6 +75,7 @@ contains
           end if
           fUp=dot_product(f(:,j,up),grid%normP(:,i))
           fDn=dot_product(f(:,j,dn),grid%normP(:,i))
+          !$omp critical
           if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
             df=dot_product(matmul(grid%p(:,dn)-grid%p(:,up),gradF(:,j*DIMS-(DIMS-1):j*DIMS,up)),&
             &              grid%normP(:,i))
@@ -84,9 +87,11 @@ contains
             flow=-grid%aP(i)*fUp
             adv(j,m)=adv(j,m)+flow
           end if
+          !$omp end critical
         end do
       end if
     end do
+    !$omp end parallel do
     deallocate(gradF)
   end subroutine
   

@@ -36,6 +36,8 @@ contains
     diff(:,:)=0d0
     allocate(gradS(DIMS,size(s,1),grid%nC))
     call findGrad(grid,s(:,1:grid%nC),gradS)
+    !$omp parallel do default(shared)&
+    !$omp& private(m,n,fPF,dF,gradSF,sf,dPF,k,l,tf,rf,Afs,flow)
     do i=1,grid%nP
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
@@ -62,6 +64,7 @@ contains
         rf(2)=-grid%normP(1,i)*tf(3)+grid%normP(3,i)*tf(1)
         rf(3)=grid%normP(1,i)*tf(2)-grid%normP(2,i)*tf(1)
         Afs=grid%aP(i)/dot_product(sf,grid%normP(:,i))
+        !$omp critical
         if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
           flow(:)=dF(:)*Afs*((s(:,n)-s(:,m))/dPF&
           &                  -matmul(transpose(gradSF(:,:)),&
@@ -72,8 +75,10 @@ contains
           flow(:)=dF(:)*Afs*(s(:,n)-s(:,m))/(2d0*dPF)
           diff(:,m)=diff(:,m)+flow(:)
         end if
+        !$omp end critical
       end if
     end do
+    !$omp end parallel do
     deallocate(gradS)
   end subroutine
   
