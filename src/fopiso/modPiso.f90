@@ -500,10 +500,10 @@ contains
   !> RHS of the momentum equation in the form of a fix point problem
   function momentumRHS(oldVector,newVector,dat)
     use iso_c_binding
+    use ieee_arithmetic
     use modNumerics
     use modAdvection
     use modNewtonian
-    use modRhieChow
     type(C_PTR),value::oldVector !< old N_Vector
     type(C_PTR),value::newVector !< new N_Vector
     type(C_PTR),value::dat !< optional user data object
@@ -520,22 +520,24 @@ contains
     end forall
     call setBC()
     call findViscForce(grid,u,visc,viscF)
+    viscF(:,:)=0d0 ! FIXME: enable viscous force
     forall(i=1:grid%nE,j=1:DIMS)
       fluxRhou(:,j,i)=rhou(j,i)*u(:,i)
     end forall
     call findAdv(grid,rhou,fluxRhou,flowRhou)
-    call addRhieChow(grid,rhou,p,gradP,rho,dt,flowRhou)
     forall(i=1:grid%nC)
       rhou(:,i)=rhou0(:,i)+dt/grid%v(i)*(flowRhou(:,i)+presF(:,i)+viscF(:,i))
     end forall
     y=reshape(rhou(:,1:grid%nC),[grid%nC*DIMS])
-    momentumRHS=0
+    momentumRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
   end function
   
   !> residual function of the pressure equation
   function pressureRHS(oldVector,newVector,dat)
     use iso_c_binding
+    use ieee_arithmetic
     use modNumerics
+    use modGradient
     use modDiffusion
     use modRhieChow
     type(C_PTR),value::oldVector !< old N_Vector
@@ -553,6 +555,7 @@ contains
     
     p(1:grid%nC)=x(1:grid%nC)
     call setBC()
+    call findGrad(grid,p,gradP)
     if(.not.allocated(tmpFlowRho))then
       allocate(tmpFlowRho(grid%nC))
     else if(size(tmpFlowRho)/=grid%nC)then
@@ -566,12 +569,13 @@ contains
       y(i)=p(i)-R_AIR*temp(i)*dt**2/grid%v(i)*(laP(i)-laP1(i))-R_AIR*temp(i)/R_AIR/temp1(i)*p1(i)&
       &    +R_AIR*temp(i)*(rho1(i)-rho0(i))-R_AIR*temp(i)*dt/grid%v(i)*tmpFlowRho(i)
     end forall
-    pressureRHS=0
+    pressureRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
   end function
   
   !> RHS of the density equation in the form of a fix point problem
   function densityRHS(oldVector,newVector,dat)
     use iso_c_binding
+    use ieee_arithmetic
     use modNumerics
     use modAdvection
     use modRhieChow
@@ -595,12 +599,13 @@ contains
     forall(i=1:grid%nC)
       y(i)=rho0(i)+dt/grid%v(i)*flowRho(i)
     end forall
-    densityRHS=0
+    densityRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
   end function
   
   !> RHS of the energy equation in the form of a fix point problem
   function energyRHS(oldVector,newVector,dat)
     use iso_c_binding
+    use ieee_arithmetic
     use modNumerics
     use modAdvection
     use modDiffusion
@@ -630,7 +635,7 @@ contains
     forall(i=1:grid%nC)
       y(i)=rhoE0(i)+dt/grid%v(i)*(flowRhoH(i)+condQ(i)) ! TODO add viscous heating
     end forall
-    energyRHS=0
+    energyRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
   end function
   
 end module
