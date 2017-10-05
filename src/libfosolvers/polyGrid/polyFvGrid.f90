@@ -7,19 +7,22 @@ module modPolyFvGrid
   
   ! constants
   integer,parameter::DIMS=3 !< dimensions
+  integer,parameter::MIN_N_NEAR=8 !< minimum nearby elements for each cell
+  integer,parameter::MAX_N_NEAR=25 !< maximum nearby elements for each cell
   
   !> polyhedron and polygon finite volume grid type
   type,extends(polyGrid),public::polyFvGrid
     integer::nP !< number of pairs of elements
     integer,allocatable::iEP(:,:) !< indices of elements of each pair
-    integer,allocatable::neib(:,:) !< neighbor list
+    integer,allocatable::neib(:,:) !< list of neighbor (adjacent via pair) elements to cells
+    integer,allocatable::near(:,:) !< list of nearby elements to cells
     double precision,allocatable::aP(:) !< area of pair interfaces
     double precision,allocatable::normP(:,:) !< normal vector of pair interfaces
     double precision,allocatable::pP(:,:) !< center position of pair interfaces
   contains
     procedure,public::clear=>clearPolyFvGrid
     procedure,public::up=>upPolyFvGrid
-    !FIXME:final::purgePolyFvGrid
+    final::purgePolyFvGrid
   end type
   
 contains
@@ -31,6 +34,7 @@ contains
     call this%polyGrid%clear()
     if(allocated(this%iEP)) deallocate(this%iEP)
     if(allocated(this%neib)) deallocate(this%neib)
+    if(allocated(this%near)) deallocate(this%near)
     if(allocated(this%aP)) deallocate(this%aP)
     if(allocated(this%normP)) deallocate(this%normP)
     if(allocated(this%pP)) deallocate(this%pP)
@@ -43,6 +47,7 @@ contains
     if(.not.this%isUp)then
       call this%polyGrid%up()
       call getNeibPolyFvGrid(this)
+      call getNearPolyFvGrid(this)
     end if
   end subroutine
   
@@ -181,6 +186,44 @@ contains
     deallocate(iEP)
     deallocate(aP)
     deallocate(normP)
+  end subroutine
+  
+  !> get the list of nearby elements for each cell
+  elemental subroutine getNearPolyFvGrid(grid)
+    use modGeometry
+    class(polyFvGrid),intent(inout)::grid !< the polyFvGrid
+    integer::nNear
+    
+    if(allocated(grid%near)) deallocate(grid%near)
+    allocate(grid%near(MAX_N_NEAR,grid%nC))
+    grid%near(:,:)=0
+    do i=1,grid%nC
+      nNear=0
+      ! neighbors are nearby
+      do j=1,nF(grid%sE(i))
+        if(nNear<MAX_N_NEAR.and.grid%neib(j,i)>0)then
+          nNear=nNear+1
+          grid%near(nNear,i)=grid%neib(j,i)
+        end if
+      end do
+      ! find more nearby elements if needed
+      do while(nNear<MIN_N_NEAR)
+        n=nNear
+        do k=1,n
+          l=grid%near(k,i)
+          if(l<=grid%nC)then
+            do j=1,nF(grid%sE(l))
+              if(nNear<MAX_N_NEAR.and.grid%neib(j,l)>0&
+              &  .and.all(grid%near(1:nNear,i)/=grid%neib(j,l))&
+              &  .and.grid%neib(j,l)/=i)then
+                nNear=nNear+1
+                grid%near(nNear,i)=grid%neib(j,l)
+              end if
+            end do
+          end if
+        end do
+      end do
+    end do
   end subroutine
   
   !> destructor of polyGrid
