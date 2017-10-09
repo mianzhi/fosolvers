@@ -32,7 +32,7 @@ contains
     integer,parameter::L_IWORK=200
     integer::nNear,iNear(MAX_N_NEAR),lwork,iwork(L_IWORK),rank,ier
     double precision::dx(MAX_N_NEAR,DIMS),dv(MAX_N_NEAR,size(v,1)),stat(DIMS),work(MAX_L_WORK),rcond
-    double precision::vF(DIMS),tmp
+    double precision::tmp
     
     call grid%up()
     m=size(v,1) ! number of components
@@ -56,23 +56,25 @@ contains
         end if
       end do
       ! LSQ method
-      do j=1,nNear
-        if(iNear(j)<=grid%nC)then
+      if(.not.useCellOnly)then ! use gradient mapping (constructed by DEGSDD)
+        forall(j=1:nNear)
+          dv(j,:)=v(:,iNear(j))-v(:,i)
+        end forall
+        gradv(1:DIMS,1:m,i)=matmul(grid%gradMap(1:DIMS,1:nNear,i),dv(1:nNear,1:m))
+      else ! use DGELSD
+        forall(j=1:nNear)
           dx(j,:)=grid%p(:,iNear(j))-grid%p(:,i)
-        else
-          vF=n3p(grid%pN(:,grid%iNE(1:3,iNear(j))))
-          dx(j,:)=2d0*vF(:)*dot_product(grid%p(:,iNear(j))-grid%p(:,i),vF(:))
-        end if
-        dv(j,:)=v(:,iNear(j))-v(:,i)
-        dv(j,:)=dv(j,:)/dot_product(dx(j,:),dx(j,:))
-        dx(j,:)=dx(j,:)/dot_product(dx(j,:),dx(j,:))
-      end do
-      rcond=-1d0
-      lwork=-1
-      call DGELSD(nNear,DIMS,m,dx,MAX_N_NEAR,dv,MAX_N_NEAR,stat,rcond,rank,work,lwork,iwork,ier)
-      lwork=min(MAX_L_WORK,int(work(1)))
-      call DGELSD(nNear,DIMS,m,dx,MAX_N_NEAR,dv,MAX_N_NEAR,stat,rcond,rank,work,lwork,iwork,ier)
-      gradv(:,:,i)=dv(1:DIMS,:)
+          dv(j,:)=v(:,iNear(j))-v(:,i)
+          dv(j,:)=dv(j,:)/dot_product(dx(j,:),dx(j,:))
+          dx(j,:)=dx(j,:)/dot_product(dx(j,:),dx(j,:))
+        end forall
+        rcond=-1d0
+        lwork=-1
+        call DGELSD(nNear,DIMS,m,dx,MAX_N_NEAR,dv,MAX_N_NEAR,stat,rcond,rank,work,lwork,iwork,ier)
+        lwork=min(MAX_L_WORK,int(work(1)))
+        call DGELSD(nNear,DIMS,m,dx,MAX_N_NEAR,dv,MAX_N_NEAR,stat,rcond,rank,work,lwork,iwork,ier)
+        gradv(:,:,i)=dv(1:DIMS,:)
+      end if
     end do
     !$end omp parallel do
     ! limit the gradient

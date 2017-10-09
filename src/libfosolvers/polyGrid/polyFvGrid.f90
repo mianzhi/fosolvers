@@ -19,6 +19,7 @@ module modPolyFvGrid
     double precision,allocatable::aP(:) !< area of pair interfaces
     double precision,allocatable::normP(:,:) !< normal vector of pair interfaces
     double precision,allocatable::pP(:,:) !< center position of pair interfaces
+    double precision,allocatable::gradMap(:,:,:) !< gradient mapping matrix constructed by SVD
   contains
     procedure,public::clear=>clearPolyFvGrid
     procedure,public::up=>upPolyFvGrid
@@ -38,6 +39,7 @@ contains
     if(allocated(this%aP)) deallocate(this%aP)
     if(allocated(this%normP)) deallocate(this%normP)
     if(allocated(this%pP)) deallocate(this%pP)
+    if(allocated(this%gradMap)) deallocate(this%gradMap)
   end subroutine
   
   !> update this polyFvGrid
@@ -188,15 +190,20 @@ contains
     deallocate(normP)
   end subroutine
   
-  !> get the list of nearby elements for each cell
+  !> get the list of nearby elements (and gradient mapping matrix) for each cell
   elemental subroutine getNearPolyFvGrid(grid)
     use modGeometry
     class(polyFvGrid),intent(inout)::grid !< the polyFvGrid
     integer::nNear
+    double precision::a(MAX_N_NEAR,DIMS),u(MAX_N_NEAR,MAX_N_NEAR),sigma(DIMS),vt(DIMS,DIMS)
+    double precision::w(MAX_N_NEAR),vF(DIMS)
     
     if(allocated(grid%near)) deallocate(grid%near)
     allocate(grid%near(MAX_N_NEAR,grid%nC))
     grid%near(:,:)=0
+    if(allocated(grid%gradMap)) deallocate(grid%gradMap)
+    allocate(grid%gradMap(DIMS,MAX_N_NEAR,grid%nC))
+    grid%gradMap(:,:,:)=0d0
     do i=1,grid%nC
       nNear=0
       ! neighbors are nearby
@@ -222,6 +229,17 @@ contains
             end do
           end if
         end do
+      end do
+      ! construct gradient mapping matrix
+      do j=1,nNear
+        if(grid%near(j,i)<=grid%nC)then
+          a(j,:)=grid%p(:,grid%near(j,i))-grid%p(:,i)
+        else
+          vF=n3p(grid%pN(:,grid%iNE(1:3,grid%near(j,i))))
+          a(j,:)=2d0*vF(:)*dot_product(grid%p(:,grid%near(j,i))-grid%p(:,i),vF(:))
+        end if
+        w(j)=dot_product(a(j,:),a(j,:))
+        a(j,:)=a(j,:)/w(j)
       end do
     end do
   end subroutine
