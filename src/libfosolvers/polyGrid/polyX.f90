@@ -21,7 +21,7 @@ module modPolyX
     procedure,public::init=>initPolyX
     procedure,public::clear=>clearPolyX
     procedure,public::up=>upPolyX
-    !FIXME:final::purgePolyX
+    final::purgePolyX
   end type
   
 contains
@@ -56,7 +56,7 @@ contains
   end subroutine
   
   !> update this polyX
-  elemental subroutine upPolyX(this)
+  subroutine upPolyX(this)
     use modGeometry
     class(polyX),intent(inout)::this !< this polyX
     

@@ -43,7 +43,7 @@ contains
   end subroutine
   
   !> update this polyFvGrid
-  elemental subroutine upPolyFvGrid(this)
+  subroutine upPolyFvGrid(this)
     class(polyFvGrid),intent(inout)::this !< this polyFvGrid
     
     if(.not.this%isUp)then
@@ -191,11 +191,13 @@ contains
   end subroutine
   
   !> get the list of nearby elements (and gradient mapping matrix) for each cell
-  elemental subroutine getNearPolyFvGrid(grid)
+  subroutine getNearPolyFvGrid(grid)
     use modGeometry
     class(polyFvGrid),intent(inout)::grid !< the polyFvGrid
-    integer::nNear
-    double precision::a(MAX_N_NEAR,DIMS),u(MAX_N_NEAR,MAX_N_NEAR),sigma(DIMS),vt(DIMS,DIMS)
+    integer::nNear,iwork(8*DIMS),info
+    integer,parameter::L_DWORK=2000
+    double precision::a(MAX_N_NEAR,DIMS),u(MAX_N_NEAR,DIMS),sigma(DIMS),vt(DIMS,DIMS),&
+    &                 v_s(DIMS,DIMS),dwork(L_DWORK)
     double precision::w(MAX_N_NEAR),vF(DIMS)
     
     if(allocated(grid%near)) deallocate(grid%near)
@@ -241,6 +243,15 @@ contains
         w(j)=dot_product(a(j,:),a(j,:))
         a(j,:)=a(j,:)/w(j)
       end do
+      call DGESDD('S',nNear,DIMS,a,MAX_N_NEAR,sigma,u,MAX_N_NEAR,vt,DIMS,dwork,L_DWORK,iwork,info)
+      v_s(:,:)=0d0
+      forall(j=1:DIMS,sigma(j)>tiny(1d0)*sigma(1))
+        v_s(:,j)=vt(j,:)/sigma(j)
+      end forall
+      grid%gradMap(1:DIMS,1:nNear,i)=matmul(v_s(1:DIMS,1:DIMS),transpose(u(1:nNear,1:DIMS)))
+      forall(j=1:nNear)
+        grid%gradMap(:,j,i)=grid%gradMap(:,j,i)/w(j)
+      end forall
     end do
   end subroutine
   

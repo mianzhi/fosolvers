@@ -20,7 +20,7 @@ module modPolyMesh
     procedure,public::init=>initPolyMesh
     procedure,public::clear=>clearPolyMesh
     procedure,public::up=>upPolyMesh
-    !FIXME:final::purgePolyMesh
+    final::purgePolyMesh
   end type
   
 contains
@@ -47,7 +47,7 @@ contains
   end subroutine
   
   !> update this polyMesh
-  elemental subroutine upPolyMesh(this)
+  subroutine upPolyMesh(this)
     use modGeometry
     class(polyMesh),intent(inout)::this !< this polyMesh
     

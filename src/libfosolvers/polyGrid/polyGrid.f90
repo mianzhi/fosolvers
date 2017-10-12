@@ -26,7 +26,7 @@ module modPolyGrid
     procedure,public::init=>initPolyGrid
     procedure,public::clear=>clearPolyGrid
     procedure,public::up=>upPolyGrid
-    !FIXME:final::purgePolyGrid
+    final::purgePolyGrid
   end type
   
   ! public procedures
@@ -57,7 +57,7 @@ contains
   end subroutine
   
   !> update this polyGrid
-  elemental subroutine upPolyGrid(this)
+  subroutine upPolyGrid(this)
     use modGeometry
     class(polyGrid),intent(inout)::this !< this polyGrid
     

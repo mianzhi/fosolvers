@@ -5,7 +5,7 @@ program test
   &                 polyX1,polyMesh1,polyGrid1,polyFvGrid1,&
   &                 readGTS1,readVTK1,writeVTK1,&
   &                 readCondTab1,&
-  &                 gradient1,advection1,advection2,euler,eulerJac,&
+  &                 gradient1,gradient2,advection1,advection2,euler,eulerJac,&
   &                 diffusion1,&
   &                 UDF1,&
   &                 fixPt1,NewtonKrylov1
@@ -21,6 +21,7 @@ program test
   call try('writeVTK1',writeVTK1)
   call try('readCondTab',readCondTab1)
   call try('gradient1',gradient1)
+  call try('gradient2',gradient2)
   call try('advection1',advection1)
   call try('advection2',advection2)
   call try('diffusion1',diffusion1)
