@@ -223,6 +223,7 @@ contains
           if(l<=grid%nC)then
             do j=1,nF(grid%sE(l))
               if(nNear<MAX_N_NEAR.and.grid%neib(j,l)>0&
+              &  .and.grid%neib(j,l)<=grid%nC& ! only neighbor facets are mirrored to ghost position
               &  .and.all(grid%near(1:nNear,i)/=grid%neib(j,l))&
               &  .and.grid%neib(j,l)/=i)then
                 nNear=nNear+1
