@@ -413,8 +413,8 @@ contains
     end if
     tmpRhou=reshape(rhou(:,1:grid%nC),[DIMS*grid%nC])
     call setBC()
-    call findPresForce(grid,p,presF)
     call findGrad(grid,p,gradP)
+    call findPresForce(grid,p,gradP,presF)
     call momentumEq%solve(tmpRhou,info=info)
     needRetry=info/=0
     call momentumEq%getNIt(n)
@@ -451,7 +451,7 @@ contains
     use modPressure
     
     call setBC()
-    call findPresForce(grid,p,presF)
+    call findPresForce(grid,p,gradP,presF)
     forall(i=1:grid%nC)
       rhou(:,i)=rhou(:,i)+dt/grid%v*(presF(:,i)-presF1(:,i))
     end forall
