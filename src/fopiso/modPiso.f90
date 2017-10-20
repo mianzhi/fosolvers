@@ -315,14 +315,23 @@ contains
     use modFileIO
     character(*),intent(in)::fName
     integer,parameter::FID=10
+    double precision::eps
     
     open(FID,file=trim(fName),action='write')
     call writeVTK(FID,grid)
     call writeVTK(FID,grid,E_DATA)
-    call writeVTK(FID,'density',rho)
-    call writeVTK(FID,'velocity',u)
-    call writeVTK(FID,'pressure',p)
-    call writeVTK(FID,'temperature',temp)
+    if(iOut==0)then
+      call writeVTK(FID,'density',rho)
+      call writeVTK(FID,'velocity',u)
+      call writeVTK(FID,'pressure',p)
+      call writeVTK(FID,'temperature',temp)
+    else
+      eps=(t-tNext)/dt
+      call writeVTK(FID,'density',eps*rho0+(1d0-eps)*rho)
+      call writeVTK(FID,'velocity',eps*u0+(1d0-eps)*u)
+      call writeVTK(FID,'pressure',eps*p0+(1d0-eps)*p)
+      call writeVTK(FID,'temperature',eps*temp0+(1d0-eps)*temp)
+    end if
     close(FID)
   end subroutine
   
@@ -331,7 +340,6 @@ contains
     double precision,parameter::CFL_ACCOUSTIC=2d0
     double precision,parameter::CFL_FLOW=0.5d0
     double precision,parameter::CFL_DIFFUSION=0.5d0
-    double precision,parameter::MINFRAC_OUT_ALIGN=0.05d0
     
     ! TODO calculate dt, cantera sound speed
     dt=min(dt,minval(CFL_ACCOUSTIC*grid%v(:)**(1d0/3d0)&
@@ -344,7 +352,6 @@ contains
       dt=dt/2d0**nRetry
       write(*,'(a,i2,a,g12.6)')'[i] starting retry No. ',nRetry,' at t: ',dt
     end if
-    dt=max(min(dt,tNext-t),dt*MINFRAC_OUT_ALIGN)
     
     ! solution and residual scales
     pScale=max(maxval(p)-minval(p),maxval(0.5d0*rho*norm2(u,1)**2),1d0)

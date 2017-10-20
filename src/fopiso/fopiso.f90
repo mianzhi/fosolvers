@@ -55,7 +55,6 @@ program fopiso
     end do
     if(needRetry) cycle
     t=t+dt
-    call postSolve()
     if(t*(1d0+tiny(1d0))>=tNext)then
       iOut=iOut+1
       write(tmpStr,*)iOut
@@ -63,6 +62,7 @@ program fopiso
       call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
       tNext=tNext+tInt
     end if
+    call postSolve()
   end do
   call clear()
 end program
