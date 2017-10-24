@@ -527,7 +527,6 @@ contains
     end forall
     call setBC()
     call findViscForce(grid,u,visc,viscF)
-    viscF(:,:)=0d0 ! FIXME: enable viscous force
     forall(i=1:grid%nE,j=1:DIMS)
       fluxRhou(:,j,i)=rhou(j,i)*u(:,i)
     end forall
