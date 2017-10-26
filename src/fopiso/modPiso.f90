@@ -11,6 +11,7 @@ module modPiso
   public
   
   integer,parameter::DIMS=3 !< three dimensions
+  
   integer,parameter::MAXIT_MOMENTUM=40 !< max number of momentum prediction equation iteration
   integer,parameter::MAXIT_PRESSURE=20 !< max number of pressure correction equation iteration
   integer,parameter::MAXIT_DENSITY=20 !< max number of density equation iteration
@@ -31,6 +32,9 @@ module modPiso
   integer::iOut !< index of output
   integer::nRetry !< number of retry for the current time step
   logical::needRetry !< if retry of the current time step is needed
+  
+  double precision::Rgas !< specific gas constant [J/kg/K]
+  double precision::gamm !< gamma of gas
   
   double precision,allocatable::rho(:) !< density [kg/m^3]
   double precision,allocatable::rhou(:,:) !< momentum [kg/s/m^2]
@@ -101,34 +105,35 @@ contains
     !end if
     !close(FID)
     !open(FID,file='ic',action='read')
-    !read(FID,*),udfIC
+    !read(FID,*)udfIC
     !if(udfIc==0)then
-    !  read(FID,*),pInit
-    !  read(FID,*),TInit
-    !  read(FID,*),uInit(1)
-    !  read(FID,*),uInit(2)
-    !  read(FID,*),uInit(3)
+    !  read(FID,*)pInit
+    !  read(FID,*)TInit
+    !  read(FID,*)uInit(1)
+    !  read(FID,*)uInit(2)
+    !  read(FID,*)uInit(3)
     !else
-    !  read(FID,*),tmpD
+    !  read(FID,*)tmpD
     !  iUdf(1)=int(tmpD)
-    !  read(FID,*),tmpD
+    !  read(FID,*)tmpD
     !  iUdf(2)=int(tmpD)
-    !  read(FID,*),tmpD
+    !  read(FID,*)tmpD
     !  iUdf(3)=int(tmpD)
-    !  read(FID,*),tmpD
+    !  read(FID,*)tmpD
     !  iUdf(4)=int(tmpD)
-    !  read(FID,*),tmpD
+    !  read(FID,*)tmpD
     !  iUdf(5)=int(tmpD)
     !end if
     !close(FID)
     open(FID,file='sim',action='read')
     read(FID,*)tFinal
+    read(FID,*)dt
     read(FID,*)tInt
     close(FID)
-    !open(FID,file='fl',action='read')
-    !read(FID,*),r
-    !read(FID,*),gamm
-    !close(FID)
+    open(FID,file='fl',action='read')
+    read(FID,*)Rgas
+    read(FID,*)gamm
+    close(FID)
     !if(udfIc/=0.or.udfBc/=0)then
     !  open(FID,file='udf',action='read')
     !  call readUDFTab(FID,udf)
@@ -205,7 +210,6 @@ contains
       TInit=298d0
       YInit=[1d0]
       ! FIXME remove above
-      ! FIXME calculation of rho, rhoE based on cantera
       p(i)=pInit
       u(:,i)=uInit(:)
       temp(i)=TInit
@@ -213,7 +217,6 @@ contains
     end do
     call recoverState(p,u,temp,Y,rho,rhou,rhoE)
     t=0d0
-    dt=1d-7 ! TODO replace the good old 1d-7 with user input
     tNext=tInt
     iOut=0
     nRetry=0
@@ -265,9 +268,8 @@ contains
     !$omp parallel do default(shared)
     do i=1,grid%nE
       uo(:,i)=rhoui(:,i)/rhoi(i)
-      ! FIXME calculation of p, T based on cantera
-      po(i)=(1.4d0-1d0)*(rhoEi(i)-0.5d0*dot_product(rhoui(:,i),rhoui(:,i))/rhoi(i))
-      tempo(i)=po(i)/rhoi(i)/287.058d0
+      po(i)=(gamm-1d0)*(rhoEi(i)-0.5d0*dot_product(rhoui(:,i),rhoui(:,i))/rhoi(i))
+      tempo(i)=po(i)/rhoi(i)/Rgas
     end do
     !$omp end parallel do
   end subroutine
@@ -284,10 +286,9 @@ contains
     
     !$omp parallel do default(shared)
     do i=1,grid%nE
-      ! FIXME calculation of rho, rhoE based on cantera
-      rhoo(i)=pi(i)/287.058d0/tempi(i)
+      rhoo(i)=pi(i)/Rgas/tempi(i)
       rhouo(:,i)=rhoo(i)*ui(:,i)
-      rhoEo(i)=rhoo(i)*(1d0/(1.4d0-1d0)*287.058d0*tempi(i)+0.5d0*dot_product(ui(:,i),ui(:,i)))
+      rhoEo(i)=rhoo(i)*(1d0/(gamm-1d0)*Rgas*tempi(i)+0.5d0*dot_product(ui(:,i),ui(:,i)))
     end do
     !$omp end parallel do
   end subroutine
@@ -341,9 +342,8 @@ contains
     double precision,parameter::CFL_FLOW=0.5d0
     double precision,parameter::CFL_DIFFUSION=0.5d0
     
-    ! TODO calculate dt, cantera sound speed
     dt=min(dt,minval(CFL_ACCOUSTIC*grid%v(:)**(1d0/3d0)&
-    &                     /sqrt(1.4d0*p(1:grid%nC)/rho(1:grid%nC))))
+    &                     /sqrt(gamm*p(1:grid%nC)/rho(1:grid%nC))))
     dt=min(dt,minval(CFL_FLOW*grid%v(:)**(1d0/3d0)&
     &                /norm2(u(:,1:grid%nC),1)))
     dt=min(dt,minval(CFL_DIFFUSION*grid%v(:)**(2d0/3d0)&
@@ -356,10 +356,10 @@ contains
     ! solution and residual scales
     pScale=max(maxval(p)-minval(p),maxval(0.5d0*rho*norm2(u,1)**2),1d0)
     uScale=max(maxval(norm2(u,1)),sqrt(2d0*pScale/minval(rho)))
-    tempScale=max(maxval(temp)-minval(temp),pScale/minval(rho)/287.058d0)
+    tempScale=max(maxval(temp)-minval(temp),pScale/minval(rho)/Rgas)
     rhoScale=maxval(rho)
     rhouScale=rhoScale*uScale
-    rhoEScale=max(rhoScale*287.058*tempScale,0.5d0*rhoScale*uScale**2)
+    rhoEScale=max(rhoScale*Rgas*tempScale,0.5d0*rhoScale*uScale**2)
     
     ! set tolerance and maximum number of iterations, and etc.
     call momentumEq%setTol(rhoScale*RTOL_MOMENTUM)
@@ -536,6 +536,8 @@ contains
     end forall
     y=reshape(rhou(:,1:grid%nC),[grid%nC*DIMS])
     momentumRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
+    if(c_associated(dat))then
+    end if
   end function
   
   !> residual function of the pressure equation
@@ -553,8 +555,6 @@ contains
     double precision,pointer::x(:) !< fortran pointer associated with oldVector
     double precision,pointer::y(:) !< fortran pointer associated with newVector
     double precision,allocatable,save::tmpFlowRho(:)
-    double precision,parameter::R_AIR=287.058d0 ! TODO fluid data
-    ! TODO R*T under-relaxation
     
     call associateVector(oldVector,x)
     call associateVector(newVector,y)
@@ -572,10 +572,12 @@ contains
     call addRhieChow(grid,rho,p,gradP,rho,dt,tmpFlowRho)
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
     forall(i=1:grid%nC)
-      y(i)=p(i)-R_AIR*temp(i)*dt**2/grid%v(i)*(laP(i)-laP1(i))-R_AIR*temp(i)/R_AIR/temp1(i)*p1(i)&
-      &    +R_AIR*temp(i)*(rho1(i)-rho0(i))-R_AIR*temp(i)*dt/grid%v(i)*tmpFlowRho(i)
+      y(i)=p(i)-Rgas*temp(i)*dt**2/grid%v(i)*(laP(i)-laP1(i))-Rgas*temp(i)/Rgas/temp1(i)*p1(i)&
+      &    +Rgas*temp(i)*(rho1(i)-rho0(i))-Rgas*temp(i)*dt/grid%v(i)*tmpFlowRho(i)
     end forall
     pressureRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
+    if(c_associated(dat))then
+    end if
   end function
   
   !> RHS of the density equation in the form of a fix point problem
@@ -606,6 +608,8 @@ contains
       y(i)=rho0(i)+dt/grid%v(i)*flowRho(i)
     end forall
     densityRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
+    if(c_associated(dat))then
+    end if
   end function
   
   !> RHS of the energy equation in the form of a fix point problem
@@ -622,14 +626,13 @@ contains
     integer(C_INT)::energyRHS !< error code
     double precision,pointer::x(:) !< fortran pointer associated with oldVector
     double precision,pointer::y(:) !< fortran pointer associated with newVector
-    double precision,parameter::R_AIR=287.058d0 ! TODO fluid data
     
     call associateVector(oldVector,x)
     call associateVector(newVector,y)
     
     rhoE(1:grid%nC)=x(1:grid%nC)
     forall(i=1:grid%nE)
-      temp(i)=(rhoE(i)/rho(i)-0.5d0*dot_product(u(:,i),u(:,i)))/(1d0/(1.4d0-1d0))/R_AIR
+      temp(i)=(rhoE(i)/rho(i)-0.5d0*dot_product(u(:,i),u(:,i)))/(1d0/(gamm-1d0))/Rgas
     end forall
     call setBC()
     forall(i=1:grid%nE)
@@ -642,6 +645,8 @@ contains
       y(i)=rhoE0(i)+dt/grid%v(i)*(flowRhoH(i)+condQ(i)) ! TODO add viscous heating
     end forall
     energyRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
+    if(c_associated(dat))then
+    end if
   end function
   
 end module
