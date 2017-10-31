@@ -22,16 +22,33 @@ module modPiso
   double precision,parameter::RTOL_DENSITY=1d-7 !< density equation relative tolerance
   double precision,parameter::RTOL_ENERGY=1d-8 !< energy equation relative tolerance
   
-  type(polyFvGrid)::grid !< computational grid
+  integer,parameter::BC_WALL_TEMP=0 !< wall boundary with prescribed temperature
+  integer,parameter::BC_WALL_TEMP_UDF=5 !< wall boundary with prescribed temperature by UDF
+  integer,parameter::BC_WALL_FLUX=1 !< wall boundary with prescribed heat flux
+  integer,parameter::BC_WALL_FLUX_UDF=6 !< wall boundary with prescribed heat flux by UDF
+  integer,parameter::BC_IN_STATIC=10 !< inflow boundary with static properties
+  integer,parameter::BC_IN_STATIC_UDF=15 !< inflow boundary with static properties by UDF
+  integer,parameter::BC_IN_TOTAL=11 !< inflow boundary with total properties
+  integer,parameter::BC_IN_TOTAL_UDF=16 !< inflow boundary with total properties by UDF
+  integer,parameter::BC_OUT=20 !< outflow boundary
+  integer,parameter::BC_OUT_UDF=25 !< outflow boundary by UDF
+  integer,parameter::BC_FAR=30 !< far-field boundary
+  integer,parameter::BC_FAR_UDF=35 !< far-field boundary by UDF
   
-  double precision::t !< time
-  double precision::tFinal !< final time
+  type(polyFvGrid)::grid !< computational grid
+  type(condTab)::bc !< boundary conditions
+  type(UDFTab)::udf !< UDF
+  
+  double precision::t !< time [s]
+  double precision::tFinal !< final time [s]
   double precision::dt !< time step size [s]
   double precision::tInt !< time interval of output
   double precision::tNext !< time for next output
   integer::iOut !< index of output
   integer::nRetry !< number of retry for the current time step
   logical::needRetry !< if retry of the current time step is needed
+  
+  integer,allocatable::iBC(:) !< indexes boundary conditions
   
   double precision::Rgas !< specific gas constant [J/kg/K]
   double precision::gamm !< gamma of gas
@@ -87,44 +104,47 @@ contains
     integer,parameter::FID=10
     double precision::pInit,uInit(DIMS),TInit,pE(DIMS)!,tmpD
     double precision,allocatable::YInit(:)
+    integer::udfIc,udfBc,iUdf(5)
     
     ! read inputs
     open(FID,file='grid.msh',action='read')
     call readGMSH(FID,grid)
     call grid%up()
     close(FID)
-    !open(FID,file='bc',action='read')
-    !call readCondTab(FID,bc)
-    !if(any(bc%t(:)==BC_IN_STATIC_UDF).or.&
-    !&  any(bc%t(:)==BC_IN_TOTAL_UDF).or.&
-    !&  any(bc%t(:)==BC_OUT_UDF).or.&
-    !&  any(bc%t(:)==BC_FAR_UDF))then
-    !  udfBc=1
-    !else
-    !  udfBc=0
-    !end if
-    !close(FID)
-    !open(FID,file='ic',action='read')
-    !read(FID,*)udfIC
-    !if(udfIc==0)then
-    !  read(FID,*)pInit
-    !  read(FID,*)TInit
-    !  read(FID,*)uInit(1)
-    !  read(FID,*)uInit(2)
-    !  read(FID,*)uInit(3)
-    !else
-    !  read(FID,*)tmpD
-    !  iUdf(1)=int(tmpD)
-    !  read(FID,*)tmpD
-    !  iUdf(2)=int(tmpD)
-    !  read(FID,*)tmpD
-    !  iUdf(3)=int(tmpD)
-    !  read(FID,*)tmpD
-    !  iUdf(4)=int(tmpD)
-    !  read(FID,*)tmpD
-    !  iUdf(5)=int(tmpD)
-    !end if
-    !close(FID)
+    open(FID,file='bc',action='read')
+    call readCondTab(FID,bc)
+    if(any(bc%t(:)==BC_WALL_TEMP_UDF).or.&
+    &  any(bc%t(:)==BC_WALL_FLUX_UDF).or.&
+    &  any(bc%t(:)==BC_IN_STATIC_UDF).or.&
+    &  any(bc%t(:)==BC_IN_TOTAL_UDF).or.&
+    &  any(bc%t(:)==BC_OUT_UDF).or.&
+    &  any(bc%t(:)==BC_FAR_UDF))then
+      udfBc=1
+    else
+      udfBc=0
+    end if
+    close(FID)
+    open(FID,file='ic',action='read')
+    read(FID,*)udfIC
+    if(udfIc==0)then
+      read(FID,*)pInit
+      read(FID,*)TInit
+      read(FID,*)uInit(1)
+      read(FID,*)uInit(2)
+      read(FID,*)uInit(3)
+    else
+      read(FID,*)tmpD
+      iUdf(1)=int(tmpD)
+      read(FID,*)tmpD
+      iUdf(2)=int(tmpD)
+      read(FID,*)tmpD
+      iUdf(3)=int(tmpD)
+      read(FID,*)tmpD
+      iUdf(4)=int(tmpD)
+      read(FID,*)tmpD
+      iUdf(5)=int(tmpD)
+    end if
+    close(FID)
     open(FID,file='sim',action='read')
     read(FID,*)tFinal
     read(FID,*)dt
@@ -134,22 +154,13 @@ contains
     read(FID,*)Rgas
     read(FID,*)gamm
     close(FID)
-    !if(udfIc/=0.or.udfBc/=0)then
-    !  open(FID,file='udf',action='read')
-    !  call readUDFTab(FID,udf)
-    !  close(FID)
-    !end if
+    if(udfIc/=0.or.udfBc/=0)then
+      open(FID,file='udf',action='read')
+      call readUDFTab(FID,udf)
+      close(FID)
+    end if
     ! indexes of boundary conditions
-    !allocate(iBC(grid%nE))
-    !iBC(:)=0
-    !do i=1,grid%nE
-    !  do j=1,size(bc%gid)
-    !    if(grid%gid(i)==bc%gid(j))then
-    !      iBC(i)=j
-    !      exit
-    !    end if
-    !  end do
-    !end do
+    call mapCondTab(grid,bc,iBC)
     ! initialize algebraic solver
     call momentumEq%init(grid%nC*DIMS,momentumRHS,maa=MAXIT_MOMENTUM)
     call momentumEq%setMaxIt(MAXIT_MOMENTUM)
@@ -159,7 +170,7 @@ contains
     call densityEq%setMaxIt(MAXIT_DENSITY)
     call energyEq%init(grid%nC,energyRHS,maa=MAXIT_ENERGY)
     call energyEq%setMaxIt(MAXIT_ENERGY)
-    ! work space and initial state
+    ! allocate work space
     allocate(rho(grid%nE))
     allocate(rho0(grid%nE))
     allocate(rho1(grid%nE))
@@ -194,6 +205,7 @@ contains
     allocate(flowRhou(DIMS,grid%nC))
     allocate(flowRhoH(grid%nC))
     allocate(dRho(grid%nC))
+    ! load initial condition
     do i=1,grid%nE
     !  if(udfIc/=0)then
     !    pE(:)=grid%p(:,i)
@@ -321,6 +333,7 @@ contains
     open(FID,file=trim(fName),action='write')
     call writeVTK(FID,grid)
     call writeVTK(FID,grid,E_DATA)
+    call writeVTK(FID,'geoID',dble(grid%gid))
     if(iOut==0)then
       call writeVTK(FID,'density',rho)
       call writeVTK(FID,'velocity',u)

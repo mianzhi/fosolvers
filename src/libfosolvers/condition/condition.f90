@@ -12,8 +12,14 @@ module modCondition
   contains
     procedure,public::init=>initCondTab
     procedure,public::clear=>clearCondTab
-    !FIXME:final::purgeCondTab
+    final::purgeCondTab
   end type
+  
+  !> map table of conditions to generic grid
+  interface mapCondTab
+    module procedure::mapCondTabPolyFvGrid
+  end interface
+  public::mapCondTab
   
 contains
   
@@ -46,6 +52,26 @@ contains
     type(condTab),intent(inout)::this !< this condTab
     
     call this%clear()
+  end subroutine
+  
+  !> map table of conditions to polyFvGrid
+  pure subroutine mapCondTabPolyFvGrid(grid,cTab,iCond)
+    use modPolyFvGrid
+    class(polyFvGrid),intent(in)::grid !< grid
+    class(condTab),intent(in)::cTab !< condition table
+    integer,allocatable,intent(inout)::iCond(:) !< index of condition at each element in grid
+    
+    if(allocated(iCond)) deallocate(iCond)
+    allocate(iCond(grid%nE))
+    iCond(:)=0
+    do i=1,grid%nE
+      do j=1,size(cTab%gid)
+        if(grid%gid(i)==cTab%gid(j))then
+          iCond(i)=j
+          exit
+        end if
+      end do
+    end do
   end subroutine
   
 end module
