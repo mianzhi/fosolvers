@@ -1,0 +1,6 @@
+0                 # do not use UDF
+0.9e5             # initial pressure [Pa]
+300.              # initial temperature [K]
+0.                # initial velocity, x component [m/s]
+0.                # initial velocity, y component [m/s]
+0.                # initial velocity, z component [m/s]
