@@ -20,7 +20,7 @@ module modPiso
   double precision,parameter::RTOL_MOMENTUM=1d-8 !< momentum prediction relative tolerance
   double precision,parameter::RTOL_PRESSURE=1d-8 !< pressure correction relative tolerance
   double precision,parameter::RTOL_DENSITY=1d-7 !< density equation relative tolerance
-  double precision,parameter::RTOL_ENERGY=1d-8 !< energy equation relative tolerance
+  double precision,parameter::RTOL_ENERGY=1d-7 !< energy equation relative tolerance
   
   integer,parameter::BC_WALL_TEMP=0 !< wall boundary with prescribed temperature
   integer,parameter::BC_WALL_TEMP_UDF=5 !< wall boundary with prescribed temperature by UDF
@@ -106,13 +106,15 @@ contains
     double precision,allocatable::YInit(:)
     integer::udfIc,udfBc,iUdf(5)
     
-    ! read inputs
+    ! read input files
     open(FID,file='grid.msh',action='read')
-    call readGMSH(FID,grid)
-    call grid%up()
+      call readGMSH(FID,grid)
     close(FID)
+    call grid%up()
     open(FID,file='bc',action='read')
-    call readCondTab(FID,bc)
+      call readCondTab(FID,bc)
+    close(FID)
+    call mapCondTab(grid,bc,iBC)
     if(any(bc%t(:)==BC_WALL_TEMP_UDF).or.&
     &  any(bc%t(:)==BC_WALL_FLUX_UDF).or.&
     &  any(bc%t(:)==BC_IN_STATIC_UDF).or.&
@@ -123,44 +125,41 @@ contains
     else
       udfBc=0
     end if
-    close(FID)
     open(FID,file='ic',action='read')
-    read(FID,*)udfIC
-    if(udfIc==0)then
-      read(FID,*)pInit
-      read(FID,*)TInit
-      read(FID,*)uInit(1)
-      read(FID,*)uInit(2)
-      read(FID,*)uInit(3)
-    else
-      read(FID,*)tmpD
-      iUdf(1)=int(tmpD)
-      read(FID,*)tmpD
-      iUdf(2)=int(tmpD)
-      read(FID,*)tmpD
-      iUdf(3)=int(tmpD)
-      read(FID,*)tmpD
-      iUdf(4)=int(tmpD)
-      read(FID,*)tmpD
-      iUdf(5)=int(tmpD)
-    end if
+      read(FID,*)udfIC
+      if(udfIc==0)then
+        read(FID,*)pInit
+        read(FID,*)TInit
+        read(FID,*)uInit(1)
+        read(FID,*)uInit(2)
+        read(FID,*)uInit(3)
+      else
+        read(FID,*)tmpD
+        iUdf(1)=int(tmpD)
+        read(FID,*)tmpD
+        iUdf(2)=int(tmpD)
+        read(FID,*)tmpD
+        iUdf(3)=int(tmpD)
+        read(FID,*)tmpD
+        iUdf(4)=int(tmpD)
+        read(FID,*)tmpD
+        iUdf(5)=int(tmpD)
+      end if
     close(FID)
     open(FID,file='sim',action='read')
-    read(FID,*)tFinal
-    read(FID,*)dt
-    read(FID,*)tInt
+      read(FID,*)tFinal
+      read(FID,*)dt
+      read(FID,*)tInt
     close(FID)
     open(FID,file='fl',action='read')
-    read(FID,*)Rgas
-    read(FID,*)gamm
+      read(FID,*)Rgas
+      read(FID,*)gamm
     close(FID)
     if(udfIc/=0.or.udfBc/=0)then
       open(FID,file='udf',action='read')
-      call readUDFTab(FID,udf)
+        call readUDFTab(FID,udf)
       close(FID)
     end if
-    ! indexes of boundary conditions
-    call mapCondTab(grid,bc,iBC)
     ! initialize algebraic solver
     call momentumEq%init(grid%nC*DIMS,momentumRHS,maa=MAXIT_MOMENTUM)
     call momentumEq%setMaxIt(MAXIT_MOMENTUM)
@@ -326,15 +325,15 @@ contains
     end if
     
     ! solution and residual scales
-    pScale=max(maxval(p)-minval(p),maxval(0.5d0*rho*norm2(u,1)**2),1d0)
-    uScale=max(maxval(norm2(u,1)),sqrt(2d0*pScale/minval(rho)))
-    tempScale=max(maxval(temp)-minval(temp),pScale/minval(rho)/Rgas)
+    pScale=max(maxval(p),maxval(0.5d0*rho*norm2(u,1)**2))
+    uScale=max(maxval(norm2(u,1)),sqrt(2d0*(maxval(p)-minval(p))/minval(rho)),0.01d0)
+    tempScale=maxval(temp)
     rhoScale=maxval(rho)
     rhouScale=rhoScale*uScale
     rhoEScale=max(rhoScale*Rgas*tempScale,0.5d0*rhoScale*uScale**2)
     
     ! set tolerance and maximum number of iterations, and etc.
-    call momentumEq%setTol(rhoScale*RTOL_MOMENTUM)
+    call momentumEq%setTol(rhouScale*RTOL_MOMENTUM)
     call pressureEq%setTol(pScale*RTOL_PRESSURE)
     call densityEq%setTol(rhoScale*RTOL_DENSITY)
     call energyEq%setTol(rhoEScale*RTOL_ENERGY)
@@ -438,9 +437,9 @@ contains
         p(n)=pGst
         u(:,n)=uGst(:)
         temp(n)=TGst
-        rho(n)=pGst/Rgas/TGst
-        rhou(:,n)=rho(n)*uGst(:)
-        rhoE(n)=rho(n)*(1d0/(gamm-1d0)*Rgas*TGst+0.5d0*dot_product(uGst,uGst))
+        rho(n)=rho(m)!pGst/Rgas/TGst
+        rhou(:,n)=-rhou(:,m)!rho(n)*uGst(:)
+        rhoE(n)=rhoE(m)!rho(n)*(1d0/(gamm-1d0)*Rgas*TGst+0.5d0*dot_product(uGst,uGst))
       end if
     end do
   end subroutine
