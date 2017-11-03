@@ -39,16 +39,16 @@ module modPiso
   type(condTab)::bc !< boundary conditions
   type(UDFTab)::udf !< UDF
   
+  integer,allocatable::iBC(:) !< indexes boundary conditions
+  
   double precision::t !< time [s]
   double precision::tFinal !< final time [s]
   double precision::dt !< time step size [s]
-  double precision::tInt !< time interval of output
-  double precision::tNext !< time for next output
+  double precision::tInt !< time interval of output [s]
+  double precision::tNext !< time for next output [s]
   integer::iOut !< index of output
   integer::nRetry !< number of retry for the current time step
   logical::needRetry !< if retry of the current time step is needed
-  
-  integer,allocatable::iBC(:) !< indexes boundary conditions
   
   double precision::Rgas !< specific gas constant [J/kg/K]
   double precision::gamm !< gamma of gas
@@ -60,9 +60,6 @@ module modPiso
   double precision,allocatable::u(:,:) !< velocity [m/s]
   double precision,allocatable::temp(:) !< temperature [K]
   double precision,allocatable::Y(:,:) !< mass fraction of species
-  
-  ! state at the beginning of a time step
-  double precision,allocatable::rho0(:),rhou0(:,:),rhoE0(:),p0(:),u0(:,:),temp0(:),Y0(:,:)
   
   double precision,allocatable::visc(:) !< viscosity [Pa*s]
   double precision,allocatable::cond(:) !< thermal conductivity [W/m/K]
@@ -77,6 +74,9 @@ module modPiso
   double precision,allocatable::flowRhou(:,:) !< flow rate of rhou into cell [kg*m/s^2]
   double precision,allocatable::fluxRhoH(:,:) !< flux of rhoH [J/m^2/s]
   double precision,allocatable::flowRhoH(:) !< flow rate of rhoH into cell [J/s]
+  
+  ! state at the beginning of a time step
+  double precision,allocatable::rho0(:),rhou0(:,:),rhoE0(:),p0(:),u0(:,:),temp0(:),Y0(:,:)
   
   ! auxiliary variables for the PISO iteration
   double precision,allocatable::rho1(:),p1(:),laP1(:),presF1(:,:),temp1(:),dRho(:)
@@ -102,7 +102,7 @@ contains
   subroutine init()
     use modFileIO
     integer,parameter::FID=10
-    double precision::pInit,uInit(DIMS),TInit,pE(DIMS)!,tmpD
+    double precision::pInit,uInit(DIMS),TInit,pE(DIMS),tmpD
     double precision,allocatable::YInit(:)
     integer::udfIc,udfBc,iUdf(5)
     
@@ -207,19 +207,15 @@ contains
     allocate(dRho(grid%nC))
     ! load initial condition
     do i=1,grid%nE
-    !  if(udfIc/=0)then
-    !    pE(:)=grid%p(:,i)
-    !    pInit=udf%eval(iUdf(1),pE,0d0)
-    !    TInit=udf%eval(iUdf(2),pE,0d0)
-    !    uInit(1)=udf%eval(iUdf(3),pE,0d0)
-    !    uInit(2)=udf%eval(iUdf(4),pE,0d0)
-    !    uInit(3)=udf%eval(iUdf(5),pE,0d0)
-    !  end if
+      if(udfIc/=0)then
+        pE(:)=grid%p(:,i)
+        pInit=udf%eval(iUdf(1),pE,0d0)
+        TInit=udf%eval(iUdf(2),pE,0d0)
+        uInit(1)=udf%eval(iUdf(3),pE,0d0)
+        uInit(2)=udf%eval(iUdf(4),pE,0d0)
+        uInit(3)=udf%eval(iUdf(5),pE,0d0)
+      end if
       ! FIXME remove below
-      pE(:)=grid%p(:,i)
-      pInit=min(max(0.9d5,-0.5d5*(pE(3)-0.5d0)+0.95d5),1d5)
-      uInit(:)=[0d0,0d0,0d0]
-      TInit=298d0
       YInit=[1d0]
       ! FIXME remove above
       p(i)=pInit
@@ -267,25 +263,6 @@ contains
     Y(:,:)=Y0(:,:)
   end subroutine
   
-  !> derive primitive state {p,u,T} from conserved state {rho,rhou,rhoE}
-  subroutine deriveState(rhoi,rhoui,rhoEi,Yi,po,uo,tempo)
-    double precision,intent(in)::rhoi(:) !< density
-    double precision,intent(in)::rhoui(:,:) !< momentum
-    double precision,intent(in)::rhoEi(:) !< total energy
-    double precision,intent(in)::Yi(:,:) !< mass fraction of species
-    double precision,intent(inout)::po(:) !< pressure
-    double precision,intent(inout)::uo(:,:) !< velocity
-    double precision,intent(inout)::tempo(:) !< temperature
-    
-    !$omp parallel do default(shared)
-    do i=1,grid%nE
-      uo(:,i)=rhoui(:,i)/rhoi(i)
-      po(i)=(gamm-1d0)*(rhoEi(i)-0.5d0*dot_product(rhoui(:,i),rhoui(:,i))/rhoi(i))
-      tempo(i)=po(i)/rhoi(i)/Rgas
-    end do
-    !$omp end parallel do
-  end subroutine
-  
   !> recover conserved state {rho,rhou,rhoE} from primitive state {p,u,T}
   subroutine recoverState(pi,ui,tempi,Yi,rhoo,rhouo,rhoEo)
     double precision,intent(in)::pi(:) !< pressure
@@ -301,24 +278,6 @@ contains
       rhoo(i)=pi(i)/Rgas/tempi(i)
       rhouo(:,i)=rhoo(i)*ui(:,i)
       rhoEo(i)=rhoo(i)*(1d0/(gamm-1d0)*Rgas*tempi(i)+0.5d0*dot_product(ui(:,i),ui(:,i)))
-    end do
-    !$omp end parallel do
-  end subroutine
-  
-  !> extract primitive state {p,u,T} from variable vector
-  subroutine extractVar(var,po,uo,tempo)
-    double precision,intent(in)::var(:) !< variable vector of the nonlinear problem
-    double precision,intent(inout)::po(:) !< pressure
-    double precision,intent(inout)::uo(:,:) !< velocity
-    double precision,intent(inout)::tempo(:) !< temperature
-    
-    !$omp parallel do default(shared)&
-    !$omp& private(j)
-    do i=1,grid%nC
-      j=(i-1)*5
-      po(i)=p0(i)+var(j+1)
-      uo(:,i)=u0(:,i)+var(j+2:j+4)
-      tempo(i)=temp0(i)+var(j+5)
     end do
     !$omp end parallel do
   end subroutine
@@ -363,7 +322,7 @@ contains
     &                /(visc(1:grid%nC)/rho(1:grid%nC))))
     if(nRetry>0)then
       dt=dt/2d0**nRetry
-      write(*,'(a,i2,a,g12.6)')'[i] starting retry No. ',nRetry,' at t: ',dt
+      write(*,'(a,i2,a,g12.6)')'[i] starting retry No. ',nRetry,' at t: ',t
     end if
     
     ! solution and residual scales
@@ -389,7 +348,6 @@ contains
   
   !> guess next time step size, etc.
   subroutine postSolve()
-    
     ! the time step size is adjusted to maintain half of the maximum number iterations
     dt=dt*minval(dble([MAXIT_MOMENTUM,MAXIT_PRESSURE,MAXIT_DENSITY,MAXIT_ENERGY,MAXIT_PISO])/&
     &            dble([nItMomentum,nItPressure,nItDensity,nItEnergy,nItPISO]))*0.5d0
@@ -400,20 +358,89 @@ contains
   
   !> set the boundary conditions
   subroutine setBC()
+    double precision::pGst,TGst,uGst(DIMS),Mach,pP(DIMS),Tt,pt
     
     do i=1,grid%nP
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
       if(n>grid%nC)then
-        if(.true.)then ! default wall boundary
-          p(n)=p(m)
-          u(:,n)=-u(:,m)
-          temp(n)=temp(m)
-          Y(:,n)=Y(:,m)
-          rho(n)=rho(m)
-          rhou(:,n)=-rhou(:,m)
-          rhoE(n)=rhoE(m)
+        ! default adiabatic wall boundary
+        pGst=p(m)
+        uGst(:)=-u(:,m)
+        TGst=temp(m)
+        if(iBC(n)>0.and..false.)then
+          select case(bc%t(iBC(n)))
+          case(BC_WALL_TEMP,BC_WALL_TEMP_UDF) ! wall temperature boundary
+            ! TODO implement this
+          case(BC_WALL_FLUX,BC_WALL_FLUX_UDF) ! wall heat flux boundary
+            ! TODO implement this
+          case(BC_IN_STATIC,BC_IN_STATIC_UDF) ! inflow boundary with static properties
+            if(bc%t(iBC(n))==BC_IN_STATIC)then
+              pGst=bc%p(1,iBC(n))
+              TGst=bc%p(2,iBC(n))
+              uGst(:)=bc%p(3:5,iBC(n))
+            else
+              pP(:)=grid%pP(:,i)
+              pGst=udf%eval(int(bc%p(1,iBC(n))),pP,t)
+              TGst=udf%eval(int(bc%p(2,iBC(n))),pP,t)
+              uGst(1)=udf%eval(int(bc%p(3,iBC(n))),pP,t)
+              uGst(2)=udf%eval(int(bc%p(4,iBC(n))),pP,t)
+              uGst(3)=udf%eval(int(bc%p(5,iBC(n))),pP,t)
+            end if
+            Mach=norm2(uGst)/sqrt(gamm*Rgas*TGst)
+            if(Mach<1d0)then
+              if(dot_product(uGst,uGst)>0d0)then
+                uGst(:)=dot_product(u(:,m),uGst(:))*uGst/dot_product(uGst,uGst)
+              else
+                uGst(:)=u(:,m)
+              end if
+            end if
+          case(BC_IN_TOTAL,BC_IN_TOTAL_UDF) ! inflow boundary with total properties
+            if(bc%t(iBC(n))==BC_IN_TOTAL)then
+              pt=bc%p(1,iBC(n))
+              Tt=bc%p(2,iBC(n))
+              uGst=bc%p(3:5,iBC(n))
+            else
+              pP(:)=grid%pP(:,i)
+              pt=udf%eval(int(bc%p(1,iBC(n))),pP,t)
+              Tt=udf%eval(int(bc%p(2,iBC(n))),pP,t)
+              uGst(1)=udf%eval(int(bc%p(3,iBC(n))),pP,t)
+              uGst(2)=udf%eval(int(bc%p(4,iBC(n))),pP,t)
+              uGst(3)=udf%eval(int(bc%p(5,iBC(n))),pP,t)
+            end if
+            TGst=Tt-0.5d0*(gamm-1d0)/gamm/Rgas*dot_product(uGst,uGst)
+            Mach=norm2(uGst)/sqrt(gamm*Rgas*TGst)
+            if(Mach<1d0)then
+              if(dot_product(uGst,uGst)>0d0)then
+                uGst(:)=dot_product(u(:,m),uGst(:))*uGst/dot_product(uGst,uGst)
+              else
+                uGst(:)=u(:,m)
+              end if
+              TGst=Tt-0.5d0*(gamm-1d0)/gamm/Rgas*dot_product(uGst,uGst)
+              Mach=norm2(uGst)/sqrt(gamm*Rgas*TGst)
+            end if
+            pGst=pt*(1d0+0.5d0*(gamm-1d0)*Mach**2)**(-gamm/(gamm-1d0))
+          case(BC_OUT,BC_OUT_UDF) ! outflow boundary
+            if(bc%t(iBC(n))==BC_OUT)then
+              pGst=bc%p(1,iBC(n))
+            else
+              pP(:)=grid%pP(:,i)
+              pGst=udf%eval(int(bc%p(1,iBC(n))),pP,t)
+            end if
+            uGst(:)=u(:,m)
+            TGst=temp(m)
+          case(BC_FAR,BC_FAR_UDF) ! far-field boundary
+            ! TODO implement this
+          case default
+          end select
         end if
+        ! apply ghost values
+        p(n)=pGst
+        u(:,n)=uGst(:)
+        temp(n)=TGst
+        rho(n)=pGst/Rgas/TGst
+        rhou(:,n)=rho(n)*uGst(:)
+        rhoE(n)=rho(n)*(1d0/(gamm-1d0)*Rgas*TGst+0.5d0*dot_product(uGst,uGst))
       end if
     end do
   end subroutine
