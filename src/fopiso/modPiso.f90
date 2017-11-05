@@ -357,7 +357,7 @@ contains
   
   !> set the boundary conditions
   subroutine setBC()
-    double precision::pGst,TGst,uGst(DIMS),Mach,pP(DIMS),Tt,pt
+    double precision::pGst,TGst,uGst(DIMS),rhoGst,rhouGst(DIMS),rhoEGst,Mach,pP(DIMS),Tt,pt
     
     do i=1,grid%nP
       m=grid%iEP(1,i)
@@ -367,6 +367,9 @@ contains
         pGst=p(m)
         uGst(:)=-u(:,m)
         TGst=temp(m)
+        rhoGst=rho(m)
+        rhouGst=-rhou(:,m)
+        rhoEGst=rhoE(m)
         if(iBC(n)>0.and..false.)then
           select case(bc%t(iBC(n)))
           case(BC_WALL_TEMP,BC_WALL_TEMP_UDF) ! wall temperature boundary
@@ -437,9 +440,9 @@ contains
         p(n)=pGst
         u(:,n)=uGst(:)
         temp(n)=TGst
-        rho(n)=rho(m)!pGst/Rgas/TGst
-        rhou(:,n)=-rhou(:,m)!rho(n)*uGst(:)
-        rhoE(n)=rhoE(m)!rho(n)*(1d0/(gamm-1d0)*Rgas*TGst+0.5d0*dot_product(uGst,uGst))
+        rho(n)=rhoGst
+        rhou(:,n)=rhouGst(:)
+        rhoE(n)=rhoEGst
       end if
     end do
   end subroutine
@@ -466,7 +469,7 @@ contains
     call momentumEq%getNIt(n)
     nItMomentum=max(nItMomentum,n)
     rhou(:,1:grid%nC)=reshape(tmpRhou,[DIMS,grid%nC])
-    forall(i=1:grid%nE)
+    forall(i=1:grid%nC)
       u(:,i)=rhou(:,i)/rho(i)
     end forall
   end subroutine
@@ -541,6 +544,9 @@ contains
     call energyEq%getNIt(n)
     nItEnergy=max(nItEnergy,n)
     rhoE(1:grid%nC)=tmpRhoE(:)
+    forall(i=1:grid%nC)
+      temp(i)=(rhoE(i)/rho(i)-0.5d0*dot_product(u(:,i),u(:,i)))/(1d0/(gamm-1d0))/Rgas
+    end forall
   end subroutine
   
   !> RHS of the momentum equation in the form of a fix point problem
@@ -670,7 +676,7 @@ contains
     call associateVector(newVector,y)
     
     rhoE(1:grid%nC)=x(1:grid%nC)
-    forall(i=1:grid%nE)
+    forall(i=1:grid%nC)
       temp(i)=(rhoE(i)/rho(i)-0.5d0*dot_product(u(:,i),u(:,i)))/(1d0/(gamm-1d0))/Rgas
     end forall
     call setBC()
