@@ -343,7 +343,7 @@ contains
     call associateVector(this%x,xPtr)
     xPtr(1:this%nEq)=x(1:this%nEq)
     c_info=kinsol(this%work,this%x,KIN_FP,this%xScale,this%rScale)
-    if(c_info/=0)then
+    if(c_info<0)then
       write(*,'(a,i3)')"[W] solveFixPt(): KINSol exit code ",c_info
     end if
     if(present(info))then
@@ -364,7 +364,7 @@ contains
     call associateVector(this%x,xPtr)
     xPtr(1:this%nEq)=x(1:this%nEq)
     c_info=kinsol(this%work,this%x,KIN_LINESEARCH,this%xScale,this%rScale)
-    if(c_info/=0)then
+    if(c_info<0)then
       write(*,'(a,i3)')"[W] solveNewtonKrylov(): KINSol exit code ",c_info
     end if
     if(present(info))then

@@ -465,7 +465,7 @@ contains
     call findGrad(grid,p,gradP)
     call findPresForce(grid,p,gradP,presF)
     call momentumEq%solve(tmpRhou,info=info)
-    needRetry=info/=0
+    needRetry=info<0
     call momentumEq%getNIt(n)
     nItMomentum=max(nItMomentum,n)
     rhou(:,1:grid%nC)=reshape(tmpRhou,[DIMS,grid%nC])
@@ -489,7 +489,7 @@ contains
     tmpP(:)=p(1:grid%nC)
     call findAdv(grid,rho,rhou,flowRho) ! vary only the Rhie-Chow part of flowRho in RHS
     call pressureEq%solve(tmpP,info=info)
-    needRetry=info/=0
+    needRetry=info<0
     call pressureEq%getNIt(n)
     nItPressure=max(nItPressure,n)
     p(1:grid%nC)=tmpP(:)
@@ -519,7 +519,7 @@ contains
     end if
     tmpRho(:)=rho(1:grid%nC)
     call densityEq%solve(tmpRho,info)
-    needRetry=info/=0
+    needRetry=info<0
     call densityEq%getNIt(n)
     nItDensity=max(nItDensity,n)
     rho(1:grid%nC)=tmpRho(:)
@@ -540,7 +540,7 @@ contains
     end if
     tmpRhoE(:)=rhoE(1:grid%nC)
     call energyEq%solve(tmpRhoE,info)
-    needRetry=info/=0
+    needRetry=info<0
     call energyEq%getNIt(n)
     nItEnergy=max(nItEnergy,n)
     rhoE(1:grid%nC)=tmpRhoE(:)
