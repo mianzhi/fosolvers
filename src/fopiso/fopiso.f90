@@ -44,14 +44,14 @@ program fopiso
       forall(i=1:grid%nC)
         u(:,i)=rhou(:,i)/rho(i)
       end forall
-      temp1(:)=temp(:)
-      call solveEnergy()
-      if(needRetry) exit
       if(maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale<=RTOL_DENSITY)then
         exit
       elseif(nItPISO==MAXIT_PISO)then
         needRetry=.true.
       end if
+      temp1(:)=temp(:)
+      call solveEnergy()
+      if(needRetry) exit
     end do
     if(needRetry) cycle
     t=t+dt
