@@ -483,7 +483,6 @@ contains
   
   !> solve the pressure, such that mass is conserved
   subroutine solvePressure()
-    use modAdvection
     double precision,allocatable,save::tmpP(:)
     integer::info
     
@@ -494,7 +493,6 @@ contains
       allocate(tmpP(grid%nC))
     end if
     tmpP(:)=p(1:grid%nC)
-    call findAdv(grid,rho,rhou,flowRho) ! vary only the Rhie-Chow part of flowRho in RHS
     call pressureEq%solve(tmpP,info=info)
     needRetry=info<0
     call pressureEq%getNIt(n)
@@ -509,7 +507,7 @@ contains
     call setBC()
     call findPresForce(grid,p,gradP,presF)
     forall(i=1:grid%nC)
-      rhou(:,i)=rhou(:,i)+dt/grid%v*(presF(:,i)-presF1(:,i))
+      rhou(:,i)=rhou1(:,i)+dt/grid%v*presF(:,i)
     end forall
   end subroutine
   
@@ -620,12 +618,11 @@ contains
       deallocate(tmpFlowRho)
       allocate(tmpFlowRho(grid%nC))
     end if
-    tmpFlowRho(:)=flowRho(:)
+    tmpFlowRho(:)=flowRho1(:)
     call addRhieChow(grid,rho,p,gradP,rho,dt,tmpFlowRho)
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
     forall(i=1:grid%nC)
-      y(i)=p(i)-Rgas*temp(i)*dt**2/grid%v(i)*(laP(i)-laP1(i))-Rgas*temp(i)/Rgas/temp1(i)*p1(i)&
-      &    +Rgas*temp(i)*(rho1(i)-rho0(i))-Rgas*temp(i)*dt/grid%v(i)*tmpFlowRho(i)
+      y(i)=p(i)-Rgas*temp(i)*(rho0(i)+dt/grid%v(i)*(tmpFlowRho(i)+dt*laP(i)))
     end forall
     pressureRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
     if(c_associated(dat))then
