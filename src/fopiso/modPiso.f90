@@ -19,8 +19,8 @@ module modPiso
   integer,parameter::MAXIT_PISO=20 !< max number of PISO iterations
   double precision,parameter::RTOL_MOMENTUM=1d-8 !< momentum prediction relative tolerance
   double precision,parameter::RTOL_PRESSURE=1d-8 !< pressure correction relative tolerance
-  double precision,parameter::RTOL_DENSITY=1d-7 !< density equation relative tolerance
-  double precision,parameter::RTOL_ENERGY=1d-7 !< energy equation relative tolerance
+  double precision,parameter::RTOL_DENSITY=1d-6 !< density equation relative tolerance
+  double precision,parameter::RTOL_ENERGY=1d-8 !< energy equation relative tolerance
   
   integer,parameter::BC_WALL_TEMP=0 !< wall boundary with prescribed temperature
   integer,parameter::BC_WALL_TEMP_UDF=5 !< wall boundary with prescribed temperature by UDF
@@ -79,7 +79,7 @@ module modPiso
   double precision,allocatable::rho0(:),rhou0(:,:),rhoE0(:),p0(:),u0(:,:),temp0(:),Y0(:,:)
   
   ! auxiliary variables for the PISO iteration
-  double precision,allocatable::rho1(:),p1(:),laP1(:),presF1(:,:),temp1(:),dRho(:)
+  double precision,allocatable::rho1(:),p1(:),laP1(:),presF1(:,:),temp1(:),rhou1(:,:),flowRho1(:)
   
   ! scales
   double precision,allocatable::rhoScale !< density scale [kg/m^3]
@@ -175,6 +175,7 @@ contains
     allocate(rho1(grid%nE))
     allocate(rhou(DIMS,grid%nE))
     allocate(rhou0(DIMS,grid%nE))
+    allocate(rhou1(DIMS,grid%nC))
     allocate(rhoE(grid%nE))
     allocate(rhoE0(grid%nE))
     allocate(p(grid%nE))
@@ -201,9 +202,9 @@ contains
     allocate(presF1(DIMS,grid%nC))
     allocate(condQ(grid%nC))
     allocate(flowRho(grid%nC))
+    allocate(flowRho1(grid%nC))
     allocate(flowRhou(DIMS,grid%nC))
     allocate(flowRhoH(grid%nC))
-    allocate(dRho(grid%nC))
     ! load initial condition
     do i=1,grid%nE
       if(udfIc/=0)then
@@ -447,10 +448,11 @@ contains
     end do
   end subroutine
   
-  !> predict the rhou and u, during which the presF is updated
+  !> predict the rhou1 and flowRho without acceleration by pressure
   subroutine predictMomentum()
     use modGradient
     use modPressure
+    use modAdvection
     double precision,allocatable,save::tmpRhou(:)
     integer::info
     
@@ -460,6 +462,7 @@ contains
       deallocate(tmpRhou)
       allocate(tmpRhou(DIMS*grid%nC))
     end if
+    ! solve momentum equation with current pressure
     tmpRhou=reshape(rhou(:,1:grid%nC),[DIMS*grid%nC])
     call setBC()
     call findGrad(grid,p,gradP)
@@ -469,12 +472,16 @@ contains
     call momentumEq%getNIt(n)
     nItMomentum=max(nItMomentum,n)
     rhou(:,1:grid%nC)=reshape(tmpRhou,[DIMS,grid%nC])
+    ! subtract pressure term and record rhou1 and flowRho1
     forall(i=1:grid%nC)
-      u(:,i)=rhou(:,i)/rho(i)
+      rhou1(:,i)=rhou(:,i)-dt/grid%v(i)*presF(:,i)
+      rhou(:,i)=rhou1(:,i)
     end forall
+    call setBC()
+    call findAdv(grid,rho,rhou,flowRho1)
   end subroutine
   
-  !> solve the pressure, during which the laP is updated
+  !> solve the pressure, such that mass is conserved
   subroutine solvePressure()
     use modAdvection
     double precision,allocatable,save::tmpP(:)
@@ -567,7 +574,7 @@ contains
     call associateVector(newVector,y)
     
     rhou(:,1:grid%nC)=reshape(x,[DIMS,grid%nC])
-    forall(i=1:grid%nE)
+    forall(i=1:grid%nC)
       u(:,i)=rhou(:,i)/rho(i)
     end forall
     call setBC()

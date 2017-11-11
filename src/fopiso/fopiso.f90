@@ -39,15 +39,16 @@ program fopiso
       call solvePressure()
       if(needRetry) exit
       call correctMomentum()
-      call solveDensity()
-      if(needRetry) exit
       forall(i=1:grid%nC)
+        rho(i)=p(i)/Rgas/temp(i)
         u(:,i)=rhou(:,i)/rho(i)
       end forall
+      write(*,*)'rho error: ',maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale
       if(maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale<=RTOL_DENSITY)then
         exit
       elseif(nItPISO==MAXIT_PISO)then
         needRetry=.true.
+        exit
       end if
       temp1(:)=temp(:)
       call solveEnergy()
