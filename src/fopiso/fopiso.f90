@@ -51,8 +51,8 @@ program fopiso
         exit
       end if
       temp1(:)=temp(:)
-      !call solveEnergy()
-      !if(needRetry) exit
+      call solveEnergy()
+      if(needRetry) exit
     end do
     if(needRetry) cycle
     t=t+dt
