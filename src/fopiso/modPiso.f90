@@ -448,7 +448,7 @@ contains
     end do
   end subroutine
   
-  !> predict the momentum with current pressure
+  !> predict the rhou1 and flowRho without acceleration by pressure
   subroutine predictMomentum()
     use modGradient
     use modPressure
@@ -462,6 +462,7 @@ contains
       deallocate(tmpRhou)
       allocate(tmpRhou(DIMS*grid%nC))
     end if
+    ! solve momentum equation with current pressure
     tmpRhou=reshape(rhou(:,1:grid%nC),[DIMS*grid%nC])
     call setBC()
     call findGrad(grid,p,gradP)
@@ -471,12 +472,17 @@ contains
     call momentumEq%getNIt(n)
     nItMomentum=max(nItMomentum,n)
     rhou(:,1:grid%nC)=reshape(tmpRhou,[DIMS,grid%nC])
+    ! subtract pressure term and record rhou1 and flowRho1
+    forall(i=1:grid%nC)
+      rhou1(:,i)=rhou(:,i)-dt/grid%v(i)*presF(:,i)
+      rhou(:,i)=rhou1(:,i)
+    end forall
+    call setBC()
+    call findAdv(grid,rho,rhou,flowRho1)
   end subroutine
   
   !> solve the pressure, such that mass is conserved
   subroutine solvePressure()
-    use modAdvection
-    use modNewtonian
     double precision,allocatable,save::tmpP(:)
     integer::info
     
@@ -487,15 +493,6 @@ contains
       allocate(tmpP(grid%nC))
     end if
     tmpP(:)=p(1:grid%nC)
-    call setBC()
-    call findViscForce(grid,u,visc,viscF)
-    forall(i=1:grid%nE,j=1:DIMS)
-      fluxRhou(:,j,i)=rhou(j,i)*u(:,i)
-    end forall
-    call findAdv(grid,rhou,fluxRhou,flowRhou)
-    forall(i=1:grid%nC)
-      rhou1(:,i)=rhou0(:,i)+dt/grid%v(i)*(flowRhou(:,i)+viscF(:,i)) ! pressure force excluded
-    end forall
     call pressureEq%solve(tmpP,info=info)
     needRetry=info<0
     call pressureEq%getNIt(n)
@@ -510,7 +507,7 @@ contains
     call setBC()
     call findPresForce(grid,p,gradP,presF)
     forall(i=1:grid%nC)
-      rhou(:,i)=rhou1(:,i)+dt/grid%v*presF(:,i)
+      rhou(:,i)=rhou1(:,i)+dt/grid%v(i)*presF(:,i)
     end forall
   end subroutine
   
