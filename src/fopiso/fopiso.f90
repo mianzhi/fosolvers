@@ -29,6 +29,8 @@ program fopiso
     call preSolve()
     call predictMomentum()
     if(needRetry) cycle
+    call solveEnergy()
+    if(needRetry) exit
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
     temp1(:)=temp(:)
     do nItPISO=1,MAXIT_PISO
@@ -51,8 +53,8 @@ program fopiso
         exit
       end if
       temp1(:)=temp(:)
-      call solveEnergy()
-      if(needRetry) exit
+      !call solveEnergy()
+      !if(needRetry) exit
     end do
     if(needRetry) cycle
     t=t+dt
