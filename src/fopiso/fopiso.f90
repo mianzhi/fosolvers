@@ -33,7 +33,7 @@ program fopiso
     if(needRetry) exit
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
     temp1(:)=temp(:)
-    do nItPISO=1,MAXIT_PISO
+    do nItPISO=1,2!MAXIT_PISO
       laP1(:)=laP(:)
       presF1(:,:)=presF(:,:)
       p1(:)=p(:)

@@ -448,7 +448,7 @@ contains
     end do
   end subroutine
   
-  !> predict the rhou1 and flowRho without acceleration by pressure
+  !> predict the momentum with current pressure
   subroutine predictMomentum()
     use modGradient
     use modPressure
@@ -462,7 +462,6 @@ contains
       deallocate(tmpRhou)
       allocate(tmpRhou(DIMS*grid%nC))
     end if
-    ! solve momentum equation with current pressure
     tmpRhou=reshape(rhou(:,1:grid%nC),[DIMS*grid%nC])
     call setBC()
     call findGrad(grid,p,gradP)
@@ -472,17 +471,11 @@ contains
     call momentumEq%getNIt(n)
     nItMomentum=max(nItMomentum,n)
     rhou(:,1:grid%nC)=reshape(tmpRhou,[DIMS,grid%nC])
-    ! subtract pressure term and record rhou1 and flowRho1
-    forall(i=1:grid%nC)
-      rhou1(:,i)=rhou(:,i)-dt/grid%v(i)*presF(:,i)
-      rhou(:,i)=rhou1(:,i)
-    end forall
-    call setBC()
-    call findAdv(grid,rho,rhou,flowRho1)
   end subroutine
   
   !> solve the pressure, such that mass is conserved
   subroutine solvePressure()
+    use modAdvection
     double precision,allocatable,save::tmpP(:)
     integer::info
     
@@ -493,6 +486,8 @@ contains
       allocate(tmpP(grid%nC))
     end if
     tmpP(:)=p(1:grid%nC)
+    call setBC()
+    call findAdv(grid,rho,rhou,flowRho)
     call pressureEq%solve(tmpP,info=info)
     needRetry=info<0
     call pressureEq%getNIt(n)
@@ -507,7 +502,7 @@ contains
     call setBC()
     call findPresForce(grid,p,gradP,presF)
     forall(i=1:grid%nC)
-      rhou(:,i)=rhou1(:,i)+dt/grid%v(i)*presF(:,i)
+      rhou(:,i)=rhou(:,i)+dt/grid%v(i)*(presF(:,i)-presF1(:,i))
     end forall
   end subroutine
   
@@ -618,11 +613,11 @@ contains
       deallocate(tmpFlowRho)
       allocate(tmpFlowRho(grid%nC))
     end if
-    tmpFlowRho(:)=flowRho1(:)
+    tmpFlowRho(:)=flowRho(:)
     call addRhieChow(grid,rho,p,gradP,rho,dt,tmpFlowRho)
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
     forall(i=1:grid%nC)
-      y(i)=p(i)-Rgas*temp(i)*(rho0(i)+dt/grid%v(i)*(tmpFlowRho(i)+dt*laP(i)))
+      y(i)=p(i)-Rgas*temp(i)*(rho0(i)+dt/grid%v(i)*(tmpFlowRho(i)+dt*(laP(i)-laP1(i))))
     end forall
     pressureRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
     if(c_associated(dat))then
