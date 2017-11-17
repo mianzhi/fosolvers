@@ -471,6 +471,9 @@ contains
     call momentumEq%getNIt(n)
     nItMomentum=max(nItMomentum,n)
     rhou(:,1:grid%nC)=reshape(tmpRhou,[DIMS,grid%nC])
+    forall(i=1:grid%nC)
+      u(:,i)=rhou(:,i)/rho(i)
+    end forall
   end subroutine
   
   !> solve the pressure, such that mass is conserved
