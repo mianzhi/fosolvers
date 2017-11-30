@@ -15,11 +15,9 @@ program fopiso
     if(needRetry)then
       nRetry=nRetry+1
       needRetry=.false.
+      call loadState0()
     else
       nRetry=0
-    end if
-    if(nRetry>0)then
-      call loadState0()
     end if
     call setBC()
     call recordState0()
@@ -30,7 +28,7 @@ program fopiso
     call predictMomentum()
     if(needRetry) cycle
     call solveEnergy()
-    if(needRetry) exit
+    if(needRetry) cycle
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
     temp1(:)=temp(:)
     do nItPISO=1,2!MAXIT_PISO
