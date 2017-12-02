@@ -25,34 +25,36 @@ program fopiso
     visc(:)=20d-6
     cond(:)=30d-3
     call preSolve()
-    call predictMomentum()
-    if(needRetry) cycle
-    call solveEnergy()
-    if(needRetry) cycle
-    call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
-    temp1(:)=temp(:)
-    do nItPISO=1,2!MAXIT_PISO
-      laP1(:)=laP(:)
-      presF1(:,:)=presF(:,:)
-      p1(:)=p(:)
+    do nItOuter=1,50
       rho1(:)=rho(:)
-      call solvePressure()
-      if(needRetry) exit
-      call correctMomentum()
-      forall(i=1:grid%nC)
-        rho(i)=p(i)/Rgas/temp(i)
-        u(:,i)=rhou(:,i)/rho(i)
-      end forall
-      write(*,*)'rho error: ',maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale
+      call predictMomentum()
+      if(needRetry) cycle
+      call solveEnergy()
+      if(needRetry) cycle
+      call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
+      temp1(:)=temp(:)
+      do nItPISO=1,2
+        laP1(:)=laP(:)
+        presF1(:,:)=presF(:,:)
+        p1(:)=p(:)
+        call solvePressure()
+        if(needRetry) exit
+        call correctMomentum()
+        forall(i=1:grid%nC)
+          rho(i)=p(i)/Rgas/temp(i)
+          u(:,i)=rhou(:,i)/rho(i)
+        end forall
+        write(*,*)'rho error: ',maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale
+        temp1(:)=temp(:)
+        !call solveEnergy()
+        !if(needRetry) exit
+      end do
       if(maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale<=RTOL_DENSITY)then
         exit
-      elseif(nItPISO==MAXIT_PISO)then
+      elseif(nItOuter==100)then
         needRetry=.true.
         exit
       end if
-      temp1(:)=temp(:)
-      !call solveEnergy()
-      !if(needRetry) exit
     end do
     if(needRetry) cycle
     t=t+dt
