@@ -168,7 +168,7 @@ contains
     double precision,allocatable::gradF(:,:,:)
     
     call grid%up()
-    if(.not.(allocated(adv)))then
+    if(.not.allocated(adv))then
       allocate(adv(size(s,1),grid%nC))
     end if
     adv(:,:)=0d0
@@ -271,15 +271,15 @@ contains
     double precision::dFEntropy(DIMS+2),dFAcoustic1(DIMS+2),dFAcoustic2(DIMS+2),flow(DIMS+2)
     
     call grid%up()
-    if(.not.(allocated(dRho)))then
+    if(.not.allocated(dRho))then
       allocate(dRho(grid%nC))
     end if
     dRho(:)=0d0
-    if(.not.(allocated(dRhou)))then
+    if(.not.allocated(dRhou))then
       allocate(dRhou(DIMS,grid%nC))
     end if
     dRhou(:,:)=0d0
-    if(.not.(allocated(dRhoE)))then
+    if(.not.allocated(dRhoE))then
       allocate(dRhoE(grid%nC))
     end if
     dRhoE(:)=0d0
@@ -390,10 +390,10 @@ contains
     double precision::uAvg(DIMS),HAvg,cAvg
     
     call grid%up()
-    if(.not.(allocated(JacP)))then
+    if(.not.allocated(JacP))then
       allocate(JacP(10,10,grid%nP))
     end if
-    if(.not.(allocated(JacC)))then
+    if(.not.allocated(JacC))then
       allocate(JacC(5,size(grid%neib,1)*5+5,grid%nC))
     end if
     JacP(:,:,:)=0d0
@@ -477,7 +477,7 @@ contains
     double precision,intent(in)::f(:,:,:) !< fluxes
     double precision,allocatable,intent(inout)::adv(:,:) !< advection output
     
-    if(.not.(allocated(adv)))then
+    if(.not.allocated(adv))then
       allocate(adv(size(s,2),grid%nC))
     end if
     adv(:,:)=0d0
