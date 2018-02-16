@@ -13,6 +13,13 @@ module modAdvection
   end interface
   public::findMassFlow
   
+  !> generic finding variable flow rate through pairs using mass flow rate
+  interface findVarFlow
+    module procedure::findVarFlowPolyVect
+    module procedure::findVarFlowPolyScal
+  end interface
+  public::findVarFlow
+  
   !> generic finding advection rate into each cell
   interface findAdv
     module procedure::findAdvPolyVect
@@ -80,6 +87,71 @@ contains
     end do
     !$omp end parallel do
     deallocate(gradRhou)
+  end subroutine
+  
+  !> find flow rate of vector v on polyFvGrid using mass flow rate
+  !> \f[ \int_A \rho\mathbf{v}(\mathbf{u} \cdot \hat{n}) dA \f]
+  subroutine findVarFlowPolyVect(grid,v,mFlow,flow)
+    use modPolyFvGrid
+    use modGradient
+    class(polyFvGrid),intent(inout)::grid !< the grid
+    double precision,intent(in)::v(:,:) !< transported variables
+    double precision,intent(in)::mFlow(:) !< mass flow through pairs
+    double precision,allocatable,intent(inout)::flow(:,:) !< v flow rate output
+    integer::up,dn
+    
+    call grid%up()
+    if(.not.allocated(flow))then
+      allocate(flow(size(v,1),grid%nP))
+    end if
+    flow(:,:)=0d0
+    !$omp parallel do default(shared)&
+    !$omp& private(m,n,up,dn,fUp,fDn)
+    do i=1,grid%nP
+      m=grid%iEP(1,i)
+      n=grid%iEP(2,i)
+      if(m<=size(v,2).and.n<=size(v,2))then
+        if(abs(mFlow(i))<=tiny(1d0))then ! no mass flux
+          cycle
+        else ! upwinding by mass flux
+          if(mFlow(i)>=0d0)then
+            up=m
+            dn=n
+          else
+            up=n
+            dn=m
+          end if
+        end if
+        flow(:,i)=v(:,up)*mFlow(i)
+      end if
+    end do
+    !$omp end parallel do
+  end subroutine
+  
+  !> find flow rate of scalar v on polyFvGrid using mass flow rate
+  !> \f[ \int_A \rho v(\mathbf{u} \cdot \hat{n}) dA \f]
+  subroutine findVarFlowPolyScal(grid,v,mFlow,flow)
+    use modPolyFvGrid
+    use modGradient
+    class(polyFvGrid),intent(inout)::grid !< the grid
+    double precision,intent(in)::v(:) !< transported variable
+    double precision,intent(in)::mFlow(:) !< mass flow through pairs
+    double precision,allocatable,intent(inout)::flow(:) !< v flow rate output
+    double precision,allocatable::vv(:,:),flowv(:,:)
+    
+    allocate(vv(1,size(v)))
+    if(allocated(flow))then
+      allocate(flowv(1,size(flow)))
+    end if
+    vv(1,:)=v(:)
+    call findVarFlowPolyVect(grid,vv,mFlow,flowv)
+    if(.not.allocated(flow))then
+      allocate(flow(size(flowv,2)),source=flowv(1,:))!FIXME:remove work-around
+    else
+      flow(:)=flowv(1,:)
+    end if
+    deallocate(vv)
+    deallocate(flowv)
   end subroutine
   
   !> find advection due to flux f depending on vector s on polyFvGrid
