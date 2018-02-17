@@ -22,6 +22,8 @@ module modAdvection
   
   !> generic finding advection rate into each cell
   interface findAdv
+    module procedure::findAdvFlowPolyVect
+    module procedure::findAdvFlowPolyScal
     module procedure::findAdvPolyVect
     module procedure::findAdvPolyScal
     module procedure::findAdvPolyEuler
@@ -152,6 +154,54 @@ contains
     end if
     deallocate(vv)
     deallocate(flowv)
+  end subroutine
+  
+  !> find advection according to the vector flow rate through pairs on polyFvGrid
+  subroutine findAdvFlowPolyVect(grid,flow,adv)
+    use modPolyFvGrid
+    class(polyFvGrid),intent(inout)::grid !< the grid
+    double precision,intent(in)::flow(:,:) !< flow rates
+    double precision,allocatable,intent(inout)::adv(:,:) !< advection output
+    
+    call grid%up()
+    if(.not.allocated(adv))then
+      allocate(adv(size(flow,1),grid%nC))
+    end if
+    adv(:,:)=0d0
+    do i=1,grid%nP
+      m=grid%iEP(1,i)
+      n=grid%iEP(2,i)
+      if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
+        adv(:,m)=adv(:,m)-flow(:,i)
+        adv(:,n)=adv(:,n)+flow(:,i)
+      else ! boundary pairs
+        adv(:,m)=adv(:,m)-flow(:,i)
+      end if
+    end do
+  end subroutine
+  
+  !> find advection according to the scalar flow rate through pairs on polyFvGrid
+  subroutine findAdvFlowPolyScal(grid,flow,adv)
+    use modPolyFvGrid
+    class(polyFvGrid),intent(inout)::grid !< the grid
+    double precision,intent(in)::flow(:) !< flow rates
+    double precision,allocatable,intent(inout)::adv(:) !< advection output
+    
+    call grid%up()
+    if(.not.allocated(adv))then
+      allocate(adv(grid%nC))
+    end if
+    adv(:)=0d0
+    do i=1,grid%nP
+      m=grid%iEP(1,i)
+      n=grid%iEP(2,i)
+      if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
+        adv(m)=adv(m)-flow(i)
+        adv(n)=adv(n)+flow(i)
+      else ! boundary pairs
+        adv(m)=adv(m)-flow(i)
+      end if
+    end do
   end subroutine
   
   !> find advection due to flux f depending on vector s on polyFvGrid
