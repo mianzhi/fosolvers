@@ -7,8 +7,9 @@ module modRhieChow
   ! constants
   integer,parameter::DIMS=3 !< dimensions
   
-  !> generic adding Rhie-Chow flow
+  !> generic adding Rhie-Chow flow/advection
   interface addRhieChow
+    module procedure::addRhieChowMassFlowPoly
     module procedure::addRhieChowPolyVect
     module procedure::addRhieChowPolyScal
   end interface
@@ -16,7 +17,35 @@ module modRhieChow
   
 contains
   
-  !> add Rhie-Chow flow of vector s to r on polyFvGrid
+  !> add Rhie-Chow mass flow through pairs on polyFvGrid
+  subroutine addRhieChowMassFlowPoly(grid,p,gradP,dt,flow)
+    use modPolyFvGrid
+    class(polyFvGrid),intent(inout)::grid !< the grid
+    double precision,intent(in)::p(:) !< pressure
+    double precision,intent(in)::gradP(:,:) !< pressure gradient
+    double precision,intent(in)::dt !< time step size
+    double precision,intent(inout)::flow(:) !< target mass flow for addition
+    double precision::vMN(DIMS),vMP(DIMS),vPN(DIMS),eps
+    
+    call grid%up()
+    !$omp parallel do default(shared)&
+    !$omp& private(m,n,vMN,vMP,vPN,eps)
+    do i=1,grid%nP
+      m=grid%iEP(1,i)
+      n=grid%iEP(2,i)
+      if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
+        vMN(:)=grid%p(:,n)-grid%p(:,m)
+        vMP(:)=grid%pP(:,i)-grid%p(:,m)
+        vPN(:)=grid%p(:,n)-grid%pP(:,i)
+        eps=norm2(vPN)/(norm2(vMP)+norm2(vPN))
+        flow(i)=dt*grid%aP(i)*dot_product(grid%normP(:,i),eps*gradP(:,m)+(1d0-eps)*gradP(:,n)&
+        &                                                 -vMN(:)*(p(n)-p(m))/dot_product(vMN,vMN))
+      end if
+    end do
+    !$omp end parallel do
+  end subroutine
+  
+  !> add Rhie-Chow advection of vector s to r on polyFvGrid
   subroutine addRhieChowPolyVect(grid,s,p,gradP,rho,dt,r)
     use modPolyFvGrid
     class(polyFvGrid),intent(inout)::grid !< the grid
@@ -46,7 +75,7 @@ contains
     end do
   end subroutine
   
-  !> add Rhie-Chow flow of scalar s to r on polyFvGrid
+  !> add Rhie-Chow advection of scalar s to r on polyFvGrid
   subroutine addRhieChowPolyScal(grid,s,p,gradP,rho,dt,r)
     use modPolyFvGrid
     class(polyFvGrid),intent(inout)::grid !< the grid
