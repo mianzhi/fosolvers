@@ -495,7 +495,7 @@ contains
     needRetry=info<0
     call pressureEq%getNIt(n)
     nItPressure=max(nItPressure,n)
-    p(1:grid%nC)=0.2d0*tmpP(:)+0.8d0*p1(1:grid%nC)
+    p(1:grid%nC)=tmpP(:)
   end subroutine
   
   !> correct the momentum with updated pressure, during which presF and u is updated
@@ -505,7 +505,7 @@ contains
     call setBC()
     call findPresForce(grid,p,gradP,presF)
     forall(i=1:grid%nC)
-      rhou(:,i)=rhou(:,i)+0.2d0*dt/grid%v(i)*(presF(:,i)-presF1(:,i))
+      rhou(:,i)=rhou(:,i)+dt/grid%v(i)*(presF(:,i)-presF1(:,i))
     end forall
   end subroutine
   
