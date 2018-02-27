@@ -69,17 +69,17 @@ module modPiso
   double precision,allocatable::presF(:,:) !< pressure force applied on cell [N]
   double precision,allocatable::condQ(:) !< heat conduction into cell [W]
   double precision,allocatable::carrier(:,:) !< {rho,rhou,rhoH} of each cell [*]
-  double precision,allocatable::flowRho(:) !< flow rate of rho [kg/s]
+  double precision,allocatable::advRho(:) !< advection rate of rho [kg/s]
   double precision,allocatable::fluxRhou(:,:,:) !< flux of rhou [kg/m/s^2]
-  double precision,allocatable::flowRhou(:,:) !< flow rate of rhou into cell [kg*m/s^2]
+  double precision,allocatable::advRhou(:,:) !< advection rate of rhou into cell [kg*m/s^2]
   double precision,allocatable::fluxRhoH(:,:) !< flux of rhoH [J/m^2/s]
-  double precision,allocatable::flowRhoH(:) !< flow rate of rhoH into cell [J/s]
+  double precision,allocatable::advRhoH(:) !< advection rate of rhoH into cell [J/s]
   
   ! state at the beginning of a time step
   double precision,allocatable::rho0(:),rhou0(:,:),rhoE0(:),p0(:),u0(:,:),temp0(:),Y0(:,:)
   
   ! auxiliary variables for the PISO iteration
-  double precision,allocatable::rho1(:),p1(:),laP1(:),presF1(:,:),temp1(:),rhou1(:,:),flowRho1(:)
+  double precision,allocatable::rho1(:),p1(:),laP1(:),presF1(:,:),temp1(:),rhou1(:,:),advRho1(:)
   
   ! scales
   double precision,allocatable::rhoScale !< density scale [kg/m^3]
@@ -201,10 +201,10 @@ contains
     allocate(presF(DIMS,grid%nC))
     allocate(presF1(DIMS,grid%nC))
     allocate(condQ(grid%nC))
-    allocate(flowRho(grid%nC))
-    allocate(flowRho1(grid%nC))
-    allocate(flowRhou(DIMS,grid%nC))
-    allocate(flowRhoH(grid%nC))
+    allocate(advRho(grid%nC))
+    allocate(advRho1(grid%nC))
+    allocate(advRhou(DIMS,grid%nC))
+    allocate(advRhoH(grid%nC))
     ! load initial condition
     do i=1,grid%nE
       if(udfIc/=0)then
@@ -490,7 +490,7 @@ contains
     end if
     tmpP(:)=p(1:grid%nC)
     call setBC()
-    call findAdv(grid,rho,rhou,flowRho)
+    call findAdv(grid,rho,rhou,advRho)
     call pressureEq%solve(tmpP,info=info)
     needRetry=info<0
     call pressureEq%getNIt(n)
@@ -578,9 +578,9 @@ contains
     forall(i=1:grid%nE,j=1:DIMS)
       fluxRhou(:,j,i)=rhou(j,i)*u(:,i)
     end forall
-    call findAdv(grid,rhou,fluxRhou,flowRhou)
+    call findAdv(grid,rhou,fluxRhou,advRhou)
     forall(i=1:grid%nC)
-      rhou(:,i)=rhou0(:,i)+dt/grid%v(i)*(flowRhou(:,i)+presF(:,i)+viscF(:,i))
+      rhou(:,i)=rhou0(:,i)+dt/grid%v(i)*(advRhou(:,i)+presF(:,i)+viscF(:,i))
     end forall
     y=reshape(rhou(:,1:grid%nC),[grid%nC*DIMS])
     momentumRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
@@ -602,7 +602,7 @@ contains
     integer(C_INT)::pressureRHS !< error code
     double precision,pointer::x(:) !< fortran pointer associated with oldVector
     double precision,pointer::y(:) !< fortran pointer associated with newVector
-    double precision,allocatable,save::tmpFlowRho(:)
+    double precision,allocatable,save::tmpFlowRho(:),tmpAdvRho(:)
     
     call associateVector(oldVector,x)
     call associateVector(newVector,y)
@@ -611,16 +611,22 @@ contains
     call setBC()
     call findGrad(grid,p,gradP)
     if(.not.allocated(tmpFlowRho))then
-      allocate(tmpFlowRho(grid%nC))
-    else if(size(tmpFlowRho)/=grid%nC)then
+      allocate(tmpFlowRho(grid%nP))
+    else if(size(tmpFlowRho)/=grid%nP)then
       deallocate(tmpFlowRho)
-      allocate(tmpFlowRho(grid%nC))
+      allocate(tmpFlowRho(grid%nP))
     end if
-    tmpFlowRho(:)=flowRho(:)
-    call addRhieChow(grid,rho,p,gradP,rho,dt,tmpFlowRho)
+    if(.not.allocated(tmpAdvRho))then
+      allocate(tmpAdvRho(grid%nC))
+    else if(size(tmpAdvRho)/=grid%nC)then
+      deallocate(tmpAdvRho)
+      allocate(tmpAdvRho(grid%nC))
+    end if
+    tmpAdvRho(:)=advRho(:)
+    call addRhieChow(grid,rho,p,gradP,rho,dt,tmpAdvRho)
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
     forall(i=1:grid%nC)
-      y(i)=p(i)-Rgas*temp(i)*(rho0(i)+dt/grid%v(i)*(tmpFlowRho(i)+dt*(laP(i)-laP1(i))))
+      y(i)=p(i)-Rgas*temp(i)*(rho0(i)+dt/grid%v(i)*(tmpAdvRho(i)+dt*(laP(i)-laP1(i))))
     end forall
     pressureRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
     if(c_associated(dat))then
@@ -649,10 +655,10 @@ contains
       rhou(:,i)=rho(i)*u(:,i)
     end forall
     call setBC()
-    call findAdv(grid,rho,rhou,flowRho)
-    call addRhieChow(grid,rho,p,gradP,rho,dt,flowRho)
+    call findAdv(grid,rho,rhou,advRho)
+    call addRhieChow(grid,rho,p,gradP,rho,dt,advRho)
     forall(i=1:grid%nC)
-      y(i)=rho0(i)+dt/grid%v(i)*flowRho(i)
+      y(i)=rho0(i)+dt/grid%v(i)*advRho(i)
     end forall
     densityRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
     if(c_associated(dat))then
@@ -685,11 +691,11 @@ contains
     forall(i=1:grid%nE)
       fluxRhoH(:,i)=(rhoE(i)+p(i))*u(:,i)
     end forall
-    call findAdv(grid,rhoE+p,fluxRhoH,flowRhoH)
-    call addRhieChow(grid,rhoE+p,p,gradP,rho,dt,flowRhoH)
+    call findAdv(grid,rhoE+p,fluxRhoH,advRhoH)
+    call addRhieChow(grid,rhoE+p,p,gradP,rho,dt,advRhoH)
     call findDiff(grid,temp,cond,condQ)
     forall(i=1:grid%nC)
-      y(i)=rhoE0(i)+dt/grid%v(i)*(flowRhoH(i)+condQ(i)) ! TODO add viscous heating
+      y(i)=rhoE0(i)+dt/grid%v(i)*(advRhoH(i)+condQ(i)) ! TODO add viscous heating
     end forall
     energyRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
     if(c_associated(dat))then
