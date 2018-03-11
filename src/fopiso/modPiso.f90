@@ -70,6 +70,7 @@ module modPiso
   double precision,allocatable::condQ(:) !< heat conduction into cell [W]
   double precision,allocatable::carrier(:,:) !< {rho,rhou,rhoH} of each cell [*]
   double precision,allocatable::advRho(:) !< advection rate of rho [kg/s]
+  double precision,allocatable::flowRho(:) !< flow rate of rho through pairs [kg/s]
   double precision,allocatable::fluxRhou(:,:,:) !< flux of rhou [kg/m/s^2]
   double precision,allocatable::advRhou(:,:) !< advection rate of rhou into cell [kg*m/s^2]
   double precision,allocatable::fluxRhoH(:,:) !< flux of rhoH [J/m^2/s]
@@ -201,6 +202,7 @@ contains
     allocate(presF(DIMS,grid%nC))
     allocate(presF1(DIMS,grid%nC))
     allocate(condQ(grid%nC))
+    allocate(flowRho(grid%nP))
     allocate(advRho(grid%nC))
     allocate(advRho1(grid%nC))
     allocate(advRhou(DIMS,grid%nC))
@@ -490,7 +492,7 @@ contains
     end if
     tmpP(:)=p(1:grid%nC)
     call setBC()
-    call findAdv(grid,rho,rhou,advRho)
+    call findMassFlow(grid,rhou,flowRho)
     call pressureEq%solve(tmpP,info=info)
     needRetry=info<0
     call pressureEq%getNIt(n)
@@ -594,6 +596,7 @@ contains
     use ieee_arithmetic
     use modNumerics
     use modGradient
+    use modAdvection
     use modDiffusion
     use modRhieChow
     type(C_PTR),value::oldVector !< old N_Vector
@@ -622,8 +625,10 @@ contains
       deallocate(tmpAdvRho)
       allocate(tmpAdvRho(grid%nC))
     end if
-    tmpAdvRho(:)=advRho(:)
-    call addRhieChow(grid,rho,p,gradP,rho,dt,tmpAdvRho)
+    tmpFlowRho(:)=flowRho(:)
+    !call addRhieChow(grid,p,gradP,dt,tmpFlowRho)
+    call findAdv(grid,tmpFlowRho,tmpAdvRho)
+    call addRhieChow(grid,rho,p,gradP,rho,dt,tmpAdvRho) ! FIXME want to use RhieChow for flow
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
     forall(i=1:grid%nC)
       y(i)=p(i)-Rgas*temp(i)*(rho0(i)+dt/grid%v(i)*(tmpAdvRho(i)+dt*(laP(i)-laP1(i))))
