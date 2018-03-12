@@ -626,9 +626,8 @@ contains
       allocate(tmpAdvRho(grid%nC))
     end if
     tmpFlowRho(:)=flowRho(:)
-    !call addRhieChow(grid,p,gradP,dt,tmpFlowRho)
+    call addRhieChow(grid,p,gradP,dt,tmpFlowRho)
     call findAdv(grid,tmpFlowRho,tmpAdvRho)
-    call addRhieChow(grid,rho,p,gradP,rho,dt,tmpAdvRho) ! FIXME want to use RhieChow for flow
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
     forall(i=1:grid%nC)
       y(i)=p(i)-Rgas*temp(i)*(rho0(i)+dt/grid%v(i)*(tmpAdvRho(i)+dt*(laP(i)-laP1(i))))

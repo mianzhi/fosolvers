@@ -38,8 +38,9 @@ contains
         vMP(:)=grid%pP(:,i)-grid%p(:,m)
         vPN(:)=grid%p(:,n)-grid%pP(:,i)
         eps=norm2(vPN)/(norm2(vMP)+norm2(vPN))
-        flow(i)=dt*grid%aP(i)*dot_product(grid%normP(:,i),eps*gradP(:,m)+(1d0-eps)*gradP(:,n)&
-        &                                                 -vMN(:)*(p(n)-p(m))/dot_product(vMN,vMN))
+        flow(i)=flow(i)+dt*grid%aP(i)&
+        &               *dot_product(grid%normP(:,i),eps*gradP(:,m)+(1d0-eps)*gradP(:,n)&
+        &                                            -vMN(:)*(p(n)-p(m))/dot_product(vMN,vMN))
       end if
     end do
     !$omp end parallel do
