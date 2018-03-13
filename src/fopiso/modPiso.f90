@@ -80,7 +80,7 @@ module modPiso
   double precision,allocatable::rho0(:),rhou0(:,:),rhoE0(:),p0(:),u0(:,:),temp0(:),Y0(:,:)
   
   ! auxiliary variables for the PISO iteration
-  double precision,allocatable::rho1(:),p1(:),laP1(:),presF1(:,:),temp1(:),rhou1(:,:),advRho1(:)
+  double precision,allocatable::rho1(:),p1(:),laP1(:),presF1(:,:),temp1(:),rhou1(:,:),flowRho1(:)
   
   ! scales
   double precision,allocatable::rhoScale !< density scale [kg/m^3]
@@ -203,8 +203,8 @@ contains
     allocate(presF1(DIMS,grid%nC))
     allocate(condQ(grid%nC))
     allocate(flowRho(grid%nP))
+    allocate(flowRho1(grid%nP))
     allocate(advRho(grid%nC))
-    allocate(advRho1(grid%nC))
     allocate(advRhou(DIMS,grid%nC))
     allocate(advRhoH(grid%nC))
     ! load initial condition
@@ -492,7 +492,7 @@ contains
     end if
     tmpP(:)=p(1:grid%nC)
     call setBC()
-    call findMassFlow(grid,rhou,flowRho)
+    call findMassFlow(grid,rhou,flowRho1)
     call pressureEq%solve(tmpP,info=info)
     needRetry=info<0
     call pressureEq%getNIt(n)
@@ -605,7 +605,6 @@ contains
     integer(C_INT)::pressureRHS !< error code
     double precision,pointer::x(:) !< fortran pointer associated with oldVector
     double precision,pointer::y(:) !< fortran pointer associated with newVector
-    double precision,allocatable,save::tmpFlowRho(:),tmpAdvRho(:)
     
     call associateVector(oldVector,x)
     call associateVector(newVector,y)
@@ -613,24 +612,12 @@ contains
     p(1:grid%nC)=x(1:grid%nC)
     call setBC()
     call findGrad(grid,p,gradP)
-    if(.not.allocated(tmpFlowRho))then
-      allocate(tmpFlowRho(grid%nP))
-    else if(size(tmpFlowRho)/=grid%nP)then
-      deallocate(tmpFlowRho)
-      allocate(tmpFlowRho(grid%nP))
-    end if
-    if(.not.allocated(tmpAdvRho))then
-      allocate(tmpAdvRho(grid%nC))
-    else if(size(tmpAdvRho)/=grid%nC)then
-      deallocate(tmpAdvRho)
-      allocate(tmpAdvRho(grid%nC))
-    end if
-    tmpFlowRho(:)=flowRho(:)
-    call addRhieChow(grid,p,gradP,dt,tmpFlowRho)
-    call findAdv(grid,tmpFlowRho,tmpAdvRho)
+    flowRho(:)=flowRho1(:)
+    call addRhieChow(grid,p,gradP,dt,flowRho)
+    call findAdv(grid,flowRho,advRho)
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
     forall(i=1:grid%nC)
-      y(i)=p(i)-Rgas*temp(i)*(rho0(i)+dt/grid%v(i)*(tmpAdvRho(i)+dt*(laP(i)-laP1(i))))
+      y(i)=p(i)-Rgas*temp(i)*(rho0(i)+dt/grid%v(i)*(advRho(i)+dt*(laP(i)-laP1(i))))
     end forall
     pressureRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
     if(c_associated(dat))then
