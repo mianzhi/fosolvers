@@ -73,7 +73,7 @@ module modPiso
   double precision,allocatable::flowRho(:) !< flow rate of rho through pairs [kg/s]
   double precision,allocatable::fluxRhou(:,:,:) !< flux of rhou [kg/m/s^2]
   double precision,allocatable::advRhou(:,:) !< advection rate of rhou into cell [kg*m/s^2]
-  double precision,allocatable::fluxRhoH(:,:) !< flux of rhoH [J/m^2/s]
+  double precision,allocatable::flowRhoH(:) !< flow rate of rhoH through pairs [J/s]
   double precision,allocatable::advRhoH(:) !< advection rate of rhoH into cell [J/s]
   
   ! state at the beginning of a time step
@@ -194,7 +194,6 @@ contains
     allocate(visc(grid%nE))
     allocate(cond(grid%nE))
     allocate(fluxRhou(DIMS,DIMS,grid%nE))
-    allocate(fluxRhoH(DIMS,grid%nE))
     allocate(gradP(DIMS,grid%nC))
     allocate(laP(grid%nC))
     allocate(laP1(grid%nC))
@@ -206,6 +205,7 @@ contains
     allocate(flowRho1(grid%nP))
     allocate(advRho(grid%nC))
     allocate(advRhou(DIMS,grid%nC))
+    allocate(flowRhoH(grid%nP))
     allocate(advRhoH(grid%nC))
     ! load initial condition
     do i=1,grid%nE
@@ -663,7 +663,6 @@ contains
     use modNumerics
     use modAdvection
     use modDiffusion
-    use modRhieChow
     type(C_PTR),value::oldVector !< old N_Vector
     type(C_PTR),value::newVector !< new N_Vector
     type(C_PTR),value::dat !< optional user data object
@@ -679,11 +678,8 @@ contains
       temp(i)=(rhoE(i)/rho(i)-0.5d0*dot_product(u(:,i),u(:,i)))/(1d0/(gamm-1d0))/Rgas
     end forall
     call setBC()
-    forall(i=1:grid%nE)
-      fluxRhoH(:,i)=(rhoE(i)+p(i))*u(:,i)
-    end forall
-    call findAdv(grid,rhoE+p,fluxRhoH,advRhoH)
-    call addRhieChow(grid,rhoE+p,p,gradP,rho,dt,advRhoH)
+    call findVarFlow(grid,(rhoE+p)/rho,flowRho,flowRhoH)
+    call findAdv(grid,flowRhoH,advRhoH)
     call findDiff(grid,temp,cond,condQ)
     forall(i=1:grid%nC)
       y(i)=rhoE0(i)+dt/grid%v(i)*(advRhoH(i)+condQ(i)) ! TODO add viscous heating
