@@ -38,7 +38,7 @@ program fopiso
       if(needRetry) exit
       call correctMomentum()
       forall(i=1:grid%nC)
-        rho(i)=p(i)/Rgas/temp(i)
+        rho(i)=rho0(i)+dt/grid%v(i)*advRho(i)
         u(:,i)=rhou(:,i)/rho(i)
       end forall
       write(*,*)'rho error: ',maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale
@@ -54,6 +54,7 @@ program fopiso
     !  end if
     !end do
     if(needRetry) cycle
+    p(:)=rho(:)*Rgas*temp(:)
     t=t+dt
     if(t*(1d0+tiny(1d0))>=tNext)then
       iOut=iOut+1
