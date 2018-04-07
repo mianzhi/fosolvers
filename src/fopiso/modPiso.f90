@@ -501,15 +501,26 @@ contains
     p(1:grid%nC)=tmpP(:)
   end subroutine
   
-  !> correct the momentum with updated pressure, during which presF and u is updated
+  !> correct the momentum, mass flow, mass advection with updated pressure
   subroutine correctMomentum()
     use modPressure
+    use modGradient
+    use modAdvection
+    use modRhieChow
+    integer,parameter::N_RHOU_CORRECTION=3 !< number of enabled momentum corrections
     
+    if(nItPISO<=N_RHOU_CORRECTION)then
+      call setBC()
+      call findPresForce(grid,p,gradP,presF)
+      forall(i=1:grid%nC)
+        rhou(:,i)=rhou(:,i)+dt/grid%v(i)*(presF(:,i)-presF1(:,i))
+      end forall
+    end if
     call setBC()
-    call findPresForce(grid,p,gradP,presF)
-    forall(i=1:grid%nC)
-      rhou(:,i)=rhou(:,i)+dt/grid%v(i)*(presF(:,i)-presF1(:,i))
-    end forall
+    call findMassFlow(grid,rhou,flowRho)
+    call findGrad(grid,p,gradP)
+    call addRhieChow(grid,p,gradP,dt,flowRho)
+    call findAdv(grid,flowRho,advRho)
   end subroutine
   
   !> solve the density
