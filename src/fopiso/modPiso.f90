@@ -16,7 +16,7 @@ module modPiso
   integer,parameter::MAXIT_PRESSURE=20 !< max number of pressure correction equation iteration
   integer,parameter::MAXIT_DENSITY=20 !< max number of density equation iteration
   integer,parameter::MAXIT_ENERGY=20 !< max number of energy equation iteration
-  integer,parameter::MAXIT_PISO=6 !< max number of PISO iterations
+  integer,parameter::MAXIT_PISO=20 !< max number of PISO iterations
   double precision,parameter::RTOL_MOMENTUM=1d-8 !< momentum prediction relative tolerance
   double precision,parameter::RTOL_PRESSURE=1d-8 !< pressure correction relative tolerance
   double precision,parameter::RTOL_DENSITY=1d-6 !< density equation relative tolerance
@@ -351,10 +351,8 @@ contains
   !> guess next time step size, etc.
   subroutine postSolve()
     ! the time step size is adjusted to maintain half of the maximum number iterations
-    dt=dt*minval(dble([MAXIT_MOMENTUM,MAXIT_PRESSURE,MAXIT_DENSITY,MAXIT_ENERGY])/&
-    &            dble(max(1,[nItMomentum,nItPressure,nItDensity,nItEnergy])))*0.5d0
-    !dt=dt*min(1d0,(dble(MAXIT_PISO)/dble(nItPISO)*0.5d0)**0.5d0)
-    
+    dt=dt*minval(dble([MAXIT_MOMENTUM,MAXIT_PRESSURE,MAXIT_DENSITY,MAXIT_ENERGY,MAXIT_PISO])/&
+    &            dble(max(1,[nItMomentum,nItPressure,nItDensity,nItEnergy,nItPISO])))*0.5d0
     write(*,'(a,i2,a,i2,a,i2,a,i2,a,i2,a)')'[i] finished step, nIt[rhou,p,rho,rhoE,PISO]: [',&
     &    nItMomentum,',',nItPressure,',',nItDensity,',',nItEnergy,',',nItPISO,']'
   end subroutine

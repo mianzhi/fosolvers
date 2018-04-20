@@ -25,11 +25,10 @@ program fopiso
     visc(:)=20d-6
     cond(:)=30d-3
     call preSolve()
-    !do nItOuter=1,50
     call predictMomentum()
     if(needRetry) exit
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
-    do nItPISO=1,5
+    do nItPISO=1,MAXIT_PISO
       rho1(:)=rho(:)
       laP1(:)=laP(:)
       presF1(:,:)=presF(:,:)
@@ -41,18 +40,18 @@ program fopiso
         rho(i)=rho0(i)+dt/grid%v(i)*advRho(i)
         u(:,i)=rhou(:,i)/rho(i)
       end forall
-      write(*,*)'rho error: ',maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale
+      write(*,*)'rho and p error: ',maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale,&
+      &          maxval(abs(p(1:grid%nC)-p1(1:grid%nC)))/pScale
       temp1(:)=temp(:)
       call solveEnergy()
       if(needRetry) exit
+      if(maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale<=RTOL_DENSITY)then
+        exit
+      else if(nItPISO==MAXIT_PISO)then
+        needRetry=.true.
+        exit
+      end if
     end do
-    !  if(maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale<=RTOL_DENSITY)then
-    !    exit
-    !  elseif(nItOuter==100)then
-    !    needRetry=.true.
-    !    exit
-    !  end if
-    !end do
     if(needRetry) cycle
     p(:)=rho(:)*Rgas*temp(:)
     t=t+dt
