@@ -372,7 +372,7 @@ contains
         rhoGst=rho(m)
         rhouGst=-rhou(:,m)
         rhoEGst=rhoE(m)
-        if(iBC(n)>0.and..false.)then
+        if(iBC(n)>0)then
           select case(bc%t(iBC(n)))
           case(BC_WALL_TEMP,BC_WALL_TEMP_UDF) ! wall temperature boundary
             ! TODO implement this
@@ -437,6 +437,9 @@ contains
             ! TODO implement this
           case default
           end select
+          rhoGst=pGst/Rgas/TGst
+          rhouGst(:)=rhoGst*uGst(:)
+          rhoEGst=rhoGst*(1d0/(gamm-1d0)*Rgas*TGst+0.5d0*dot_product(uGst,uGst))
         end if
         ! apply ghost values
         p(n)=pGst
