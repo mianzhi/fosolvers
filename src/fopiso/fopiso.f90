@@ -26,7 +26,7 @@ program fopiso
     cond(:)=30d-3
     call preSolve()
     call predictMomentum()
-    if(needRetry) exit
+    if(needRetry) cycle
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
     do nItPISO=1,MAXIT_PISO
       rho1(:)=rho(:)
