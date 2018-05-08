@@ -31,11 +31,14 @@ module modNumerics
   
   !> non-linear equations, i.e. f(x)=0, solved by KINSOL Newton-Krylov method
   type,extends(noLinEq),public::NewtonKrylov
+    type(C_PTR),private::ls=C_NULL_PTR !< pointer to the linear solver
     type(C_FUNPTR),private::pSet=C_NULL_FUNPTR !< pointer to the preconditioner setter
     type(C_FUNPTR),private::pSolve=C_NULL_FUNPTR !< pointer to the preconditioner solver
   contains
     procedure,public::init=>initNewtonKrylov
     procedure,public::solve=>solveNewtonKrylov
+    procedure,public::clear=>clearNewtonKrylov
+    final::purgeNewtonKrylov
   end type
   
   !> interface to SUNDIALS C functions
@@ -96,6 +99,14 @@ module modNumerics
       type(C_PTR)::mem !< location of memory pointer
     end subroutine
     
+    !> KINSOL set sparse iterative linear solver
+    function kinspilssetlinearsolver(mem,ls) bind(c,name='KINSpilsSetLinearSolver')
+      use iso_c_binding
+      type(C_PTR),value::mem !< memory pointer
+      type(C_PTR),value::ls !< sparse iterative linear solver pointer
+      integer(C_INT)::kinspilssetlinearsolver !< error code
+    end function
+    
     !> KINSOL solve
     function kinsol(mem,x,method,xScale,rScale) bind(c,name='KINSol')
       use iso_c_binding
@@ -131,28 +142,28 @@ module modNumerics
       integer(C_INT)::kinsetmaa !< error code
     end function
     
-    !> KINSOL initialize direct dense linear solver
-    function kindense(mem,nEq) bind(c,name='KINDense')
-      use iso_c_binding
-      type(C_PTR),value::mem !< memory pointer
-      integer(C_LONG),value::nEq !< dimension of the problem
-      integer(C_INT)::kindense !< error code
-    end function
-    
-    !> KINSOL initialize GMRES linear solver
-    function kinspgmr(mem,maxl) bind(c,name='KINSpgmr')
-      use iso_c_binding
-      type(C_PTR),value::mem !< memory pointer
-      integer(C_INT),value::maxl !< maximum dimension of the Krylov subspace
-      integer(C_INT)::kinspgmr !< error code
-    end function
-    
     !> KINSOL get number of iterations performed for the non-linear system
     function kingetnumnonlinsolviters(mem,nit) bind(c,name='KINGetNumNonlinSolvIters')
       use iso_c_binding
       type(C_PTR),value::mem !< memory pointer
       integer(C_LONG)::nit !< number of iterations
       integer(C_INT)::kingetnumnonlinsolviters !< error code
+    end function
+    
+    !> SUNLinearSolver create GMRES linear solver
+    function sunspgmr(tmpl,pType,maxl) bind(c,name='SUNSPGMR')
+      use iso_c_binding
+      type(C_PTR),value::tmpl !< template N_Vector pointer
+      integer(C_INT),value::pType !< preconditioning type
+      integer(C_INT),value::maxl !< maximum dimensions of the Krylov subspace
+      type(C_PTR)::sunspgmr !< value of the linear solver pointer
+    end function
+    
+    !> SUNLinearSolver free linear solver
+    function sunlinsolfree(ls) bind(c,name='SUNLinSolFree')
+      use iso_c_binding
+      type(C_PTR),value::ls !< linear solver pointer
+      integer(C_INT)::sunlinsolfree !< error code
     end function
     
   end interface
@@ -312,6 +323,7 @@ contains
     external::f !< the RHS subroutine in Fortran
     integer,intent(in),optional::maxl !< maximum dimension of the Krylov subspace
     integer(C_INT)::c_maxl,info
+    integer(C_INT),parameter::PREC_NONE=0
     
     call this%noLinEq%initNoLinEq(nEq,f)
     info=kininit(this%work,this%f,this%x) ! use solution vector as template
@@ -324,11 +336,39 @@ contains
     else
       c_maxl=0
     end if
-    info=kinspgmr(this%work,c_maxl)
-    if(info/=0)then
-      write(*,'(a,i3)')"[E] initNewtonKrylov(): KINSpgmr error code ",info
+    this%ls=sunspgmr(this%x,PREC_NONE,c_maxl) ! use solution vector as template
+    if(.not.c_associated(this%ls))then
+      write(*,'(a)')"[E] initNewtonKrylov(): linear solver object not allocated"
       stop
     end if
+    info=kinspilssetlinearsolver(this%work,this%ls)
+    if(info/=0)then
+      write(*,'(a,i3)')"[E] initNewtonKrylov(): KINSpilsSetLinearSolver error code ",info
+      stop
+    end if
+  end subroutine
+  
+  !> clear this NewtonKrylov
+  subroutine clearNewtonKrylov(this)
+    class(NewtonKrylov),intent(inout)::this !< this NewtonKrylov
+    integer(C_INT)::info
+    
+    call this%noLinEq%clear()
+    if(c_associated(this%ls))then
+      info=sunlinsolfree(this%ls)
+      if(info/=0)then
+        write(*,'(a,i3)')"[E] clearNewtonKrylov(): SUNLinSolFree error code ",info
+        stop
+      end if
+      this%ls=C_NULL_PTR
+    end if
+  end subroutine
+  
+  !> destructor of NewtonKrylov
+  subroutine purgeNewtonKrylov(this)
+    type(NewtonKrylov),intent(inout)::this !< this NewtonKrylov
+    
+    call this%clear()
   end subroutine
   
   !> solve this system of fixed point equations

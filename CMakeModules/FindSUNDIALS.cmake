@@ -63,14 +63,16 @@ set (SUNDIALS_USER_PATHS
 
 # List of the valid SUNDIALS components
 set( SUNDIALS_VALID_COMPONENTS
-    sundials_fcvode
     sundials_cvode
-    sundials_fkinsol
     sundials_kinsol
-    sundials_fnvecserial
+    #sundials_sunlinsoldens
+    sundials_sunlinsolspgmr
+    #sundials_sunmatrixdense
+    #sundials_sunmatrixspgmr
+    #sundials_fnvecserial
     sundials_nvecserial
-    sundials_fnvecopenmp
-    sundials_nvecopenmp
+    #sundials_fnvecopenmp
+    #sundials_nvecopenmp
 )
 
 
