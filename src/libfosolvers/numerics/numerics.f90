@@ -41,6 +41,34 @@ module modNumerics
     final::purgeNewtonKrylov
   end type
   
+  !> generic ODE, i.e. dx/dt=f(x), solved by CVODE
+  type::ODE
+    integer(C_INT),private::nEq=0 !< number of equations
+    type(C_FUNPTR),private::f=C_NULL_FUNPTR !< pointer to the RHS function
+    type(C_PTR),private::work=C_NULL_PTR !< pointer to CVODE problem object
+    type(C_PTR),private::x=C_NULL_PTR !< pointer to the solution N_Vector
+  contains
+    procedure::initODE ! specific class uses different arguments, saved the init() name
+    procedure,public::clear=>clearODE
+    procedure,public::setIV=>setIVODE
+    procedure,public::setTol=>setTolODE
+    procedure,public::setMaxSteps=>setMaxStepsODE
+    procedure,public::getDt=>getDtODE
+    final::purgeODE
+  end type
+  
+  !> ODE (likely to be stiff), i.e. dx/dt=f(x) solved by CVODE BDF-Newton-Krylov method
+  type,extends(ODE),public::BDFNewtonKrylov
+    type(C_PTR),private::ls=C_NULL_PTR !< pointer to the linear solver
+    type(C_FUNPTR),private::pSet=C_NULL_FUNPTR !< pointer to the preconditioner setter
+    type(C_FUNPTR),private::pSolve=C_NULL_FUNPTR !< pointer to the preconditioner solver
+  contains
+    procedure,public::init=>initBDFNewtonKrylov
+    procedure,public::step=>stepBDFNewtonKrylov
+    procedure,public::clear=>clearBDFNewtonKrylov
+    final::purgeBDFNewtonKrylov
+  end type
+  
   !> interface to SUNDIALS C functions
   interface
     
@@ -148,6 +176,83 @@ module modNumerics
       type(C_PTR),value::mem !< memory pointer
       integer(C_LONG)::nit !< number of iterations
       integer(C_INT)::kingetnumnonlinsolviters !< error code
+    end function
+    
+    !> CVODE create memory object
+    function cvodecreate(m1,m2) bind(c,name='CVodeCreate')
+      use iso_c_binding
+      integer(C_INT),value::m1 !< ODE method
+      integer(C_INT),value::m2 !< nonlinear equation method
+      type(C_PTR)::cvodecreate !< value of the memory pointer
+    end function
+    
+    !> CVODE initialize memory object
+    function cvodeinit(mem,func,t0,y0) bind(c,name='CVodeInit')
+      use iso_c_binding
+      type(C_PTR),value::mem !< memory pointer
+      type(C_FUNPTR),value::func !< function pointer
+      real(C_DOUBLE),value::t0 !< initial time value
+      type(C_PTR),value::y0 !< initial state value N_Vector pointer
+      integer(C_INT)::cvodeinit !< error code
+    end function
+    
+    !> CVODE reinitialize the time and state
+    function cvodereinit(mem,t0,y0) bind(c,name='CVodeReInit')
+      use iso_c_binding
+      type(C_PTR),value::mem !< memory pointer
+      real(C_DOUBLE),value::t0 !< initial time value
+      type(C_PTR),value::y0 !< initial state value N_Vector pointer
+      integer(C_INT)::cvodereinit !< error code
+    end function
+    
+    !> CVODE free memory object
+    subroutine cvodefree(mem) bind(c,name='CVodeFree')
+      use iso_c_binding
+      type(C_PTR)::mem !< location of memory pointer
+    end subroutine
+    
+    !> CVODE set sparse iterative linear solver
+    function cvspilssetlinearsolver(mem,ls) bind(c,name='CVSpilsSetLinearSolver')
+      use iso_c_binding
+      type(C_PTR),value::mem !< memory pointer
+      type(C_PTR),value::ls !< sparse iterative linear solver pointer
+      integer(C_INT)::cvspilssetlinearsolver !< error code
+    end function
+    
+    !> CVODE solve
+    function cvode(mem,tOut,x,tReturn,task) bind(c,name='CVode')
+      use iso_c_binding
+      type(C_PTR),value::mem !< memory pointer
+      real(C_DOUBLE),value::tOut !< target time
+      type(C_PTR),value::x !< solution N_Vector
+      real(C_DOUBLE)::tReturn !< returned time
+      integer(C_INT),value::task !< task code
+      integer(C_INT)::cvode !< returns error code
+    end function
+    
+    !> CVODE set scalar relative and absolute tolerance
+    function cvodesstolerances(mem,rTol,aTol) bind(c,name='CVodeSStolerances')
+      use iso_c_binding
+      type(C_PTR),value::mem !< memory pointer
+      real(C_DOUBLE),value::rTol !< relative tolerance
+      real(C_DOUBLE),value::aTol !< absolute tolerance
+      integer(C_INT)::cvodesstolerances !< error code
+    end function
+    
+    !> CVODE set maximum number of time steps
+    function cvodesetmaxnumsteps(mem,maxStep) bind(c,name='CVodeSetMaxNumSteps')
+      use iso_c_binding
+      type(C_PTR),value::mem !< memory pointer
+      integer(C_LONG),value::maxStep !< maximum number of time steps
+      integer(C_INT)::cvodesetmaxnumsteps !< error code
+    end function
+    
+    !> CVODE get the size of the last time step
+    function cvodegetlaststep(mem,dt) bind(c,name='CVodeGetLastStep')
+      use iso_c_binding
+      type(C_PTR),value::mem !< memory pointer
+      real(C_DOUBLE)::dt !< size of the last time step
+      integer(C_INT)::cvodegetlaststep !< error code
     end function
     
     !> SUNLinearSolver create GMRES linear solver
@@ -410,6 +515,195 @@ contains
     if(present(info))then
       info=c_info
     end if
+    x(1:this%nEq)=xPtr(1:this%nEq)
+  end subroutine
+  
+  !> generic constructor of ODE
+  subroutine initODE(this,nEq,f)
+    class(ODE),intent(inout)::this !< this ODE
+    integer,intent(in)::nEq !< number of equations
+    external::f !< the RHS subroutine in Fortran
+    
+    this%nEq=nEq
+    this%f=c_funloc(f)
+    this%x=n_vnew(this%nEq)
+    if(.not.c_associated(this%x))then
+      write(*,'(a)')"[E] initODE(): solution N_Vector not allocated"
+      stop
+    end if
+  end subroutine
+  
+  !> clear this generic ODE
+  subroutine clearODE(this)
+    class(ODE),intent(inout)::this !< this ODE
+    
+    this%nEq=0
+    this%f=C_NULL_FUNPTR
+    if(c_associated(this%work)) call cvodefree(this%work)
+    if(c_associated(this%x))then
+      call n_vdestroy(this%x)
+      this%x=C_NULL_PTR ! NOTE: NVECTOR does not nullify pointer value
+    end if
+  end subroutine
+  
+  !> set the initial time and state values for this ODE
+  subroutine setIVODE(this,t0,x0)
+    class(ODE),intent(inout)::this !< this ODE
+    double precision,intent(in)::t0 !< initial time
+    double precision,intent(in)::x0(:) !< initial state
+    real(C_DOUBLE)::c_t0
+    double precision,pointer::xPtr(:)
+    integer(C_INT)::c_info
+    
+    c_t0=t0
+    call associateVector(this%x,xPtr)
+    xPtr(1:this%nEq)=x0(1:this%nEq)
+    c_info=cvodereinit(this%work,c_t0,this%x)
+    if(c_info/=0)then
+      write(*,'(a,i3)')"[E] setIVODE(): CVodeReInit exit code ",c_info
+      stop
+    end if
+  end subroutine
+  
+  !> set the relative and absolute tolerance for this ODE
+  subroutine setTolODE(this,rTol,aTol)
+    class(ODE),intent(inout)::this !< this ODE
+    double precision,intent(in)::rTol !< relative tolerance
+    double precision,intent(in)::aTol !< absolute tolerance
+    real(C_DOUBLE)::c_rTol,c_aTol
+    integer(C_INT)::c_info
+    
+    c_rTol=rTol
+    c_aTol=aTol
+    c_info=cvodesstolerances(this%work,c_rTol,c_aTol)
+    if(c_info/=0)then
+      write(*,'(a,i3)')"[E] setTolODE(): CVodeSStolerances exit code ",c_info
+      stop
+    end if
+  end subroutine
+  
+  !> set the maximum number of time steps for this ODE
+  subroutine setMaxStepsODE(this,maxSteps)
+    class(ODE),intent(inout)::this !< this ODE
+    integer,intent(in)::maxSteps !< maximum number of steps
+    integer(C_LONG)::c_maxSteps
+    integer(C_INT)::c_info
+    
+    c_maxSteps=maxSteps
+    c_info=cvodesetmaxnumsteps(this%work,c_maxSteps)
+    if(c_info/=0)then
+      write(*,'(a,i3)')"[E] setMaxStepsODE(): CVodeSetMaxNumSteps exit code ",c_info
+      stop
+    end if
+  end subroutine
+  
+  !> get the size of the last time step for this ODE
+  subroutine getDtODE(this,dt)
+    class(ODE),intent(inout)::this !< this ODE
+    double precision,intent(out)::dt !< the size of the last time step
+    real(C_DOUBLE)::c_dt
+    integer(C_INT)::c_info
+    
+    c_info=cvodegetlaststep(this%work,c_dt)
+    dt=c_dt
+    if(c_info/=0)then
+      write(*,'(a,i3)')"[E] getDtODE(): CVodeGetLastStep exit code ",c_info
+      stop
+    end if
+  end subroutine
+  
+  !> generic destructor of ODE
+  subroutine purgeODE(this)
+    type(ODE),intent(inout)::this !< this ODE
+    
+    call this%clear()
+  end subroutine
+  
+  !> initialize this BDFNewtonKrylov
+  subroutine initBDFNewtonKrylov(this,nEq,f,maxl)
+    class(BDFNewtonKrylov),intent(inout)::this !< this NewtonKrylov
+    integer,intent(in)::nEq !< number of equations
+    external::f !< the RHS subroutine in Fortran
+    integer,intent(in),optional::maxl !< maximum dimension of the Krylov subspace
+    integer(C_INT)::c_maxl,info
+    real(C_DOUBLE)::t=0d0
+    integer(C_INT),parameter::CV_BDF=2
+    integer(C_INT),parameter::CV_NEWTON=2
+    integer(C_INT),parameter::PREC_NONE=0
+    
+    call this%ODE%initODE(nEq,f)
+    this%work=cvodecreate(CV_BDF,CV_NEWTON)
+    if(.not.c_associated(this%work))then
+      write(*,'(a)')"[E] initBDFNewtonKrylov(): CVODE memory object not created"
+      stop
+    end if
+    info=cvodeinit(this%work,this%f,t,this%x) ! use solution vector as template
+    if(info/=0)then
+      write(*,'(a,i3)')"[E] initBDFNewtonKrylov(): CVodeInit error code ",info
+      stop
+    end if
+    if(present(maxl))then
+      c_maxl=maxl
+    else
+      c_maxl=0
+    end if
+    this%ls=sunspgmr(this%x,PREC_NONE,c_maxl) ! use solution vector as template
+    if(.not.c_associated(this%ls))then
+      write(*,'(a)')"[E] initBDFNewtonKrylov(): linear solver object not allocated"
+      stop
+    end if
+    info=cvspilssetlinearsolver(this%work,this%ls)
+    if(info/=0)then
+      write(*,'(a,i3)')"[E] initBDFNewtonKrylov(): CVSpilsSetLinearSolver error code ",info
+      stop
+    end if
+  end subroutine
+  
+  !> clear this BDFNewtonKrylov
+  subroutine clearBDFNewtonKrylov(this)
+    class(BDFNewtonKrylov),intent(inout)::this !< this NewtonKrylov
+    integer(C_INT)::info
+    
+    call this%ODE%clear()
+    if(c_associated(this%ls))then
+      info=sunlinsolfree(this%ls)
+      if(info/=0)then
+        write(*,'(a,i3)')"[E] clearBDFNewtonKrylov(): SUNLinSolFree error code ",info
+        stop
+      end if
+      this%ls=C_NULL_PTR
+    end if
+  end subroutine
+  
+  !> destructor of BDFNewtonKrylov
+  subroutine purgeBDFNewtonKrylov(this)
+    type(BDFNewtonKrylov),intent(inout)::this !< this NewtonKrylov
+    
+    call this%clear()
+  end subroutine
+  
+  !> step this BDFNewtonKrylov
+  subroutine stepBDFNewtonKrylov(this,tOut,t,x,info)
+    class(BDFNewtonKrylov),intent(inout)::this !< this BDFNewtonKrylov
+    double precision,intent(in)::tOut !< target time
+    double precision,intent(out)::t !< returned time
+    double precision,intent(inout)::x(:) !< the solution
+    integer,optional,intent(out)::info !< exit code
+    double precision,pointer::xPtr(:)
+    real(C_DOUBLE)::c_tOut,c_t
+    integer(C_INT)::c_info
+    integer(C_INT),parameter::CV_ONE_STEP=2
+    
+    c_tOut=tOut
+    call associateVector(this%x,xPtr)
+    c_info=cvode(this%work,c_tOut,this%x,c_t,CV_ONE_STEP)
+    if(c_info<0)then
+      write(*,'(a,i3)')"[W] stepBDFNewtonKrylov(): CVode exit code ",c_info
+    end if
+    if(present(info))then
+      info=c_info
+    end if
+    t=c_t
     x(1:this%nEq)=xPtr(1:this%nEq)
   end subroutine
   
