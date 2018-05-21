@@ -17,9 +17,9 @@ function BDFNewtonKrylov1()
     call p%step(2d0,t,s)
     write(*,*)t,s(:)
   end do
-  !if(norm2(s-[-0.5d0,-0.5d0,3d0/8d0])>1d-6)then
-  !  BDFNewtonKrylov1=1
-  !end if
+  if(norm2(s-[cos(t),-sin(t)])>1d-6)then
+    BDFNewtonKrylov1=1
+  end if
   call p%clear()
   
 contains
@@ -38,7 +38,7 @@ contains
     t=ct
     call associateVector(cx,x)
     call associateVector(cdx,dx)
-    dx(1:2)=[-x(2),x(1)-x(2)]
+    dx(1:2)=[x(2),-x(1)]
     func=0
     foo=dat
   end function

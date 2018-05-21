@@ -5,6 +5,7 @@ module modEuler
   use modPolyFvGrid
   use modCondition
   use modUDF
+  use modNumerics
   use iso_c_binding
   
   public
@@ -28,6 +29,7 @@ module modEuler
   type(UDFTab)::udf !< UDF
   
   double precision::t !< time
+  double precision::dt !< time step size determined by ODE solver
   double precision::tFinal !< final time
   double precision::tInt !< time interval of output
   double precision::tNext !< time for next output
@@ -51,12 +53,11 @@ module modEuler
   double precision,allocatable::dRho(:) !< time derivative of density
   double precision,allocatable::dRhou(:,:) !< time derivative of momentum
   double precision,allocatable::dRhoE(:) !< time derivative of total energy
-  integer(C_LONG)::nEq !< number of equations
-  integer(C_LONG)::iStat(100),iPar(1) !< integer solver outputs and parameters
-  double precision::rStat(100),rPar(1) !< real solver outputs and parameters
+  integer::nEq !< number of equations
   real,allocatable::JacS(:,:,:) !< single precision version of JacC
   integer,allocatable::precPiv(:,:) !< pivoting arrays for Lapack
   real,allocatable::precRhs(:,:) !< RHS arrays for Lapack
+  type(BDFNewtonKrylov)::ode !< the ODE problem
 
 contains
   
@@ -172,11 +173,10 @@ contains
       dRhou(:,i)=0d0
       dRhoE(i)=0d0
     end forall
-    call fnvinits(1,nEq,ier)
-    call fcvmalloc(t,y,2,2,1,RTOL,ATOL,iStat,rStat,iPar,rPar,ier)
-    call fcvspgmr(1,1,0,0d0,ier)
-    call fcvspilssetprec(1,ier)
-    call fcvsetiin('MAX_NSTEPS',huge(1),ier)
+    call ode%init(nEq,rhs)
+    call ode%setTol(RTOL,ATOL)
+    call ode%setMaxSteps(-1)
+    call ode%setIV(t,y)
     ! initialize preconditioning solver
     allocate(precPiv(5,grid%nC))
     allocate(precRhs(5,grid%nC))
@@ -357,6 +357,35 @@ contains
     close(FID)
   end subroutine
   
+  !> the ODE to be advanced
+  function rhs(c_time,c_x,c_dxdt,dat)
+    use modAdvection
+    real(C_DOUBLE),value::c_time
+    type(C_PTR),value::c_x,c_dxdt,dat
+    integer(C_INT)::rhs
+    double precision::time
+    double precision,pointer::x(:)
+    double precision,pointer::dxdt(:)
+    type(C_PTR)::foo
+    
+    time=c_time
+    call associateVector(c_x,x)
+    call associateVector(c_dxdt,dxdt)
+    
+    call setBC(x)
+    call syncState(x)
+    call findAdv(grid,rho,rhou,rhoE,p,gamm,dRho,dRhou,dRhoE)
+    forall(i=1:grid%nC)
+      dxdt(i)=dRho(i)/grid%v(i)
+      dxdt(grid%nC+i)=dRhou(1,i)/grid%v(i)
+      dxdt(2*grid%nC+i)=dRhou(2,i)/grid%v(i)
+      dxdt(3*grid%nC+i)=dRhou(3,i)/grid%v(i)
+      dxdt(4*grid%nC+i)=dRhoE(i)/grid%v(i)
+    end forall
+    rhs=0
+    foo=dat
+  end function
+  
 end module
 
 !> Euler solver
@@ -369,42 +398,20 @@ program foeuler
   write(tmpStr,*)iOut
   call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
   do while(t<tFinal)
-    call fcvode(tNext,t,y,1,ier)
+    call ode%step(tNext,t,y)
+    call ode%getDt(dt)
+    write(*,'(a,g12.5,a,g12.5)')'[i] finished time step: t=',t,' dt=',dt
     if(t+tiny(1d0)>=tNext)then
       iOut=iOut+1
       write(tmpStr,*)iOut
       call syncState(y)
+      write(*,'(a)')'[i] writing: rst_'//trim(adjustl(tmpStr))//'.vtk'
       call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
       tNext=tNext+tInt
     end if
   end do
   call clear()
 end program
-
-!> the ODE to be advanced
-subroutine fcvfun(time,x,dxdt,iPara,rPara,ier)
-  use modEuler
-  use modAdvection
-  use iso_c_binding
-  double precision::time
-  double precision::x(*)
-  double precision::dxdt(*)
-  integer(C_LONG)::iPara(*)
-  double precision::rPara(*)
-  integer::ier
-  
-  call setBC(x)
-  call syncState(x)
-  call findAdv(grid,rho,rhou,rhoE,p,gamm,dRho,dRhou,dRhoE)
-  forall(i=1:grid%nC)
-    dxdt(i)=dRho(i)/grid%v(i)
-    dxdt(grid%nC+i)=dRhou(1,i)/grid%v(i)
-    dxdt(2*grid%nC+i)=dRhou(2,i)/grid%v(i)
-    dxdt(3*grid%nC+i)=dRhou(3,i)/grid%v(i)
-    dxdt(4*grid%nC+i)=dRhoE(i)/grid%v(i)
-  end forall
-  ier=0
-end subroutine
 
 !> setup/factor preconditioning matrix
 subroutine fcvpset(time,x,fx,Jok,Jcur,pGamm,h,iPara,rPara,work1,work2,work3,ier)

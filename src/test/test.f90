@@ -10,7 +10,6 @@ program test
   &                 UDF1,&
   &                 fixPt1,NewtonKrylov1,BDFNewtonKrylov1
   
-  call try('BDFNewtonKrylov1',BDFNewtonKrylov1)
   call try('otGrid1',otGrid1)
   call try('otGrid2',otGrid2)
   call try('polyX1',polyX1)
@@ -32,6 +31,7 @@ program test
   call try('UDF1',UDF1)
   call try('fixPt1',fixPt1)
   call try('NewtonKrylov1',NewtonKrylov1)
+  call try('BDFNewtonKrylov1',BDFNewtonKrylov1)
   
   write(*,'(a)')'check md5 of output files:'
   call system('md5sum -c sums.md5')
