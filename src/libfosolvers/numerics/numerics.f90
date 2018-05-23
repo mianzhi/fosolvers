@@ -33,7 +33,7 @@ module modNumerics
   type,extends(noLinEq),public::NewtonKrylov
     type(C_PTR),private::ls=C_NULL_PTR !< pointer to the linear solver
     type(C_FUNPTR),private::pSet=C_NULL_FUNPTR !< pointer to the preconditioner setter
-    type(C_FUNPTR),private::pSolve=C_NULL_FUNPTR !< pointer to the preconditioner solver
+    type(C_FUNPTR),private::pSol=C_NULL_FUNPTR !< pointer to the preconditioner solver
   contains
     procedure,public::init=>initNewtonKrylov
     procedure,public::solve=>solveNewtonKrylov
@@ -61,7 +61,7 @@ module modNumerics
   type,extends(ODE),public::BDFNewtonKrylov
     type(C_PTR),private::ls=C_NULL_PTR !< pointer to the linear solver
     type(C_FUNPTR),private::pSet=C_NULL_FUNPTR !< pointer to the preconditioner setter
-    type(C_FUNPTR),private::pSolve=C_NULL_FUNPTR !< pointer to the preconditioner solver
+    type(C_FUNPTR),private::pSol=C_NULL_FUNPTR !< pointer to the preconditioner solver
   contains
     procedure,public::init=>initBDFNewtonKrylov
     procedure,public::step=>stepBDFNewtonKrylov
@@ -219,6 +219,15 @@ module modNumerics
       integer(C_INT)::cvspilssetlinearsolver !< error code
     end function
     
+    !> CVODE set preconditoner setup and solve routines
+    function cvspilssetpreconditioner(mem,pSet,pSol) bind(c,name='CVSpilsSetPreconditioner')
+      use iso_c_binding
+      type(C_PTR),value::mem !< memory pointer
+      type(C_FUNPTR),value::pSet !< preconditioner setup function pointer
+      type(C_FUNPTR),value::pSol !< preconditioner solve function pointer
+      integer(C_INT)::cvspilssetpreconditioner !< error code
+    end function
+    
     !> CVODE solve
     function cvode(mem,tOut,x,tReturn,task) bind(c,name='CVode')
       use iso_c_binding
@@ -294,7 +303,7 @@ contains
   subroutine initNoLinEq(this,nEq,f)
     class(noLinEq),intent(inout)::this !< this noLinEq
     integer,intent(in)::nEq !< number of equations
-    external::f !< the RHS subroutine in Fortran
+    procedure(integer(C_INT))::f !< the RHS subroutine in Fortran
     
     this%nEq=nEq
     this%f=c_funloc(f)
@@ -400,7 +409,7 @@ contains
   subroutine initFixPt(this,nEq,f,maa)
     class(fixPt),intent(inout)::this !< this fixPt
     integer,intent(in)::nEq !< number of equations
-    external::f !< the RHS subroutine in Fortran
+    procedure(integer(C_INT))::f !< the RHS subroutine in Fortran
     integer,intent(in),optional::maa !< number of iterations for Anderson acceleration
     integer(C_LONG)::c_maa
     integer(C_INT)::info
@@ -425,7 +434,7 @@ contains
   subroutine initNewtonKrylov(this,nEq,f,maxl)
     class(NewtonKrylov),intent(inout)::this !< this NewtonKrylov
     integer,intent(in)::nEq !< number of equations
-    external::f !< the RHS subroutine in Fortran
+    procedure(integer(C_INT))::f !< the RHS subroutine in Fortran
     integer,intent(in),optional::maxl !< maximum dimension of the Krylov subspace
     integer(C_INT)::c_maxl,info
     integer(C_INT),parameter::PREC_NONE=0
@@ -459,6 +468,8 @@ contains
     integer(C_INT)::info
     
     call this%noLinEq%clear()
+    this%pSet=C_NULL_FUNPTR
+    this%pSol=C_NULL_FUNPTR
     if(c_associated(this%ls))then
       info=sunlinsolfree(this%ls)
       if(info/=0)then
@@ -522,7 +533,7 @@ contains
   subroutine initODE(this,nEq,f)
     class(ODE),intent(inout)::this !< this ODE
     integer,intent(in)::nEq !< number of equations
-    external::f !< the RHS subroutine in Fortran
+    procedure(integer(C_INT))::f !< the RHS subroutine in Fortran
     
     this%nEq=nEq
     this%f=c_funloc(f)
@@ -620,16 +631,19 @@ contains
   end subroutine
   
   !> initialize this BDFNewtonKrylov
-  subroutine initBDFNewtonKrylov(this,nEq,f,maxl)
+  subroutine initBDFNewtonKrylov(this,nEq,f,maxl,pSet,pSol)
     class(BDFNewtonKrylov),intent(inout)::this !< this NewtonKrylov
     integer,intent(in)::nEq !< number of equations
-    external::f !< the RHS subroutine in Fortran
+    procedure(integer(C_INT))::f !< the RHS subroutine in Fortran
     integer,intent(in),optional::maxl !< maximum dimension of the Krylov subspace
-    integer(C_INT)::c_maxl,info
+    procedure(integer(C_INT)),optional::pSet !< preconditioner setup function in Fortran
+    procedure(integer(C_INT)),optional::pSol !< preconditioner solve function in Fortran
+    integer(C_INT)::c_maxl,info,pOpt
     real(C_DOUBLE)::t=0d0
     integer(C_INT),parameter::CV_BDF=2
     integer(C_INT),parameter::CV_NEWTON=2
     integer(C_INT),parameter::PREC_NONE=0
+    integer(C_INT),parameter::PREC_LEFT=1
     
     call this%ODE%initODE(nEq,f)
     this%work=cvodecreate(CV_BDF,CV_NEWTON)
@@ -642,12 +656,24 @@ contains
       write(*,'(a,i3)')"[E] initBDFNewtonKrylov(): CVodeInit error code ",info
       stop
     end if
+    if(present(pSet).and.present(pSol))then
+      pOpt=PREC_LEFT
+      this%pSet=c_funloc(pSet)
+      this%pSol=c_funloc(pSol)
+      info=cvspilssetpreconditioner(this%work,this%pSet,this%pSol)
+      if(info/=0)then
+        write(*,'(a,i3)')"[E] initBDFNewtonKrylov(): CVSpilsSetPreconditioner error code ",info
+        stop
+      end if
+    else
+      pOpt=PREC_NONE
+    end if
     if(present(maxl))then
       c_maxl=maxl
     else
       c_maxl=0
     end if
-    this%ls=sunspgmr(this%x,PREC_NONE,c_maxl) ! use solution vector as template
+    this%ls=sunspgmr(this%x,pOpt,c_maxl) ! use solution vector as template
     if(.not.c_associated(this%ls))then
       write(*,'(a)')"[E] initBDFNewtonKrylov(): linear solver object not allocated"
       stop
@@ -665,6 +691,8 @@ contains
     integer(C_INT)::info
     
     call this%ODE%clear()
+    this%pSet=C_NULL_FUNPTR
+    this%pSol=C_NULL_FUNPTR
     if(c_associated(this%ls))then
       info=sunlinsolfree(this%ls)
       if(info/=0)then

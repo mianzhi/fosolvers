@@ -2,6 +2,7 @@
 
 function BDFNewtonKrylov1()
   use modNumerics
+  use iso_c_binding
   integer::BDFNewtonKrylov1
   type(BDFNewtonKrylov)::p
   double precision::t,s(2)
@@ -15,7 +16,6 @@ function BDFNewtonKrylov1()
   call p%setIV(t,s)
   do while(t<2d0)
     call p%step(2d0,t,s)
-    write(*,*)t,s(:)
   end do
   if(norm2(s-[cos(t),-sin(t)])>1d-6)then
     BDFNewtonKrylov1=1
