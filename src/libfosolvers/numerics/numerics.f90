@@ -656,18 +656,7 @@ contains
       write(*,'(a,i3)')"[E] initBDFNewtonKrylov(): CVodeInit error code ",info
       stop
     end if
-    if(present(pSet).and.present(pSol))then
-      pOpt=PREC_LEFT
-      this%pSet=c_funloc(pSet)
-      this%pSol=c_funloc(pSol)
-      info=cvspilssetpreconditioner(this%work,this%pSet,this%pSol)
-      if(info/=0)then
-        write(*,'(a,i3)')"[E] initBDFNewtonKrylov(): CVSpilsSetPreconditioner error code ",info
-        stop
-      end if
-    else
-      pOpt=PREC_NONE
-    end if
+    pOpt=merge(PREC_LEFT,PREC_NONE,present(pSet).and.present(pSol))
     if(present(maxl))then
       c_maxl=maxl
     else
@@ -682,6 +671,18 @@ contains
     if(info/=0)then
       write(*,'(a,i3)')"[E] initBDFNewtonKrylov(): CVSpilsSetLinearSolver error code ",info
       stop
+    end if
+    if(present(pSet).and.present(pSol))then
+      pOpt=PREC_LEFT
+      this%pSet=c_funloc(pSet)
+      this%pSol=c_funloc(pSol)
+      info=cvspilssetpreconditioner(this%work,this%pSet,this%pSol)
+      if(info/=0)then
+        write(*,'(a,i3)')"[E] initBDFNewtonKrylov(): CVSpilsSetPreconditioner error code ",info
+        stop
+      end if
+    else
+      pOpt=PREC_NONE
     end if
   end subroutine
   
