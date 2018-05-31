@@ -173,7 +173,7 @@ contains
       dRhou(:,i)=0d0
       dRhoE(i)=0d0
     end forall
-    call ode%init(nEq,rhs)
+    call ode%init(nEq,rhs,pSet=pset,pSol=psol)
     call ode%setTol(RTOL,ATOL)
     call ode%setMaxSteps(-1)
     call ode%setIV(t,y)
@@ -386,13 +386,129 @@ contains
     foo=dat
   end function
   
+  !> setup/factor preconditioning matrix
+  function pset(c_time,c_x,c_fx,Jok,Jcur,c_pGamm,dat)
+    use modAdvection
+    real(C_DOUBLE),value::c_time,c_pGamm
+    type(C_PTR),value::c_x,c_fx,dat
+    integer(C_INT),value::Jok
+    integer(C_INT)::Jcur,pset
+    double precision::time
+    double precision,pointer::x(:)
+    double precision,pointer::fx(:)
+    double precision::pGamm
+    integer::ier
+    type(C_PTR)::foo
+    
+    time=c_time
+    pGamm=c_pGamm
+    call associateVector(c_x,x)
+    call associateVector(c_fx,fx)
+    
+    if(Jok==1)then
+      Jcur=0
+    else
+      call setBC(x)
+      call syncState(x)
+      call findAdvJac(grid,rho,rhou,rhoE,p,gamm,JacP,JacC)
+      if(.not.allocated(JacS))then
+        allocate(JacS(size(JacC,1),size(JacC,2),size(JacC,3)))
+      end if
+      JacS(:,:,:)=real(JacC(:,:,:))
+      Jcur=1
+    end if
+    JacS(:,:,:)=-real(pGamm)*JacS(:,:,:)
+    forall(i=1:grid%nC)
+      forall(j=1:5)
+        JacS(j,j,i)=JacS(j,j,i)+1e0
+      end forall
+    end forall
+    !$omp parallel do default(shared)&
+    !$omp& private(ier)
+    do i=1,grid%nC
+      call SGETRF(5,5,JacS(:,1:5,i),5,precPiv(:,i),ier)
+    end do
+    !$end omp parallel do
+    pset=0
+    foo=dat
+  end function
+  
+  !> solve the preconditioning problem
+  function psol(c_time,c_x,c_fx,c_res,c_z,c_pGamm,c_delta,c_lr,dat)
+    real(C_DOUBLE),value::c_time,c_pGamm,c_delta
+    integer(C_INT),value::c_lr
+    type(C_PTR),value::c_x,c_fx,c_res,c_z,dat
+    integer(C_INT)::psol
+    double precision::time
+    double precision,pointer::x(:)
+    double precision,pointer::fx(:)
+    double precision,pointer::res(:)
+    double precision,pointer::z(:)
+    double precision::pGamm
+    double precision::delta
+    integer::lr
+    integer::ier
+    type(C_PTR)::foo
+    
+    time=c_time
+    pGamm=c_pGamm
+    delta=c_delta
+    lr=c_lr
+    call associateVector(c_x,x)
+    call associateVector(c_fx,fx)
+    call associateVector(c_res,res)
+    call associateVector(c_z,z)
+    
+    n=max(floor(-log10(pGamm)),0)
+    ! adaptive number of Jacobi iteration
+    if(n>=6)then
+      z(1:5*grid%nC)=res(1:5*grid%nC)
+      psol=0
+      return
+    else if(n>=5)then
+      n=0
+    else
+      n=1
+    end if
+    !$omp parallel do default(shared)&
+    !$omp& private(ier)
+    do i=1,grid%nC
+      precRhs(:,i)=real(res([0,1,2,3,4]*grid%nC+i))
+      call SGETRS('N',5,1,JacS(:,1:5,i),5,precPiv(:,i),precRhs(:,i),5,ier)
+      z([0,1,2,3,4]*grid%nC+i)=dble(precRhs(:,i))
+    end do
+    !$end omp parallel do
+    do l=1,n ! additional Jacobi loops
+      !$omp parallel do default(shared)&
+      !$omp& private(j,m,ier)
+      do i=1,grid%nC
+        precRhs(:,i)=real(res([0,1,2,3,4]*grid%nC+i))
+        do j=1,size(grid%neib,1)
+          m=grid%neib(j,i)
+          if(1<=m.and.m<=grid%nC)then
+            precRhs(:,i)=precRhs(:,i)-matmul(JacS(:,j*5+1:j*5+5,i),real(z([0,1,2,3,4]*grid%nC+m)))
+          end if
+        end do
+      end do
+      !$end omp parallel do
+      !$omp parallel do default(shared)&
+      !$omp& private(ier)
+      do i=1,grid%nC
+        call SGETRS('N',5,1,JacS(:,1:5,i),5,precPiv(:,i),precRhs(:,i),5,ier)
+        z([0,1,2,3,4]*grid%nC+i)=dble(precRhs(:,i))
+      end do
+      !$end omp parallel do
+    end do
+    psol=0
+    foo=dat
+  end function
+  
 end module
 
 !> Euler solver
 program foeuler
   use modEuler
   character(20)::tmpStr
-  integer::ier
   
   call init()
   write(tmpStr,*)iOut
@@ -412,109 +528,3 @@ program foeuler
   end do
   call clear()
 end program
-
-!> setup/factor preconditioning matrix
-subroutine fcvpset(time,x,fx,Jok,Jcur,pGamm,h,iPara,rPara,work1,work2,work3,ier)
-  use modEuler
-  use modAdvection
-  use iso_c_binding
-  double precision::time
-  double precision::x(*)
-  double precision::fx(*)
-  integer::Jok
-  integer::Jcur
-  double precision::pGamm
-  double precision::h
-  integer(C_LONG)::iPara(*)
-  double precision::rPara(*)
-  double precision::work1(*)
-  double precision::work2(*)
-  double precision::work3(*)
-  integer::ier
-  
-  if(Jok==1)then
-    Jcur=0
-  else
-    call setBC(x)
-    call syncState(x)
-    call findAdvJac(grid,rho,rhou,rhoE,p,gamm,JacP,JacC)
-    if(.not.allocated(JacS))then
-      allocate(JacS(size(JacC,1),size(JacC,2),size(JacC,3)))
-    end if
-    JacS(:,:,:)=real(JacC(:,:,:))
-    Jcur=1
-  end if
-  JacS(:,:,:)=-real(pGamm)*JacS(:,:,:)
-  forall(i=1:grid%nC)
-    forall(j=1:5)
-      JacS(j,j,i)=JacS(j,j,i)+1e0
-    end forall
-  end forall
-  !$omp parallel do default(shared)&
-  !$omp& private(ier)
-  do i=1,grid%nC
-    call SGETRF(5,5,JacS(:,1:5,i),5,precPiv(:,i),ier)
-  end do
-  !$end omp parallel do
-  ier=0
-end subroutine
-
-!> solve the preconditioning problem
-subroutine fcvpsol(time,x,fx,res,z,pGamm,delta,lr,iPara,rPara,work,ier)
-  use modEuler
-  use iso_c_binding
-  double precision::time
-  double precision::x(*)
-  double precision::fx(*)
-  double precision::res(*)
-  double precision::z(*)
-  double precision::pGamm
-  double precision::delta
-  integer::lr
-  integer(C_LONG)::iPara(*)
-  double precision::rPara(*)
-  double precision::work(*)
-  integer::ier
-  
-  n=max(floor(-log10(pGamm)),0)
-  ! adaptive number of Jacobi iteration
-  if(n>=6)then
-    z(1:5*grid%nC)=res(1:5*grid%nC)
-    ier=0
-    return
-  else if(n>=5)then
-    n=0
-  else
-    n=1
-  end if
-  !$omp parallel do default(shared)&
-  !$omp& private(ier)
-  do i=1,grid%nC
-    precRhs(:,i)=real(res([0,1,2,3,4]*grid%nC+i))
-    call SGETRS('N',5,1,JacS(:,1:5,i),5,precPiv(:,i),precRhs(:,i),5,ier)
-    z([0,1,2,3,4]*grid%nC+i)=dble(precRhs(:,i))
-  end do
-  !$end omp parallel do
-  do l=1,n ! additional Jacobi loops
-    !$omp parallel do default(shared)&
-    !$omp& private(j,m,ier)
-    do i=1,grid%nC
-      precRhs(:,i)=real(res([0,1,2,3,4]*grid%nC+i))
-      do j=1,size(grid%neib,1)
-        m=grid%neib(j,i)
-        if(1<=m.and.m<=grid%nC)then
-          precRhs(:,i)=precRhs(:,i)-matmul(JacS(:,j*5+1:j*5+5,i),real(z([0,1,2,3,4]*grid%nC+m)))
-        end if
-      end do
-    end do
-    !$end omp parallel do
-    !$omp parallel do default(shared)&
-    !$omp& private(ier)
-    do i=1,grid%nC
-      call SGETRS('N',5,1,JacS(:,1:5,i),5,precPiv(:,i),precRhs(:,i),5,ier)
-      z([0,1,2,3,4]*grid%nC+i)=dble(precRhs(:,i))
-    end do
-    !$end omp parallel do
-  end do
-  ier=0
-end subroutine
