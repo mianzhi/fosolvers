@@ -32,7 +32,7 @@ module modOtGrid
     procedure,public::h=>hOtGrid
     procedure,public::a=>aOtGrid
     procedure,public::v=>vOtGrid
-    !FIXME:final::purgeOtGrid
+    final::purgeOtGrid
   end type
   
   ! interface to the otree code in c

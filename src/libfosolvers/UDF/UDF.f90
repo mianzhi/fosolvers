@@ -14,7 +14,7 @@ module modUDF
     procedure,public::init=>initUDFTab
     procedure,public::clear=>clearUDFTab
     procedure,public::eval=>evalUDFTab
-    !FIXME:final::purgeUDFTab
+    final::purgeUDFTab
   end type
   
 contains
