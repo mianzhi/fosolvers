@@ -1,8 +1,6 @@
 SET(fopbc_src
   fopbc.f90
   modPbc.f90
-  fkfun.f90
-  fkprec.f90
 )
 
 ADD_EXECUTABLE(fopbc ${fopbc_src})
