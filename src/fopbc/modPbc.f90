@@ -12,6 +12,10 @@ module modPbc
   
   integer,parameter::DIMS=3 !< three dimensions
   
+  integer,parameter::MAXIT_PBC=20 !< max number of momentum and pressure equation iterations
+  integer,parameter::MAXIT_ENERGY=20 !< max number of energy equation iterations
+  integer,parameter::MAXIT_OUTER=10 !< max number of outer iterations
+  
   integer,parameter::BC_WALL_TEMP=0 !< wall boundary with prescribed temperature
   integer,parameter::BC_WALL_TEMP_UDF=5 !< wall boundary with prescribed temperature by UDF
   integer,parameter::BC_WALL_FLUX=1 !< wall boundary with prescribed heat flux
@@ -70,7 +74,7 @@ module modPbc
   ! data for algebraic solver
   type(NewtonKrylov)::pbcEq !< momentum and pressure equations (isothermal) solved by Newton-GMRES
   type(fixPt)::energyEq !< energy equation as a fix point problem
-  integer::nItPBC,nItEnergy !< number of iterations
+  integer::nItPBC,nItEnergy,nOuter !< number of iterations
   
 contains
   
@@ -80,7 +84,7 @@ contains
     integer,parameter::FID=10
     double precision::pInit,uInit(DIMS),TInit,pE(DIMS),tmpD
     double precision,allocatable::YInit(:)
-    integer::ier,udfIc,udfBc,iUdf(5)
+    integer::udfIc,udfBc,iUdf(5)
     
     ! read inputs
     open(FID,file='grid.msh',action='read')
@@ -136,20 +140,11 @@ contains
         call readUDFTab(FID,udf)
       close(FID)
     end if
-    ! initialize nonlinear solver
-    !nEq=5*grid%nC
-    !call fnvinits(3,nEq,ier)
-    !call fkinmalloc(ioutFKIN,routFKIN,ier)
-    !call fkinspgmr(0,0,ier)
-    !call fkinspilssetprec(1,ier)
-    !call fkindense(nEq,ier)
-    !call fkinsetrin('MAX_STEP',huge(1d0),ier)
-    !call fkinsetrin('FNORM_TOL',1d-5,ier)
-    !call fkinsetrin('SSTEP_TOL',1d-9,ier)
-    !call fkinsetiin('PRNT_LEVEL',1,ier)
-    !allocate(x(nEq))
-    !allocate(xscale(nEq))
-    !allocate(rscale(nEq))
+    ! initialize algebraic solver
+    call pbcEq%init(grid%nC*(DIMS+1),pbcRHS)
+    call pbcEq%setMaxIt(MAXIT_PBC)
+    call energyEq%init(grid%nC,energyRHS,maa=MAXIT_ENERGY)
+    call energyEq%setMaxIt(MAXIT_ENERGY)
     ! work space and initial state
     allocate(rho(grid%nE))
     allocate(rho0(grid%nE))
@@ -163,10 +158,9 @@ contains
     allocate(u0(DIMS,grid%nE))
     allocate(temp(grid%nE))
     allocate(temp0(grid%nE))
-    ! FIXME fix nSp
-    allocate(Y(1,grid%nE))
-    allocate(Y0(1,grid%nE))
-    allocate(YInit(1))
+    allocate(Y(1,grid%nE))! FIXME fix nSp
+    allocate(Y0(1,grid%nE))! FIXME fix nSp
+    allocate(YInit(1))! FIXME fix nSp
     allocate(visc(grid%nE))
     allocate(cond(grid%nE))
     allocate(gradP(DIMS,grid%nC))
@@ -227,8 +221,8 @@ contains
     do i=1,grid%nE
       uo(:,i)=rhoui(:,i)/rhoi(i)
       ! FIXME calculation of p, T based on cantera
-      po(i)=(1.4d0-1d0)*(rhoEi(i)-0.5d0*dot_product(rhoui(:,i),rhoui(:,i))/rhoi(i))
-      tempo(i)=po(i)/rhoi(i)/287.058d0
+      po(i)=(gamm-1d0)*(rhoEi(i)-0.5d0*dot_product(rhoui(:,i),rhoui(:,i))/rhoi(i))
+      tempo(i)=po(i)/rhoi(i)/Rgas
     end do
     !$omp end parallel do
   end subroutine
@@ -246,27 +240,9 @@ contains
     !$omp parallel do default(shared)
     do i=1,grid%nE
       ! FIXME calculation of rho, rhoE based on cantera
-      rhoo(i)=pi(i)/287.058d0/tempi(i)
+      rhoo(i)=pi(i)/Rgas/tempi(i)
       rhouo(:,i)=rhoo(i)*ui(:,i)
-      rhoEo(i)=rhoo(i)*(1d0/(1.4d0-1d0)*287.058d0*tempi(i)+0.5d0*dot_product(ui(:,i),ui(:,i)))
-    end do
-    !$omp end parallel do
-  end subroutine
-  
-  !> extract primitive state {p,u,T} from variable vector
-  subroutine extractVar(var,po,uo,tempo)
-    double precision,intent(in)::var(:) !< variable vector of the nonlinear problem
-    double precision,intent(inout)::po(:) !< pressure
-    double precision,intent(inout)::uo(:,:) !< velocity
-    double precision,intent(inout)::tempo(:) !< temperature
-    
-    !$omp parallel do default(shared)&
-    !$omp& private(j)
-    do i=1,grid%nC
-      j=(i-1)*5
-      po(i)=p0(i)+var(j+1)
-      uo(:,i)=u0(:,i)+var(j+2:j+4)
-      tempo(i)=temp0(i)+var(j+5)
+      rhoEo(i)=rhoo(i)*(1d0/(gamm-1d0)*Rgas*tempi(i)+0.5d0*dot_product(ui(:,i),ui(:,i)))
     end do
     !$omp end parallel do
   end subroutine
@@ -321,5 +297,62 @@ contains
       end if
     end do
   end subroutine
+  
+  !> residual function of the momentum and pressure equations
+  function pbcRHS(oldVector,newVector,dat)
+    use iso_c_binding
+    use ieee_arithmetic
+    use modNumerics
+    use modGradient
+    use modAdvection
+    use modDiffusion
+    use modRhieChow
+    type(C_PTR),value::oldVector !< old N_Vector
+    type(C_PTR),value::newVector !< new N_Vector
+    type(C_PTR),value::dat !< optional user data object
+    integer(C_INT)::pbcRHS !< error code
+    double precision,pointer::x(:) !< fortran pointer associated with oldVector
+    double precision,pointer::y(:) !< fortran pointer associated with newVector
+    
+    call associateVector(oldVector,x)
+    call associateVector(newVector,y)
+    
+    pbcRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
+    if(c_associated(dat))then
+    end if
+  end function
+  
+  !> RHS of the energy equation in the form of a fix point problem
+  function energyRHS(oldVector,newVector,dat)
+    use iso_c_binding
+    use ieee_arithmetic
+    use modNumerics
+    use modAdvection
+    use modDiffusion
+    type(C_PTR),value::oldVector !< old N_Vector
+    type(C_PTR),value::newVector !< new N_Vector
+    type(C_PTR),value::dat !< optional user data object
+    integer(C_INT)::energyRHS !< error code
+    double precision,pointer::x(:) !< fortran pointer associated with oldVector
+    double precision,pointer::y(:) !< fortran pointer associated with newVector
+    
+    call associateVector(oldVector,x)
+    call associateVector(newVector,y)
+    
+    !rhoE(1:grid%nC)=x(1:grid%nC)
+    !forall(i=1:grid%nC)
+    !  temp(i)=(rhoE(i)/rho(i)-0.5d0*dot_product(u(:,i),u(:,i)))/(1d0/(gamm-1d0))/Rgas
+    !end forall
+    !call setBC()
+    !call findVarFlow(grid,(rhoE+p)/rho,flowRho,flowRhoH)
+    !call findAdv(grid,flowRhoH,advRhoH)
+    !call findDiff(grid,temp,cond,condQ)
+    !forall(i=1:grid%nC)
+    !  y(i)=rhoE0(i)+dt/grid%v(i)*(advRhoH(i)+condQ(i)) ! TODO add viscous heating
+    !end forall
+    energyRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
+    if(c_associated(dat))then
+    end if
+  end function
   
 end module

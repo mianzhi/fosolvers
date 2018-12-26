@@ -11,11 +11,10 @@ program fopbc
   write(*,'(a)')'[i] writing: rst_'//trim(adjustl(tmpStr))//'.vtk'
   call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
   do while(t<tFinal)
-    !call setBC()
-    !call recordState0()
-    ! TODO update transport properties according to state0
-    !visc(:)=20d-6
-    !cond(:)=30d-3
+    call setBC()
+    call recordState0()
+    visc(:)=20d-6! TODO update transport properties according to state0
+    cond(:)=30d-3! TODO update transport properties according to state0
     !call preSolve()
     !call extractVar(x,p,u,temp)
     !call recoverState(p,u,temp,Y,rho,rhou,rhoE)
