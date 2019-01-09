@@ -41,6 +41,8 @@ module modPbc
   double precision::tInt !< time interval of output
   double precision::tNext !< time for next output
   integer::iOut !< index of output
+  integer::nRetry !< number of retry for the current time step
+  logical::needRetry !< if retry of the current time step is needed
   
   double precision::Rgas !< specific gas constant [J/kg/K]
   double precision::gamm !< gamma of gas
@@ -74,7 +76,7 @@ module modPbc
   ! data for algebraic solver
   type(NewtonKrylov)::pbcEq !< momentum and pressure equations (isothermal) solved by Newton-GMRES
   type(fixPt)::energyEq !< energy equation as a fix point problem
-  integer::nItPBC,nItEnergy,nOuter !< number of iterations
+  integer::nItPBC,nItEnergy,nItOuter !< number of iterations
   
 contains
   
@@ -205,6 +207,17 @@ contains
     u0(:,:)=u(:,:)
     temp0(:)=temp(:)
     Y0(:,:)=Y(:,:)
+  end subroutine
+  
+  !> load {rho,rhoU,rhoE,p,u,temp,Y} from {rho0,rhoU0,rhoE0,p0,u0,temp0,Y0}
+  subroutine loadState0()
+    rho(:)=rho0(:)
+    rhou(:,:)=rhou0(:,:)
+    rhoE(:)=rhoE0(:)
+    p(:)=p0(:)
+    u(:,:)=u0(:,:)
+    temp(:)=temp0(:)
+    Y(:,:)=Y0(:,:)
   end subroutine
   
   !> derive primitive state {p,u,T} from conserved state {rho,rhou,rhoE}
