@@ -24,9 +24,9 @@ program fopbc
     cond(:)=30d-3! TODO update transport properties according to state0
     call preSolve()
     do nItOuter=1,MAXIT_OUTER
-      !call solvePBC()
+      call solvePBC()
       if(needRetry) exit
-      !call solveEnergy()
+      call solveEnergy()
       if(needRetry) exit
     end do
     if(needRetry) cycle

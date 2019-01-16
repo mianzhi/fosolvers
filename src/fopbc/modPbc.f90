@@ -60,6 +60,10 @@ module modPbc
   
   double precision,allocatable::visc(:) !< viscosity [Pa*s]
   double precision,allocatable::cond(:) !< thermal conductivity [W/m/K]
+  double precision,allocatable::flowRho(:) !< mass flow through pair [kg/s]
+  double precision,allocatable::flowRhou(:,:) !< momentum flow through pair [kg*m/s^2]
+  double precision,allocatable::advRho(:) !< mass advection into cell [kg/s]
+  double precision,allocatable::advRhou(:,:) !< momentum advection into cell [kg*m/s^2]
   double precision,allocatable::gradP(:,:) !< gradient of p [Pa/m]
   double precision,allocatable::viscF(:,:) !< viscous force applied on cell [N]
   double precision,allocatable::presF(:,:) !< pressure force applied on cell [N]
@@ -165,6 +169,10 @@ contains
     allocate(YInit(1))! FIXME fix nSp
     allocate(visc(grid%nE))
     allocate(cond(grid%nE))
+    allocate(flowRho(grid%nP))
+    allocate(flowRhou(DIMS,grid%nP))
+    allocate(advRho(grid%nC))
+    allocate(advRhou(DIMS,grid%nC))
     allocate(gradP(DIMS,grid%nC))
     allocate(viscF(DIMS,grid%nC))
     allocate(presF(DIMS,grid%nC))
@@ -311,15 +319,34 @@ contains
     end do
   end subroutine
   
+  !> solve the coupled momentum and pressure equations while keeping isothermal
+  subroutine solvePBC()
+    double precision,allocatable,save::x(:)
+    integer::info
+    
+    if(.not.allocated(x))then
+      allocate(x((DIMS+1)*grid%nC))
+    else if(size(x)/=(DIMS+1)*grid%nC)then
+      deallocate(x)
+      allocate(x((DIMS+1)*grid%nC))
+    end if
+    forall(i=1:grid%nC)
+      x((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=u(:,i)
+      x((DIMS+1)*(i-1)+(DIMS+1))=p(i)
+    end forall
+  end subroutine
+  
   !> residual function of the momentum and pressure equations
   function pbcRHS(oldVector,newVector,dat)
     use iso_c_binding
     use ieee_arithmetic
     use modNumerics
-    use modGradient
     use modAdvection
-    use modDiffusion
     use modRhieChow
+    use modDiffusion
+    use modGradient
+    use modPressure
+    use modNewtonian
     type(C_PTR),value::oldVector !< old N_Vector
     type(C_PTR),value::newVector !< new N_Vector
     type(C_PTR),value::dat !< optional user data object
@@ -330,10 +357,39 @@ contains
     call associateVector(oldVector,x)
     call associateVector(newVector,y)
     
+    forall(i=1:grid%nC)
+      u(:,i)=x((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)
+      p(i)=x((DIMS+1)*(i-1)+(DIMS+1))
+      rho(i)=p(i)/Rgas/temp(i)
+      rhou(:,i)=rho(i)*u(:,i)
+    end forall
+    call setBC()
+    call findGrad(grid,p,gradP)
+    call findMassFlow(grid,rhou,flowRho)
+    call addRhieChow(grid,p,gradP,dt,flowRho)
+    call findVarFlow(grid,u,flowRho,flowRhou)
+    call findAdv(grid,flowRho,advRho)
+    call findAdv(grid,flowRhou,advRhou)
+    call findPresForce(grid,p,gradP,presF)
+    call findViscForce(grid,u,visc,viscF)
     pbcRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
     if(c_associated(dat))then
     end if
   end function
+  
+  !> solve the energy equation
+  subroutine solveEnergy()
+    double precision,allocatable,save::tmpRhoE(:)
+    integer::info
+    
+    if(.not.allocated(tmpRhoE))then
+      allocate(tmpRhoE(grid%nC))
+    else if(size(tmpRhoE)/=grid%nC)then
+      deallocate(tmpRhoE)
+      allocate(tmpRhoE(grid%nC))
+    end if
+    tmpRhoE(:)=rhoE(1:grid%nC)
+  end subroutine
   
   !> RHS of the energy equation in the form of a fix point problem
   function energyRHS(oldVector,newVector,dat)
