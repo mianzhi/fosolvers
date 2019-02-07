@@ -28,6 +28,7 @@ program fopbc
       if(needRetry) exit
       call solveEnergy()
       if(needRetry) exit
+      ! TODO exit check
     end do
     if(needRetry) cycle
     t=t+dt
@@ -38,6 +39,7 @@ program fopbc
       call writeState('rst_'//trim(adjustl(tmpStr))//'.vtk')
       tNext=tNext+tInt
     end if
+    call postSolve()
   end do
   call clear()
 end program

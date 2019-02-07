@@ -297,9 +297,24 @@ contains
     &                /norm2(u(:,1:grid%nC),1)))
     dt=min(dt,minval(CFL_DIFFUSION*grid%v(:)**(2d0/3d0)&
     &                /(visc(1:grid%nC)/rho(1:grid%nC))))
-    dt=1d-4
+    if(nRetry>0)then
+      dt=dt/2d0**nRetry
+      write(*,'(a,i2,a,g12.6)')'[i] starting retry No. ',nRetry,' at t: ',t
+    end if
+    
+    nItPBC=0
+    nItEnergy=0
     
     write(*,'(a,g12.6,a,g12.6)')'[i] starting step, t: ',t,' dt: ',dt
+  end subroutine
+  
+  !> guess next time step size, etc.
+  subroutine postSolve()
+    ! the time step size is adjusted to maintain half of the maximum number iterations
+    dt=dt*minval(dble([MAXIT_PBC,MAXIT_ENERGY,MAXIT_OUTER])/&
+    &            dble(max(1,[nItPBC,nItEnergy,nItOuter])))*0.5d0
+    write(*,'(a,i2,a,i2,a,i2,a)')'[i] finished step, nIt[PBC,Energy,Outer]: [',&
+    &  nItPBC,',',nItEnergy,',',nItOuter,']'
   end subroutine
   
   !> set the boundary conditions
@@ -333,6 +348,14 @@ contains
     forall(i=1:grid%nC)
       x((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=u(:,i)
       x((DIMS+1)*(i-1)+(DIMS+1))=p(i)
+    end forall
+    call pbcEq%solve(x,info=info)
+    needRetry=info<0
+    call pbcEq%getNIt(n)
+    nItPBC=max(nItPBC,n)
+    forall(i=1:grid%nC)
+      u(:,i)=x((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)
+      p(i)=x((DIMS+1)*(i-1)+(DIMS+1))
     end forall
   end subroutine
   
@@ -372,6 +395,12 @@ contains
     call findAdv(grid,flowRhou,advRhou)
     call findPresForce(grid,p,gradP,presF)
     call findViscForce(grid,u,visc,viscF)
+    forall(i=1:grid%nC)
+      y((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=& ! momentum equation residual
+      &  rhou(:,i)-rhou0(:,i)-dt/grid%v(i)*(advRhou(:,i)+presF(:,i)+viscF(:,i))
+      y((DIMS+1)*(i-1)+(DIMS+1))=& ! pressure equation residual
+      &  rho(i)-rho0(i)-dt/grid%v(i)*advRho(i)
+    end forall
     pbcRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
     if(c_associated(dat))then
     end if
