@@ -69,13 +69,15 @@ module modPbc
   double precision,allocatable::presF(:,:) !< pressure force applied on cell [N]
   double precision,allocatable::condQ(:) !< heat conduction into cell [W]
   
-  ! scales
+  ! scales and scaling factors
   double precision,allocatable::rhoScale !< density scale [kg/m^3]
   double precision,allocatable::rhouScale !< momentum scale [kg/s/m^2]
   double precision,allocatable::rhoEScale !< total energy scale [J/m^3]
   double precision,allocatable::pScale !< pressure scale [Pa]
   double precision,allocatable::uScale !< velocity scale [m/s]
   double precision,allocatable::tempScale !< temperature scale [K]
+  double precision,allocatable::pbcXFact(:) !< pbc solution scaling factor vector
+  double precision,allocatable::pbcRFact(:) !< pbc residual scaling factor vector
   
   ! data for algebraic solver
   type(NewtonKrylov)::pbcEq !< momentum and pressure equations (isothermal) solved by Newton-GMRES
@@ -177,6 +179,8 @@ contains
     allocate(viscF(DIMS,grid%nC))
     allocate(presF(DIMS,grid%nC))
     allocate(condQ(grid%nC))
+    allocate(pbcXFact((DIMS+1)*grid%nC))
+    allocate(pbcRFact((DIMS+1)*grid%nC))
     do i=1,grid%nE
       if(udfIc/=0)then
         pE(:)=grid%p(:,i)
@@ -301,6 +305,21 @@ contains
       dt=dt/2d0**nRetry
       write(*,'(a,i2,a,g12.6)')'[i] starting retry No. ',nRetry,' at t: ',t
     end if
+    
+    ! solution and residual scales
+    pScale=max(maxval(p),maxval(0.5d0*rho*norm2(u,1)**2))
+    uScale=max(maxval(norm2(u,1)),sqrt(2d0*(maxval(p)-minval(p))/minval(rho)),0.01d0)
+    tempScale=maxval(temp)
+    rhoScale=maxval(rho)
+    rhouScale=rhoScale*uScale
+    rhoEScale=max(rhoScale*Rgas*tempScale,0.5d0*rhoScale*uScale**2)
+    forall(i=1:grid%nC)
+      pbcXFact((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=1d0/uScale
+      pbcXFact((DIMS+1)*(i-1)+(DIMS+1))=1d0/pScale
+      pbcRFact((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=1d0/rhouScale
+      pbcRFact((DIMS+1)*(i-1)+(DIMS+1))=1d0/rhoScale
+    end forall
+    call pbcEq%setScale(pbcXFact,pbcRFact)
     
     nItPBC=0
     nItEnergy=0

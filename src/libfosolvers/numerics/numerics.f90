@@ -17,6 +17,7 @@ module modNumerics
     procedure::initNoLinEq ! specific class uses different arguments, saved the init() name
     procedure,public::clear=>clearNoLinEq
     procedure,public::setTol=>setTolNoLinEq
+    procedure,public::setScale=>setScaleNoLinEq
     procedure,public::setMaxIt=>setMaxItNoLinEq
     procedure,public::getNIt=>getNItNoLinEq
     final::purgeNoLinEq
@@ -366,6 +367,19 @@ contains
       write(*,'(a,i3)')"[E] setTolNoLinEq(): KINSetFuncNormTol error code ",info
       stop
     end if
+  end subroutine
+  
+  !> set the solution and residual scaling vectors for this noLinEq
+  subroutine setScaleNoLinEq(this,xScale,rScale)
+    class(noLinEq),intent(inout)::this !< this noLinEq
+    double precision,intent(in)::xScale(:) !< solution scaling vector
+    double precision,intent(in)::rScale(:) !< residual scaling vector
+    double precision,pointer::xScalePtr(:),rScalePtr(:)
+    
+    call associateVector(this%xScale,xScalePtr)
+    call associateVector(this%rScale,rScalePtr)
+    xScalePtr(1:this%nEq)=xScale(1:this%nEq)
+    rScalePtr(1:this%nEq)=rScale(1:this%nEq)
   end subroutine
   
   !> set the maximum number of iterations for this noLinEq
