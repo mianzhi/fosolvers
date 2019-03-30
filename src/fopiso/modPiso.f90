@@ -480,6 +480,42 @@ contains
     end forall
   end subroutine
   
+  !> RHS of the momentum equation in the form of a fix point problem
+  function momentumRHS(oldVector,newVector,dat)
+    use iso_c_binding
+    use ieee_arithmetic
+    use modNumerics
+    use modAdvection
+    use modNewtonian
+    type(C_PTR),value::oldVector !< old N_Vector
+    type(C_PTR),value::newVector !< new N_Vector
+    type(C_PTR),value::dat !< optional user data object
+    integer(C_INT)::momentumRHS !< error code
+    double precision,pointer::x(:) !< fortran pointer associated with oldVector
+    double precision,pointer::y(:) !< fortran pointer associated with newVector
+    
+    call associateVector(oldVector,x)
+    call associateVector(newVector,y)
+    
+    rhou(:,1:grid%nC)=reshape(x,[DIMS,grid%nC])
+    forall(i=1:grid%nC)
+      u(:,i)=rhou(:,i)/rho(i)
+    end forall
+    call setBC()
+    call findViscForce(grid,u,visc,viscF)
+    forall(i=1:grid%nE,j=1:DIMS)
+      fluxRhou(:,j,i)=rhou(j,i)*u(:,i)
+    end forall
+    call findAdv(grid,rhou,fluxRhou,advRhou)
+    forall(i=1:grid%nC)
+      rhou(:,i)=rhou0(:,i)+dt/grid%v(i)*(advRhou(:,i)+presF(:,i)+viscF(:,i))
+    end forall
+    y=reshape(rhou(:,1:grid%nC),[grid%nC*DIMS])
+    momentumRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
+    if(c_associated(dat))then
+    end if
+  end function
+  
   !> solve the pressure, such that mass is conserved
   subroutine solvePressure()
     use modAdvection
@@ -501,6 +537,40 @@ contains
     nItPressure=max(nItPressure,n)
     p(1:grid%nC)=tmpP(:)
   end subroutine
+  
+  !> residual function of the pressure equation
+  function pressureRHS(oldVector,newVector,dat)
+    use iso_c_binding
+    use ieee_arithmetic
+    use modNumerics
+    use modGradient
+    use modAdvection
+    use modDiffusion
+    use modRhieChow
+    type(C_PTR),value::oldVector !< old N_Vector
+    type(C_PTR),value::newVector !< new N_Vector
+    type(C_PTR),value::dat !< optional user data object
+    integer(C_INT)::pressureRHS !< error code
+    double precision,pointer::x(:) !< fortran pointer associated with oldVector
+    double precision,pointer::y(:) !< fortran pointer associated with newVector
+    
+    call associateVector(oldVector,x)
+    call associateVector(newVector,y)
+    
+    p(1:grid%nC)=x(1:grid%nC)
+    call setBC()
+    call findGrad(grid,p,gradP)
+    flowRho(:)=flowRho1(:)
+    call addRhieChow(grid,p,gradP,dt,flowRho)
+    call findAdv(grid,flowRho,advRho)
+    call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
+    forall(i=1:grid%nC)
+      y(i)=p(i)-Rgas*temp(i)*(rho0(i)+dt/grid%v(i)*(advRho(i)+dt*(laP(i)-laP1(i))))
+    end forall
+    pressureRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
+    if(c_associated(dat))then
+    end if
+  end function
   
   !> correct the momentum, mass flow, mass advection with updated pressure
   subroutine correctMomentum()
@@ -567,75 +637,42 @@ contains
     end forall
   end subroutine
   
-  !> RHS of the momentum equation in the form of a fix point problem
-  function momentumRHS(oldVector,newVector,dat)
+  !> RHS of the energy equation in the form of a fix point problem
+  function energyRHS(oldVector,newVector,dat)
     use iso_c_binding
     use ieee_arithmetic
     use modNumerics
     use modAdvection
-    use modNewtonian
+    use modDiffusion
     type(C_PTR),value::oldVector !< old N_Vector
     type(C_PTR),value::newVector !< new N_Vector
     type(C_PTR),value::dat !< optional user data object
-    integer(C_INT)::momentumRHS !< error code
+    integer(C_INT)::energyRHS !< error code
     double precision,pointer::x(:) !< fortran pointer associated with oldVector
     double precision,pointer::y(:) !< fortran pointer associated with newVector
     
     call associateVector(oldVector,x)
     call associateVector(newVector,y)
     
-    rhou(:,1:grid%nC)=reshape(x,[DIMS,grid%nC])
+    rhoE(1:grid%nC)=x(1:grid%nC)
     forall(i=1:grid%nC)
-      u(:,i)=rhou(:,i)/rho(i)
+      temp(i)=(rhoE(i)/rho(i)-0.5d0*dot_product(u(:,i),u(:,i)))/(1d0/(gamm-1d0))/Rgas
     end forall
     call setBC()
-    call findViscForce(grid,u,visc,viscF)
-    forall(i=1:grid%nE,j=1:DIMS)
-      fluxRhou(:,j,i)=rhou(j,i)*u(:,i)
-    end forall
-    call findAdv(grid,rhou,fluxRhou,advRhou)
+    call findVarFlow(grid,(rhoE+p)/rho,flowRho,flowRhoH)
+    call findAdv(grid,flowRhoH,advRhoH)
+    call findDiff(grid,temp,cond,condQ)
     forall(i=1:grid%nC)
-      rhou(:,i)=rhou0(:,i)+dt/grid%v(i)*(advRhou(:,i)+presF(:,i)+viscF(:,i))
+      y(i)=rhoE0(i)+dt/grid%v(i)*(advRhoH(i)+condQ(i)) ! TODO add viscous heating
     end forall
-    y=reshape(rhou(:,1:grid%nC),[grid%nC*DIMS])
-    momentumRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
+    energyRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
     if(c_associated(dat))then
     end if
   end function
   
-  !> residual function of the pressure equation
-  function pressureRHS(oldVector,newVector,dat)
-    use iso_c_binding
-    use ieee_arithmetic
-    use modNumerics
-    use modGradient
-    use modAdvection
-    use modDiffusion
-    use modRhieChow
-    type(C_PTR),value::oldVector !< old N_Vector
-    type(C_PTR),value::newVector !< new N_Vector
-    type(C_PTR),value::dat !< optional user data object
-    integer(C_INT)::pressureRHS !< error code
-    double precision,pointer::x(:) !< fortran pointer associated with oldVector
-    double precision,pointer::y(:) !< fortran pointer associated with newVector
-    
-    call associateVector(oldVector,x)
-    call associateVector(newVector,y)
-    
-    p(1:grid%nC)=x(1:grid%nC)
-    call setBC()
-    call findGrad(grid,p,gradP)
-    flowRho(:)=flowRho1(:)
-    call addRhieChow(grid,p,gradP,dt,flowRho)
-    call findAdv(grid,flowRho,advRho)
-    call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
-    forall(i=1:grid%nC)
-      y(i)=p(i)-Rgas*temp(i)*(rho0(i)+dt/grid%v(i)*(advRho(i)+dt*(laP(i)-laP1(i))))
-    end forall
-    pressureRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
-    if(c_associated(dat))then
-    end if
-  end function
+  
+  
+  
   
   !> RHS of the density equation in the form of a fix point problem
   function densityRHS(oldVector,newVector,dat)
@@ -669,37 +706,6 @@ contains
     end if
   end function
   
-  !> RHS of the energy equation in the form of a fix point problem
-  function energyRHS(oldVector,newVector,dat)
-    use iso_c_binding
-    use ieee_arithmetic
-    use modNumerics
-    use modAdvection
-    use modDiffusion
-    type(C_PTR),value::oldVector !< old N_Vector
-    type(C_PTR),value::newVector !< new N_Vector
-    type(C_PTR),value::dat !< optional user data object
-    integer(C_INT)::energyRHS !< error code
-    double precision,pointer::x(:) !< fortran pointer associated with oldVector
-    double precision,pointer::y(:) !< fortran pointer associated with newVector
-    
-    call associateVector(oldVector,x)
-    call associateVector(newVector,y)
-    
-    rhoE(1:grid%nC)=x(1:grid%nC)
-    forall(i=1:grid%nC)
-      temp(i)=(rhoE(i)/rho(i)-0.5d0*dot_product(u(:,i),u(:,i)))/(1d0/(gamm-1d0))/Rgas
-    end forall
-    call setBC()
-    call findVarFlow(grid,(rhoE+p)/rho,flowRho,flowRhoH)
-    call findAdv(grid,flowRhoH,advRhoH)
-    call findDiff(grid,temp,cond,condQ)
-    forall(i=1:grid%nC)
-      y(i)=rhoE0(i)+dt/grid%v(i)*(advRhoH(i)+condQ(i)) ! TODO add viscous heating
-    end forall
-    energyRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
-    if(c_associated(dat))then
-    end if
-  end function
+  
   
 end module
