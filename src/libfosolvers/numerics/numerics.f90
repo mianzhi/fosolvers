@@ -529,11 +529,11 @@ contains
     integer,optional,intent(out)::info !< exit code
     double precision,pointer::xPtr(:)
     integer(C_INT)::c_info
-    integer(C_INT),parameter::KIN_LINESEARCH=1
+    integer(C_INT),parameter::KIN_NONE=0
     
     call associateVector(this%x,xPtr)
     xPtr(1:this%nEq)=x(1:this%nEq)
-    c_info=kinsol(this%work,this%x,KIN_LINESEARCH,this%xScale,this%rScale)
+    c_info=kinsol(this%work,this%x,KIN_NONE,this%xScale,this%rScale)
     if(c_info<0)then
       write(*,'(a,i3)')"[W] solveNewtonKrylov(): KINSol exit code ",c_info
     end if
