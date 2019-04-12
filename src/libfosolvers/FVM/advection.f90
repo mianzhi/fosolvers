@@ -10,6 +10,7 @@ module modAdvection
   !> generic finding mass flow rate through pairs
   interface findMassFlow
     module procedure::findMassFlowPoly
+    module procedure::findMassFlowRhieChowPoly
   end interface
   public::findMassFlow
   
@@ -89,6 +90,42 @@ contains
     end do
     !$omp end parallel do
     deallocate(gradRhou)
+  end subroutine
+  
+  !> find mass flow rate by Rhie-Chow interpolation on polyFvGrid
+  !> \f[ \int_A \rho\mathbf{u} \cdot \hat{n} dA \f]
+  subroutine findMassFlowRhieChowPoly(grid,rhou,p,presF,dt,flow)
+    use modPolyFvGrid
+    use modGradient
+    class(polyFvGrid),intent(inout)::grid !< the grid
+    double precision,intent(in)::rhou(:,:) !< mass flux
+    double precision,intent(in)::p(:) !< pressure
+    double precision,intent(in)::presF(:,:) !< pressure force
+    double precision,intent(in)::dt !< time step size
+    double precision,allocatable,intent(inout)::flow(:) !< mass flow rate output
+    double precision::vMN(DIMS),vMP(DIMS),vPN(DIMS),flux(DIMS),eps
+    
+    call grid%up()
+    if(.not.allocated(flow))then
+      allocate(flow(grid%nP))
+    end if
+    flow(:)=0d0
+    !$omp parallel do default(shared)&
+    !$omp& private(m,n,vMN,vMP,vPN,flux,eps)
+    do i=1,grid%nP
+      m=grid%iEP(1,i)
+      n=grid%iEP(2,i)
+      if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
+        vMN(:)=grid%p(:,n)-grid%p(:,m)
+        vMP(:)=grid%pP(:,i)-grid%p(:,m)
+        vPN(:)=grid%p(:,n)-grid%pP(:,i)
+        eps=norm2(vPN)/(norm2(vMP)+norm2(vPN))
+        flux(:)=eps*rhou(:,m)+(1d0-eps)*rhou(:,n)&
+        &       +dt*(-(eps*presF(:,m)+(1d0-eps)*presF(:,n))+vMN(:)*(p(m)-p(n))/dot_product(vMN,vMN))
+        flow(i)=grid%aP(i)*dot_product(grid%normP(:,i),flux(:))
+      end if
+    end do
+    !$omp end parallel do
   end subroutine
   
   !> find flow rate of vector v on polyFvGrid using mass flow rate
