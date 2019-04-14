@@ -80,7 +80,7 @@ module modPiso
   double precision,allocatable::rho0(:),rhou0(:,:),rhoE0(:),p0(:),u0(:,:),temp0(:),Y0(:,:)
   
   ! auxiliary variables for the PISO iteration
-  double precision,allocatable::rho1(:),p1(:),laP1(:),presF1(:,:),temp1(:),rhou1(:,:),flowRho1(:)
+  double precision,allocatable::rho1(:),p1(:),laP1(:),presF1(:,:),temp1(:),rhou1(:,:)
   
   ! scales
   double precision,allocatable::rhoScale !< density scale [kg/m^3]
@@ -202,7 +202,6 @@ contains
     allocate(presF1(DIMS,grid%nC))
     allocate(condQ(grid%nC))
     allocate(flowRho(grid%nP))
-    allocate(flowRho1(grid%nP))
     allocate(advRho(grid%nC))
     allocate(advRhou(DIMS,grid%nC))
     allocate(flowRhoH(grid%nP))
@@ -530,7 +529,6 @@ contains
     end if
     tmpP(:)=p(1:grid%nC)
     call setBC()
-    call findMassFlow(grid,rhou,flowRho1)
     call pressureEq%solve(tmpP,info=info)
     needRetry=info<0
     call pressureEq%getNIt(n)
@@ -544,9 +542,9 @@ contains
     use ieee_arithmetic
     use modNumerics
     use modGradient
+    use modPressure
     use modAdvection
     use modDiffusion
-    use modRhieChow
     type(C_PTR),value::oldVector !< old N_Vector
     type(C_PTR),value::newVector !< new N_Vector
     type(C_PTR),value::dat !< optional user data object
@@ -560,8 +558,8 @@ contains
     p(1:grid%nC)=x(1:grid%nC)
     call setBC()
     call findGrad(grid,p,gradP)
-    flowRho(:)=flowRho1(:)
-    call addRhieChow(grid,p,gradP,dt,flowRho)
+    call findPresForce(grid,p,gradP,presF)
+    call findMassFlow(grid,rhou,p,presF,dt,flowRho)
     call findAdv(grid,flowRho,advRho)
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
     forall(i=1:grid%nC)
@@ -577,7 +575,6 @@ contains
     use modPressure
     use modGradient
     use modAdvection
-    use modRhieChow
     integer,parameter::N_RHOU_CORRECTION=3 !< number of enabled momentum corrections
     
     if(nItPISO<=N_RHOU_CORRECTION)then
@@ -588,9 +585,7 @@ contains
       end forall
     end if
     call setBC()
-    call findMassFlow(grid,rhou,flowRho)
-    call findGrad(grid,p,gradP)
-    call addRhieChow(grid,p,gradP,dt,flowRho)
+    call findMassFlow(grid,rhou,p,presF,dt,flowRho)
     call findAdv(grid,flowRho,advRho)
   end subroutine
   
