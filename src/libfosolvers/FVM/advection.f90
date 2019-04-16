@@ -122,8 +122,10 @@ contains
         eps=norm2(vPN)/(norm2(vMP)+norm2(vPN))
         flux(:)=eps*rhou(:,m)+(1d0-eps)*rhou(:,n)&
         &       +dt*(-(eps*presF(:,m)+(1d0-eps)*presF(:,n))+vMN(:)*(p(m)-p(n))/dot_product(vMN,vMN))
-        flow(i)=grid%aP(i)*dot_product(grid%normP(:,i),flux(:))
+      else
+        flux(:)=0.5d0*(rhou(:,m)+rhou(:,n))
       end if
+      flow(i)=grid%aP(i)*dot_product(grid%normP(:,i),flux(:))
     end do
     !$omp end parallel do
   end subroutine
