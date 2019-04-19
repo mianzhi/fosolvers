@@ -9,6 +9,7 @@ module modAdvection
   
   !> generic finding mass flow rate through pairs
   interface findMassFlow
+    module procedure::findMassFlowMagicPoly
     module procedure::findMassFlowPoly
     module procedure::findMassFlowRhieChowPoly
   end interface
@@ -40,6 +41,64 @@ module modAdvection
   public::findAdvJac
   
 contains
+  
+  !> find mass flow rate on polyFvGrid with Rhie-Chow u interpolation and TVD rho reconstruction
+  !> \f[ \int_A \rho\mathbf{u} \cdot \hat{n} dA \f]
+  subroutine findMassFlowMagicPoly(grid,rho,u,p,presF,dt,flow)
+    use modPolyFvGrid
+    use modGradient
+    class(polyFvGrid),intent(inout)::grid !< the grid
+    double precision,intent(in)::rho(:) !< density
+    double precision,intent(in)::u(:,:) !< velocity
+    double precision,intent(in)::p(:) !< pressure
+    double precision,intent(in)::presF(:,:) !< pressure force
+    double precision,intent(in)::dt !< time step size
+    double precision,allocatable,intent(inout)::flow(:) !< mass flow rate output
+    integer::up,dn
+    double precision::vMN(DIMS),vMP(DIMS),vPN(DIMS),flux(DIMS),eps,rhoUp,rhoDn,dRho,r,rhof
+    double precision,allocatable::gradRho(:,:)
+    
+    call grid%up()
+    if(.not.allocated(flow))then
+      allocate(flow(grid%nP))
+    end if
+    flow(:)=0d0
+    allocate(gradRho(DIMS,grid%nC))
+    call findGrad(grid,rho,gradRho)
+    !$omp parallel do default(shared)&
+    !$omp& private(m,n,up,dn,rhoUp,rhoDn,dRho,r,rhof,vMN,vMP,vPN,eps,flux)
+    do i=1,grid%nP
+      m=grid%iEP(1,i)
+      n=grid%iEP(2,i)
+      if(dot_product(u(:,m)+u(:,n),grid%normP(:,i))>=0d0)then ! upwind by velocity
+        up=m
+        dn=n
+      else
+        up=n
+        dn=m
+      end if
+      rhoUp=rho(up)
+      rhoDn=rho(dn)
+      if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
+        dRho=dot_product(grid%p(:,dn)-grid%p(:,up),gradRho(:,up))
+        r=merge(2d0*dRho/(rhoDn-rhoUp)-1d0,0d0,abs(rhoDn-rhoUp)>tiny(1d0))
+        rhof=rhoUp+0.5d0*vanAlbada(r)*(rhoDn-rhoUp)
+        vMN(:)=grid%p(:,n)-grid%p(:,m)
+        vMP(:)=grid%pP(:,i)-grid%p(:,m)
+        vPN(:)=grid%p(:,n)-grid%pP(:,i)
+        eps=norm2(vPN)/(norm2(vMP)+norm2(vPN))
+        flux(:)=rhof*(eps*u(:,m)+(1d0-eps)*u(:,n))&
+        &       -dt/(1d0/rho(m)+1d0/rho(n))*&
+        &        (presF(:,m)/grid%v(m)/rho(m)+presF(:,n)/grid%v(n)/rho(n))&
+        &       +dt*vMN(:)*(p(m)-p(n))/dot_product(vMN,vMN)
+      else ! boundary pairs
+        flux(:)=rho(up)*0.5d0*(u(:,m)+u(:,n))
+      end if
+      flow(i)=grid%aP(i)*dot_product(grid%normP(:,i),flux(:))
+    end do
+    !$omp end parallel do
+    deallocate(gradRho)
+  end subroutine
   
   !> find mass flow rate on polyFvGrid
   !> \f[ \int_A \rho\mathbf{u} \cdot \hat{n} dA \f]

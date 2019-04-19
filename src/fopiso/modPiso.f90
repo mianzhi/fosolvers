@@ -559,7 +559,7 @@ contains
     call setBC()
     call findGrad(grid,p,gradP)
     call findPresForce(grid,p,gradP,presF)
-    call findMassFlow(grid,rhou,p,presF,dt,flowRho)
+    call findMassFlow(grid,rho,u,p,presF,dt,flowRho)
     call findAdv(grid,flowRho,advRho)
     call findDiff(grid,p,[(1d0,i=1,grid%nC)],laP)
     forall(i=1:grid%nC)
@@ -575,17 +575,17 @@ contains
     use modPressure
     use modGradient
     use modAdvection
-    integer,parameter::N_RHOU_CORRECTION=3 !< number of enabled momentum corrections
     
-    if(nItPISO<=N_RHOU_CORRECTION)then
-      call setBC()
-      call findPresForce(grid,p,gradP,presF)
-      forall(i=1:grid%nC)
-        rhou(:,i)=rhou(:,i)+dt/grid%v(i)*(presF(:,i)-presF1(:,i))
-      end forall
-    end if
     call setBC()
-    call findMassFlow(grid,rhou,p,presF,dt,flowRho)
+    call findGrad(grid,p,gradP)
+    call findPresForce(grid,p,gradP,presF)
+    forall(i=1:grid%nC)
+      rhou(:,i)=rhou(:,i)+dt/grid%v(i)*(presF(:,i)-presF1(:,i))
+      rho(i)=p(i)/Rgas/temp(i)
+      u(:,i)=rhou(:,i)/rho(i)
+    end forall
+    call setBC()
+    call findMassFlow(grid,rho,u,p,presF,dt,flowRho)
     call findAdv(grid,flowRho,advRho)
   end subroutine
   

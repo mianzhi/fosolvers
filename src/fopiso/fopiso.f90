@@ -36,10 +36,6 @@ program fopiso
       call solvePressure()
       if(needRetry) exit
       call correctMomentum()
-      forall(i=1:grid%nC)
-        rho(i)=rho0(i)+dt/grid%v(i)*advRho(i)
-        u(:,i)=rhou(:,i)/rho(i)
-      end forall
       write(*,*)'rho and p error: ',maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale,&
       &          maxval(abs(p(1:grid%nC)-p1(1:grid%nC)))/pScale
       temp1(:)=temp(:)
