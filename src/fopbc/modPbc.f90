@@ -384,7 +384,6 @@ contains
     use ieee_arithmetic
     use modNumerics
     use modAdvection
-    use modRhieChow
     use modDiffusion
     use modGradient
     use modPressure
@@ -407,13 +406,12 @@ contains
     end forall
     call setBC()
     call findGrad(grid,p,gradP)
-    call findMassFlow(grid,rhou,flowRho)
-    call addRhieChow(grid,p,gradP,dt,flowRho)
+    call findPresForce(grid,p,gradP,presF)
+    call findViscForce(grid,u,visc,viscF)
+    call findMassFlow(grid,rho,u,p,presF,dt,flowRho)
     call findVarFlow(grid,u,flowRho,flowRhou)
     call findAdv(grid,flowRho,advRho)
     call findAdv(grid,flowRhou,advRhou)
-    call findPresForce(grid,p,gradP,presF)
-    call findViscForce(grid,u,visc,viscF)
     forall(i=1:grid%nC)
       y((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=& ! momentum equation residual
       &  rhou(:,i)-rhou0(:,i)-dt/grid%v(i)*(advRhou(:,i)+presF(:,i)+viscF(:,i))
