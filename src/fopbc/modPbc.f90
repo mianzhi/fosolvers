@@ -352,17 +352,95 @@ contains
   
   !> set the boundary conditions
   subroutine setBC()
+    double precision::pGst,TGst,uGst(DIMS),rhoGst,rhouGst(DIMS),rhoEGst,Mach,pP(DIMS),Tt,pt
     
     do i=1,grid%nP
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
       if(n>grid%nC)then
-        if(.true.)then ! default wall boundary
-          p(n)=p(m)
-          u(:,n)=-u(:,m)
-          temp(n)=temp(m)
-          Y(:,n)=Y(:,m)
+        ! default adiabatic wall boundary
+        pGst=p(m)
+        uGst(:)=-u(:,m)
+        TGst=temp(m)
+        rhoGst=rho(m)
+        rhouGst=-rhou(:,m)
+        rhoEGst=rhoE(m)
+        if(iBC(n)>0)then
+          select case(bc%t(iBC(n)))
+          case(BC_WALL_TEMP,BC_WALL_TEMP_UDF) ! wall temperature boundary
+            ! TODO implement this
+          case(BC_WALL_FLUX,BC_WALL_FLUX_UDF) ! wall heat flux boundary
+            ! TODO implement this
+          case(BC_IN_STATIC,BC_IN_STATIC_UDF) ! inflow boundary with static properties
+            if(bc%t(iBC(n))==BC_IN_STATIC)then
+              pGst=bc%p(1,iBC(n))
+              TGst=bc%p(2,iBC(n))
+              uGst(:)=bc%p(3:5,iBC(n))
+            else
+              pP(:)=grid%pP(:,i)
+              pGst=udf%eval(int(bc%p(1,iBC(n))),pP,t)
+              TGst=udf%eval(int(bc%p(2,iBC(n))),pP,t)
+              uGst(1)=udf%eval(int(bc%p(3,iBC(n))),pP,t)
+              uGst(2)=udf%eval(int(bc%p(4,iBC(n))),pP,t)
+              uGst(3)=udf%eval(int(bc%p(5,iBC(n))),pP,t)
+            end if
+            Mach=norm2(uGst)/sqrt(gamm*Rgas*TGst)
+            if(Mach<1d0)then
+              if(dot_product(uGst,uGst)>0d0)then
+                uGst(:)=dot_product(u(:,m),uGst(:))*uGst/dot_product(uGst,uGst)
+              else
+                uGst(:)=u(:,m)
+              end if
+            end if
+          case(BC_IN_TOTAL,BC_IN_TOTAL_UDF) ! inflow boundary with total properties
+            if(bc%t(iBC(n))==BC_IN_TOTAL)then
+              pt=bc%p(1,iBC(n))
+              Tt=bc%p(2,iBC(n))
+              uGst=bc%p(3:5,iBC(n))
+            else
+              pP(:)=grid%pP(:,i)
+              pt=udf%eval(int(bc%p(1,iBC(n))),pP,t)
+              Tt=udf%eval(int(bc%p(2,iBC(n))),pP,t)
+              uGst(1)=udf%eval(int(bc%p(3,iBC(n))),pP,t)
+              uGst(2)=udf%eval(int(bc%p(4,iBC(n))),pP,t)
+              uGst(3)=udf%eval(int(bc%p(5,iBC(n))),pP,t)
+            end if
+            TGst=Tt-0.5d0*(gamm-1d0)/gamm/Rgas*dot_product(uGst,uGst)
+            Mach=norm2(uGst)/sqrt(gamm*Rgas*TGst)
+            if(Mach<1d0)then
+              if(dot_product(uGst,uGst)>0d0)then
+                uGst(:)=dot_product(u(:,m),uGst(:))*uGst/dot_product(uGst,uGst)
+              else
+                uGst(:)=u(:,m)
+              end if
+              TGst=Tt-0.5d0*(gamm-1d0)/gamm/Rgas*dot_product(uGst,uGst)
+              Mach=norm2(uGst)/sqrt(gamm*Rgas*TGst)
+            end if
+            pGst=pt*(1d0+0.5d0*(gamm-1d0)*Mach**2)**(-gamm/(gamm-1d0))
+          case(BC_OUT,BC_OUT_UDF) ! outflow boundary
+            if(bc%t(iBC(n))==BC_OUT)then
+              pGst=bc%p(1,iBC(n))
+            else
+              pP(:)=grid%pP(:,i)
+              pGst=udf%eval(int(bc%p(1,iBC(n))),pP,t)
+            end if
+            uGst(:)=u(:,m)
+            TGst=temp(m)
+          case(BC_FAR,BC_FAR_UDF) ! far-field boundary
+            ! TODO implement this
+          case default
+          end select
+          rhoGst=pGst/Rgas/TGst
+          rhouGst(:)=rhoGst*uGst(:)
+          rhoEGst=rhoGst*(1d0/(gamm-1d0)*Rgas*TGst+0.5d0*dot_product(uGst,uGst))
         end if
+        ! apply ghost values
+        p(n)=pGst
+        u(:,n)=uGst(:)
+        temp(n)=TGst
+        rho(n)=rhoGst
+        rhou(:,n)=rhouGst(:)
+        rhoE(n)=rhoEGst
       end if
     end do
   end subroutine
