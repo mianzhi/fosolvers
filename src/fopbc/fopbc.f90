@@ -23,7 +23,7 @@ program fopbc
     visc(:)=20d-6! TODO update transport properties according to state0
     cond(:)=30d-3! TODO update transport properties according to state0
     call preSolve()
-    do nItOuter=1,MAXIT_OUTER
+    do nItOuter=1,3!MAXIT_OUTER
       call solvePBC()
       if(needRetry) exit
       call solveEnergy()

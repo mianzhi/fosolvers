@@ -62,8 +62,10 @@ module modPbc
   double precision,allocatable::cond(:) !< thermal conductivity [W/m/K]
   double precision,allocatable::flowRho(:) !< mass flow through pair [kg/s]
   double precision,allocatable::flowRhou(:,:) !< momentum flow through pair [kg*m/s^2]
+  double precision,allocatable::flowRhoH(:) !< enthalpy flow through pair [W]
   double precision,allocatable::advRho(:) !< mass advection into cell [kg/s]
   double precision,allocatable::advRhou(:,:) !< momentum advection into cell [kg*m/s^2]
+  double precision,allocatable::advRhoH(:) !< enthalpy advection into cell [W]
   double precision,allocatable::gradP(:,:) !< gradient of p [Pa/m]
   double precision,allocatable::viscF(:,:) !< viscous force applied on cell [N]
   double precision,allocatable::presF(:,:) !< pressure force applied on cell [N]
@@ -173,8 +175,10 @@ contains
     allocate(cond(grid%nE))
     allocate(flowRho(grid%nP))
     allocate(flowRhou(DIMS,grid%nP))
+    allocate(flowRhoH(grid%nP))
     allocate(advRho(grid%nC))
     allocate(advRhou(DIMS,grid%nC))
+    allocate(advRhoH(grid%nC))
     allocate(gradP(DIMS,grid%nC))
     allocate(viscF(DIMS,grid%nC))
     allocate(presF(DIMS,grid%nC))
@@ -277,14 +281,24 @@ contains
     use modFileIO
     character(*),intent(in)::fName
     integer,parameter::FID=10
+    double precision::eps
     
     open(FID,file=trim(fName),action='write')
     call writeVTK(FID,grid)
     call writeVTK(FID,grid,E_DATA)
-    call writeVTK(FID,'density',rho)
-    call writeVTK(FID,'velocity',u)
-    call writeVTK(FID,'pressure',p)
-    call writeVTK(FID,'temperature',temp)
+    call writeVTK(FID,'geoID',dble(grid%gid))
+    if(iOut==0)then
+      call writeVTK(FID,'density',rho)
+      call writeVTK(FID,'velocity',u)
+      call writeVTK(FID,'pressure',p)
+      call writeVTK(FID,'temperature',temp)
+    else
+      eps=(t-tNext)/dt
+      call writeVTK(FID,'density',eps*rho0+(1d0-eps)*rho)
+      call writeVTK(FID,'velocity',eps*u0+(1d0-eps)*u)
+      call writeVTK(FID,'pressure',eps*p0+(1d0-eps)*p)
+      call writeVTK(FID,'temperature',eps*temp0+(1d0-eps)*temp)
+    end if
     close(FID)
   end subroutine
   
@@ -425,16 +439,23 @@ contains
   
   !> solve the energy equation
   subroutine solveEnergy()
-    double precision,allocatable,save::tmpRhoE(:)
+    double precision,allocatable,save::x(:)
     integer::info
     
-    if(.not.allocated(tmpRhoE))then
-      allocate(tmpRhoE(grid%nC))
-    else if(size(tmpRhoE)/=grid%nC)then
-      deallocate(tmpRhoE)
-      allocate(tmpRhoE(grid%nC))
+    if(.not.allocated(x))then
+      allocate(x(grid%nC))
+    else if(size(x)/=grid%nC)then
+      deallocate(x)
+      allocate(x(grid%nC))
     end if
-    tmpRhoE(:)=rhoE(1:grid%nC)
+    call energyEq%solve(x,info=info)
+    needRetry=info<0
+    call energyEq%getNIt(n)
+    nItEnergy=max(nItEnergy,n)
+    forall(i=1:grid%nC)
+      rhoE(i)=x(i)
+      temp(i)=(rhoE(i)/rho(i)-0.5d0*dot_product(u(:,i),u(:,i)))/(1d0/(gamm-1d0))/Rgas
+    end forall
   end subroutine
   
   !> RHS of the energy equation in the form of a fix point problem
@@ -454,17 +475,17 @@ contains
     call associateVector(oldVector,x)
     call associateVector(newVector,y)
     
-    !rhoE(1:grid%nC)=x(1:grid%nC)
-    !forall(i=1:grid%nC)
-    !  temp(i)=(rhoE(i)/rho(i)-0.5d0*dot_product(u(:,i),u(:,i)))/(1d0/(gamm-1d0))/Rgas
-    !end forall
-    !call setBC()
-    !call findVarFlow(grid,(rhoE+p)/rho,flowRho,flowRhoH)
-    !call findAdv(grid,flowRhoH,advRhoH)
-    !call findDiff(grid,temp,cond,condQ)
-    !forall(i=1:grid%nC)
-    !  y(i)=rhoE0(i)+dt/grid%v(i)*(advRhoH(i)+condQ(i)) ! TODO add viscous heating
-    !end forall
+    rhoE(1:grid%nC)=x(1:grid%nC)
+    forall(i=1:grid%nC)
+      temp(i)=(rhoE(i)/rho(i)-0.5d0*dot_product(u(:,i),u(:,i)))/(1d0/(gamm-1d0))/Rgas
+    end forall
+    call setBC()
+    call findVarFlow(grid,(rhoE+p)/rho,flowRho,flowRhoH)
+    call findAdv(grid,flowRhoH,advRhoH)
+    call findDiff(grid,temp,cond,condQ)
+    forall(i=1:grid%nC)
+      y(i)=rhoE0(i)+dt/grid%v(i)*(advRhoH(i)+condQ(i)) ! TODO add viscous heating
+    end forall
     energyRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
     if(c_associated(dat))then
     end if
