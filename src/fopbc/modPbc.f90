@@ -14,7 +14,7 @@ module modPbc
   
   integer,parameter::MAXIT_PBC=20 !< max number of momentum and pressure equation iterations
   integer,parameter::MAXIT_ENERGY=20 !< max number of energy equation iterations
-  integer,parameter::MAXIT_OUTER=10 !< max number of outer iterations
+  integer,parameter::MAXIT_OUTER=5 !< max number of outer iterations
   
   integer,parameter::BC_WALL_TEMP=0 !< wall boundary with prescribed temperature
   integer,parameter::BC_WALL_TEMP_UDF=5 !< wall boundary with prescribed temperature by UDF
@@ -343,11 +343,18 @@ contains
   
   !> guess next time step size, etc.
   subroutine postSolve()
-    ! the time step size is adjusted to maintain half of the maximum number iterations
-    dt=dt*minval(dble([MAXIT_PBC,MAXIT_ENERGY,MAXIT_OUTER])/&
-    &            dble(max(1,[nItPBC,nItEnergy,nItOuter])))*0.5d0
-    write(*,'(a,i2,a,i2,a,i2,a)')'[i] finished step, nIt[PBC,Energy,Outer]: [',&
-    &  nItPBC,',',nItEnergy,',',nItOuter,']'
+    double precision,parameter::MIN_EFFORT=0.3d0 !< increase dt if "effort" lower than lower limit
+    double precision,parameter::MAX_EFFORT=0.5d0 !< reduce dt if "effort" higher than higher limit
+    double precision::effort !< the "effort"
+  
+    ! adjust time step size to maintain effort
+    effort=maxval(dble([nItPBC,nItEnergy])/dble([MAXIT_PBC,MAXIT_ENERGY]))
+    if(effort<MIN_EFFORT)then
+      dt=dt*MIN_EFFORT/effort
+    else if(effort>MAX_EFFORT)then
+      dt=dt*MAX_EFFORT/effort
+    end if
+    write(*,'(a,i2,a,i2,a,i2,a)')'[i] finished step, nIt[PBC,Energy]: [',nItPBC,',',nItEnergy,']'
   end subroutine
   
   !> set the boundary conditions
