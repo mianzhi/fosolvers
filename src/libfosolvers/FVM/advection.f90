@@ -107,6 +107,8 @@ contains
     double precision,intent(in)::v(:,:) !< transported variables
     double precision,intent(in)::mFlow(:) !< mass flow through pairs
     double precision,allocatable,intent(inout)::flow(:,:) !< v flow rate output
+    double precision,allocatable::gradV(:,:,:)
+    double precision::vf(size(v,1)),dV(size(v,1)),r(size(v,1))
     integer::up,dn
     
     call grid%up()
@@ -114,8 +116,10 @@ contains
       allocate(flow(size(v,1),grid%nP))
     end if
     flow(:,:)=0d0
+    allocate(gradV(DIMS,size(v,1),grid%nC))
+    call findGrad(grid,v(:,1:grid%nC),gradV)
     !$omp parallel do default(shared)&
-    !$omp& private(m,n,up,dn,fUp,fDn)
+    !$omp& private(m,n,up,dn,dV,r,vf)
     do i=1,grid%nP
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
@@ -130,11 +134,19 @@ contains
             up=n
             dn=m
           end if
+          if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
+            dV(:)=matmul(grid%p(:,dn)-grid%p(:,up),gradV(:,:,up))
+            r(:)=merge(2d0*dV/(v(:,dn)-v(:,up))-1d0,0d0,abs(v(:,dn)-v(:,up))>tiny(1d0))
+            vf(:)=v(:,up)+0.5d0*vanAlbada(r)*(v(:,dn)-v(:,up))
+          else ! boundary pairs
+            vf(:)=v(:,up)
+          end if
+          flow(:,i)=vf(:)*mFlow(i)
         end if
-        flow(:,i)=v(:,up)*mFlow(i)
       end if
     end do
     !$omp end parallel do
+    deallocate(gradV)
   end subroutine
   
   !> find flow rate of scalar v on polyFvGrid using mass flow rate
