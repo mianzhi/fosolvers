@@ -19,25 +19,73 @@ contains
   !> \f[ \int_A \hat{n} \cdot \mathbf{\tau} dA \f]
   subroutine findViscForcePoly(grid,u,visc,dRhou)
     use modPolyFvGrid
-    use modDiffusion
+    use modGradient
     class(polyFvGrid),intent(inout)::grid !< the grid
     double precision,intent(in)::u(:,:) !< state variables
     double precision,intent(in)::visc(:) !< viscosity
     double precision,allocatable,intent(inout)::dRhou(:,:) !< force (net flow of rhou)
-    double precision,allocatable::tmpVisc(:,:)
+    double precision::sf(DIMS),tf(DIMS),rf(DIMS),dPF,Afs,flow(DIMS),fPF,viscF,&
+    &                 gradUF(DIMS,DIMS)
+    double precision,allocatable::gradU(:,:,:)
     
     call grid%up()
     if(.not.(allocated(dRhou)))then
       allocate(dRhou(DIMS,grid%nC))
     end if
     dRhou(:,:)=0d0
-    allocate(tmpVisc(DIMS,size(visc)))
-    forall(i=1:size(visc))
-      tmpVisc(:,i)=visc(i)
-    end forall
-    call findDiff(grid,u,tmpVisc,dRhou)
-    ! TODO complete the rest part of div(tau)
-    deallocate(tmpVisc)
+    allocate(gradU(DIMS,DIMS,grid%nC))
+    call findGrad(grid,u(:,1:grid%nC),gradU)
+    !$omp parallel do default(shared)&
+    !$omp& private(m,n,fPF,viscF,gradUF,sf,dPF,k,l,tf,rf,Afs,flow)
+    do i=1,grid%nP
+      m=grid%iEP(1,i)
+      n=grid%iEP(2,i)
+      if(m<=size(u,2).and.n<=size(u,2))then
+        if(n<=grid%nC)then
+          fPF=norm2(grid%pP(:,i)-grid%p(:,n))&
+          &   /(norm2(grid%pP(:,i)-grid%p(:,m))+norm2(grid%pP(:,i)-grid%p(:,n)))
+          viscF=fPF*visc(m)+(1d0-fPF)*visc(n)
+          gradUF(:,:)=fPF*gradU(:,:,m)+(1d0-fPF)*gradU(:,:,n)
+        else
+          viscF=visc(m)
+          gradUF(:,:)=gradU(:,:,m)
+        end if
+        sf(:)=grid%p(:,n)-grid%p(:,m)
+        dPF=norm2(sf)
+        sf(:)=sf(:)/dPF
+        k=maxloc(abs(grid%normP(:,i)),dim=1)
+        l=merge(1,k+1,k==3)
+        tf(:)=0d0
+        tf(l)=grid%normP(k,i)
+        tf(k)=-grid%normP(l,i)
+        tf(:)=tf(:)/norm2(tf)
+        rf(1)=grid%normP(2,i)*tf(3)-grid%normP(3,i)*tf(2)
+        rf(2)=-grid%normP(1,i)*tf(3)+grid%normP(3,i)*tf(1)
+        rf(3)=grid%normP(1,i)*tf(2)-grid%normP(2,i)*tf(1)
+        Afs=grid%aP(i)/dot_product(sf,grid%normP(:,i))
+        if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
+          flow(:)=viscF*Afs*((u(:,n)-u(:,m))/dPF&
+          &                  -matmul(transpose(gradUF(:,:)),&
+          &                          dot_product(sf,tf)*tf+dot_product(sf,rf)*rf))
+        else ! boundary pairs
+          flow(:)=viscF*Afs*(u(:,n)-u(:,m))/(2d0*dPF)
+        end if
+        flow(:)=flow(:)+viscF*grid%aP(i)*[dot_product(gradUF(1,:),grid%normP(:,i)),&
+        &                                 dot_product(gradUF(2,:),grid%normP(:,i)),&
+        &                                 dot_product(gradUF(3,:),grid%normP(:,i))]&
+        &      -2d0/3d0*viscF*grid%aP(i)*(gradUF(1,1)+gradUF(2,2)+gradUF(3,3))*grid%normP(:,i)
+        !$omp critical
+        if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
+          dRhou(:,m)=dRhou(:,m)+flow(:)
+          dRhou(:,n)=dRhou(:,n)-flow(:)
+        else ! boundary pairs
+          dRhou(:,m)=dRhou(:,m)+flow(:)
+        end if
+        !$omp end critical
+      end if
+    end do
+    !$omp end parallel do
+    deallocate(gradU)
   end subroutine
   
 end module

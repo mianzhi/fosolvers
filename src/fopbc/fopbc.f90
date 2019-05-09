@@ -20,8 +20,8 @@ program fopbc
     end if
     call setBC()
     call recordState0()
-    visc(:)=20d-6! TODO update transport properties according to state0
-    cond(:)=30d-3! TODO update transport properties according to state0
+    visc(:)=2d-3! TODO update transport properties according to state0
+    cond(:)=3d0! TODO update transport properties according to state0
     call preSolve()
     do nItOuter=1,MAXIT_OUTER
       call solvePBC()
