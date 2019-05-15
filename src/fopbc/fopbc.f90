@@ -24,10 +24,18 @@ program fopbc
     cond(:)=3d0! TODO update transport properties according to state0
     call preSolve()
     do nItOuter=1,MAXIT_OUTER
+      rho1(:)=rho(:)
       call solvePBC()
       if(needRetry) exit
       call solveEnergy()
       if(needRetry) exit
+      write(*,*)'rho error: ',maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale
+      if(maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale<=1d-6)then
+        exit
+      else if(nItOuter==MAXIT_OUTER)then
+        needRetry=.true.
+        exit
+      end if
     end do
     if(needRetry) cycle
     t=t+dt

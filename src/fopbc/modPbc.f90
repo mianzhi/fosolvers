@@ -12,9 +12,9 @@ module modPbc
   
   integer,parameter::DIMS=3 !< three dimensions
   
-  integer,parameter::MAXIT_PBC=20 !< max number of momentum and pressure equation iterations
-  integer,parameter::MAXIT_ENERGY=20 !< max number of energy equation iterations
-  integer,parameter::MAXIT_OUTER=5 !< max number of outer iterations
+  integer,parameter::MAXIT_PBC=50 !< max number of momentum and pressure equation iterations
+  integer,parameter::MAXIT_ENERGY=50 !< max number of energy equation iterations
+  integer,parameter::MAXIT_OUTER=20 !< max number of outer iterations
   
   integer,parameter::BC_WALL_TEMP=0 !< wall boundary with prescribed temperature
   integer,parameter::BC_WALL_TEMP_UDF=5 !< wall boundary with prescribed temperature by UDF
@@ -57,6 +57,9 @@ module modPbc
   
   ! state at the beginning of a time step
   double precision,allocatable::rho0(:),rhou0(:,:),rhoE0(:),p0(:),u0(:,:),temp0(:),Y0(:,:)
+  
+  ! state at the beginning of an outer iteration
+  double precision,allocatable::rho1(:)
   
   double precision,allocatable::visc(:) !< viscosity [Pa*s]
   double precision,allocatable::cond(:) !< thermal conductivity [W/m/K]
@@ -158,6 +161,7 @@ contains
     ! work space and initial state
     allocate(rho(grid%nE))
     allocate(rho0(grid%nE))
+    allocate(rho1(grid%nE))
     allocate(rhou(DIMS,grid%nE))
     allocate(rhou0(DIMS,grid%nE))
     allocate(rhoE(grid%nE))
@@ -348,13 +352,14 @@ contains
     double precision::effort !< the "effort"
   
     ! adjust time step size to maintain effort
-    effort=maxval(dble([nItPBC,nItEnergy])/dble([MAXIT_PBC,MAXIT_ENERGY]))
+    effort=maxval(dble([nItPBC,nItEnergy,nItOuter])/dble([MAXIT_PBC,MAXIT_ENERGY,MAXIT_OUTER]))
     if(effort<MIN_EFFORT)then
       dt=dt*MIN_EFFORT/effort
     else if(effort>MAX_EFFORT)then
       dt=dt*MAX_EFFORT/effort
     end if
-    write(*,'(a,i2,a,i2,a,i2,a)')'[i] finished step, nIt[PBC,Energy]: [',nItPBC,',',nItEnergy,']'
+    write(*,'(a,i2,a,i2,a,i2,a,i2,a)')'[i] finished step, nIt[PBC,Energy,Outer]: [',&
+    &                                 nItPBC,',',nItEnergy,',',nItOuter,']'
   end subroutine
   
   !> set the boundary conditions
