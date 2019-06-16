@@ -43,6 +43,7 @@ contains
           gradPf(:)=eps*gradP(:,m)+(1d0-eps)*gradP(:,n)
           vIP(:)=grid%pP(:,i)-(eps*grid%p(:,m)+(1d0-eps)*grid%p(:,n))
           pf=pf+dot_product(gradPf(:),vIP(:))
+          pf=0.5d0*p(m)+0.5d0*p(n) ! FIXME: remove this low-accuracy baseline
           flow(:)=-pf*grid%aP(i)*grid%normP(:,i)
           dRhou(:,m)=dRhou(:,m)+flow(:)
           dRhou(:,n)=dRhou(:,n)-flow(:)

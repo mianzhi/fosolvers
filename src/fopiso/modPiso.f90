@@ -675,7 +675,7 @@ contains
     use ieee_arithmetic
     use modNumerics
     use modAdvection
-    use modRhieChow
+    !use modRhieChow
     type(C_PTR),value::oldVector !< old N_Vector
     type(C_PTR),value::newVector !< new N_Vector
     type(C_PTR),value::dat !< optional user data object
@@ -692,7 +692,7 @@ contains
     end forall
     call setBC()
     call findAdv(grid,rho,rhou,advRho)
-    call addRhieChow(grid,rho,p,gradP,rho,dt,advRho)
+    !call addRhieChow(grid,rho,p,gradP,rho,dt,advRho)
     forall(i=1:grid%nC)
       y(i)=rho0(i)+dt/grid%v(i)*advRho(i)
     end forall
