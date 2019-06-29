@@ -35,7 +35,7 @@ contains
     end if
     diff(:,:)=0d0
     allocate(gradS(DIMS,size(s,1),grid%nC))
-    call findGrad(grid,s(:,1:grid%nC),gradS)
+    call findGrad(grid,s,gradS)
     !$omp parallel do default(shared)&
     !$omp& private(m,n,fPF,dF,gradSF,sf,dPF,k,l,tf,rf,Afs,flow)
     do i=1,grid%nP

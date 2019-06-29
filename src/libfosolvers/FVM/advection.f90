@@ -117,7 +117,7 @@ contains
     end if
     flow(:,:)=0d0
     allocate(gradV(DIMS,size(v,1),grid%nC))
-    call findGrad(grid,v(:,1:grid%nC),gradV)
+    call findGrad(grid,v,gradV)
     !$omp parallel do default(shared)&
     !$omp& private(m,n,up,dn,dV,r,vf)
     do i=1,grid%nP
@@ -324,7 +324,6 @@ contains
   !> find advection of Euler system on polyFvGrid
   subroutine findAdvPolyEuler(grid,rho,rhou,rhoE,p,gamm,dRho,dRhou,dRhoE)
     use modPolyFvGrid
-    use modGradient
     class(polyFvGrid),intent(inout)::grid !< the grid
     double precision,intent(in)::rho(:) !< cell-averaged rho
     double precision,intent(in)::rhou(:,:) !< cell-averaged rhou

@@ -34,7 +34,7 @@ contains
     end if
     dRhou(:,:)=0d0
     allocate(gradU(DIMS,DIMS,grid%nC))
-    call findGrad(grid,u(:,1:grid%nC),gradU)
+    call findGrad(grid,u,gradU)
     !$omp parallel do default(shared)&
     !$omp& private(m,n,fPF,viscF,gradUF,sf,dPF,k,l,tf,rf,Afs,flow)
     do i=1,grid%nP
