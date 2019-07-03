@@ -91,6 +91,11 @@ contains
         &       +dt*vMN(:)*(p(m)-p(n))/dot_product(vMN,vMN)
       else ! boundary pairs
         flux(:)=rho(up)*0.5d0*(u(:,m)+u(:,n))
+        if(abs(dot_product(grid%normP(:,i),flux(:)))>tiny(1d0))then
+          vMP(:)=grid%pP(:,i)-grid%p(:,m)
+          flux(:)=flux(:)-0.5d0*dt*presF(:,m)/grid%v(m)&
+          &       +0.5d0*dt*grid%normP(:,i)*(p(m)-p(n))/(2d0*dot_product(vMP,grid%normP(:,i)))
+        end if ! Rhie-Chow does not initiate penetration through boundary pair
       end if
       flow(i)=grid%aP(i)*dot_product(grid%normP(:,i),flux(:))
     end do
