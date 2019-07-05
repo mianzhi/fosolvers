@@ -291,6 +291,7 @@ contains
     call writeVTK(FID,grid)
     call writeVTK(FID,grid,E_DATA)
     call writeVTK(FID,'geoID',dble(grid%gid))
+    call writeVTK(FID,'geoType',[(merge(0d0,1d0,i<=grid%nC),i=1,grid%nE)])
     if(iOut==0)then
       call writeVTK(FID,'density',rho)
       call writeVTK(FID,'velocity',u)
@@ -349,12 +350,13 @@ contains
   subroutine postSolve()
     double precision,parameter::MIN_EFFORT=0.3d0 !< increase dt if "effort" lower than lower limit
     double precision,parameter::MAX_EFFORT=0.5d0 !< reduce dt if "effort" higher than higher limit
+    double precision,parameter::MAX_GROWTH=1.2d0 !< new dt is no more than 120% of the current dt
     double precision::effort !< the "effort"
   
     ! adjust time step size to maintain effort
     effort=maxval(dble([nItPBC,nItEnergy,nItOuter])/dble([MAXIT_PBC,MAXIT_ENERGY,MAXIT_OUTER]))
     if(effort<MIN_EFFORT)then
-      dt=dt*MIN_EFFORT/effort
+      dt=dt*min(MIN_EFFORT/effort,MAX_GROWTH)
     else if(effort>MAX_EFFORT)then
       dt=dt*MAX_EFFORT/effort
     end if
