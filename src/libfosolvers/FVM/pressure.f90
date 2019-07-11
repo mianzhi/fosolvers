@@ -24,7 +24,7 @@ contains
     double precision,intent(in)::p(:) !< pressure
     double precision,intent(in)::gradP(:,:) !< gradient of p
     double precision,allocatable,intent(inout)::dRhou(:,:) !< force (net flow of rhou)
-    double precision::flow(DIMS),pf,gradPf(DIMS),vIP(DIMS),vMP(DIMS),vPN(DIMS),eps
+    double precision::flow(DIMS),pf,vMP(DIMS),vPN(DIMS)
     
     call grid%up()
     if(.not.(allocated(dRhou)))then
@@ -38,20 +38,14 @@ contains
         if(n<=grid%nC)then ! internal pairs
           vMP(:)=grid%pP(:,i)-grid%p(:,m)
           vPN(:)=grid%p(:,n)-grid%pP(:,i)
-          eps=norm2(vPN)/(norm2(vMP)+norm2(vPN))
-          pf=eps*p(m)+(1d0-eps)*p(n)
-          gradPf(:)=eps*gradP(:,m)+(1d0-eps)*gradP(:,n)
-          vIP(:)=grid%pP(:,i)-(eps*grid%p(:,m)+(1d0-eps)*grid%p(:,n))
-          pf=pf+dot_product(gradPf(:),vIP(:))
-          pf=0.5d0*p(m)+0.5d0*p(n) ! FIXME: remove this low-accuracy baseline
+          pf=0.5d0*(p(m)+p(n)+dot_product(gradP(:,m),vMP)+dot_product(gradP(:,n),-vPN))
           flow(:)=-pf*grid%aP(i)*grid%normP(:,i)
           dRhou(:,m)=dRhou(:,m)+flow(:)
           dRhou(:,n)=dRhou(:,n)-flow(:)
         else ! boundary pairs
-          pf=0.5d0*(p(m)+p(n))
-          vIP(:)=grid%pP(:,i)-grid%p(:,m)
-          vIP(:)=vIP(:)-grid%normP(:,i)*dot_product(grid%normP(:,i),vIP(:))
-          pf=pf+dot_product(gradP(:,m),vIP(:))
+          vMP(:)=grid%pP(:,i)-grid%p(:,m)
+          vMP(:)=vMP(:)-grid%normP(:,i)*dot_product(grid%normP(:,i),vMP(:))
+          pf=0.5d0*(p(m)+p(n))+dot_product(gradP(:,m),vMP(:))
           flow(:)=-pf*grid%aP(i)*grid%normP(:,i)
           dRhou(:,m)=dRhou(:,m)+flow(:)
         end if

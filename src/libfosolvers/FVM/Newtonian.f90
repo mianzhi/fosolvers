@@ -70,11 +70,10 @@ contains
         else ! boundary pairs
           flow(:)=viscF*Afs*(u(:,n)-u(:,m))/(2d0*dPF)
         end if
-        ! FIXME: add back the rest parts of stress tensor
-        !flow(:)=flow(:)+viscF*grid%aP(i)*[dot_product(gradUF(1,:),grid%normP(:,i)),&
-        !&                                 dot_product(gradUF(2,:),grid%normP(:,i)),&
-        !&                                 dot_product(gradUF(3,:),grid%normP(:,i))]&
-        !&      -2d0/3d0*viscF*grid%aP(i)*(gradUF(1,1)+gradUF(2,2)+gradUF(3,3))*grid%normP(:,i)
+        flow(:)=flow(:)+viscF*grid%aP(i)*[dot_product(gradUF(1,:),grid%normP(:,i)),&
+        &                                 dot_product(gradUF(2,:),grid%normP(:,i)),&
+        &                                 dot_product(gradUF(3,:),grid%normP(:,i))]&
+        &      -2d0/3d0*viscF*grid%aP(i)*(gradUF(1,1)+gradUF(2,2)+gradUF(3,3))*grid%normP(:,i)
         !$omp critical
         if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
           dRhou(:,m)=dRhou(:,m)+flow(:)
