@@ -24,7 +24,8 @@ contains
     double precision,intent(in)::p(:) !< pressure
     double precision,intent(in)::gradP(:,:) !< gradient of p
     double precision,allocatable,intent(inout)::dRhou(:,:) !< force (net flow of rhou)
-    double precision::flow(DIMS),pf,vMP(DIMS),vPN(DIMS)
+    double precision::flow(DIMS),pf,vMP(DIMS),vNP(DIMS),vM1P(DIMS),vN1P(DIMS),&
+    &                 vMM1(DIMS),vNN1(DIMS),eps
     
     call grid%up()
     if(.not.(allocated(dRhou)))then
@@ -37,15 +38,21 @@ contains
       if(m<=size(p).and.n<=size(p))then
         if(n<=grid%nC)then ! internal pairs
           vMP(:)=grid%pP(:,i)-grid%p(:,m)
-          vPN(:)=grid%p(:,n)-grid%pP(:,i)
-          pf=0.5d0*(p(m)+p(n)+dot_product(gradP(:,m),vMP)+dot_product(gradP(:,n),-vPN))
+          vNP(:)=grid%pP(:,i)-grid%p(:,n)
+          vM1P(:)=grid%normP(:,i)*dot_product(vMP(:),grid%normP(:,i))
+          vN1P(:)=grid%normP(:,i)*dot_product(vNP(:),grid%normP(:,i))
+          vMM1(:)=vMP(:)-vM1P(:)
+          vNN1(:)=vNP(:)-vN1P(:)
+          eps=norm2(vN1P)/(norm2(vM1P)+norm2(vN1P))
+          pf=eps*(p(m)+dot_product(gradP(:,m),vMM1(:)))&
+          &  +(1d0-eps)*(p(n)+dot_product(gradP(:,n),vNN1(:)))
           flow(:)=-pf*grid%aP(i)*grid%normP(:,i)
           dRhou(:,m)=dRhou(:,m)+flow(:)
           dRhou(:,n)=dRhou(:,n)-flow(:)
         else ! boundary pairs
           vMP(:)=grid%pP(:,i)-grid%p(:,m)
-          vMP(:)=vMP(:)-grid%normP(:,i)*dot_product(grid%normP(:,i),vMP(:))
-          pf=0.5d0*(p(m)+p(n))+dot_product(gradP(:,m),vMP(:))
+          vM1P(:)=grid%normP(:,i)*dot_product(vMP(:),grid%normP(:,i))
+          pf=0.5d0*(p(m)+p(n))+dot_product(gradP(:,m),vMP(:)-vM1P(:))
           flow(:)=-pf*grid%aP(i)*grid%normP(:,i)
           dRhou(:,m)=dRhou(:,m)+flow(:)
         end if
