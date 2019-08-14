@@ -158,7 +158,6 @@ contains
   !> \f[ \int_A \rho v(\mathbf{u} \cdot \hat{n}) dA \f]
   subroutine findVarFlowPolyScal(grid,v,mFlow,flow)
     use modPolyFvGrid
-    use modGradient
     class(polyFvGrid),intent(inout)::grid !< the grid
     double precision,intent(in)::v(:) !< transported variable
     double precision,intent(in)::mFlow(:) !< mass flow through pairs

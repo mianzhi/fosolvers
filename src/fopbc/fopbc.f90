@@ -29,7 +29,6 @@ program fopbc
       if(needRetry) exit
       call solveEnergy()
       if(needRetry) exit
-      write(*,*)'rho error: ',maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale
       if(maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale<=1d-6)then
         exit
       else if(nItOuter==MAXIT_OUTER)then
