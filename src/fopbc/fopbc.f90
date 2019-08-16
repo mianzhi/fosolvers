@@ -36,7 +36,11 @@ program fopbc
         exit
       end if
     end do
-    if(needRetry) cycle
+    if(needRetry)then
+      write(*,'(a,i2,a,i2,a,i2,a,i2,a)')'[W] failed step, nIt[PBC,Energy,Outer]: [',&
+      &                                 nItPBC,',',nItEnergy,',',nItOuter,']'
+      cycle
+    end if
     t=t+dt
     call postSolve()
     if(t+tiny(1d0)>=tNext)then
