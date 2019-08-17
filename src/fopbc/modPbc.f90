@@ -540,6 +540,7 @@ contains
       deallocate(x)
       allocate(x(grid%nC))
     end if
+    x(1:grid%nC)=rhoE(1:grid%nC)
     call energyEq%solve(x,info=info)
     needRetry=info<0
     call energyEq%getNIt(n)

@@ -7,7 +7,7 @@ module modPolyFvGrid
   
   ! constants
   integer,parameter::DIMS=3 !< dimensions
-  integer,parameter::MIN_N_NEAR=8 !< minimum nearby elements for each cell
+  integer,parameter::MIN_N_NEAR=4 !< minimum nearby elements for each cell
   integer,parameter::MAX_N_NEAR=25 !< maximum nearby elements for each cell
   
   !> polyhedron and polygon finite volume grid type
@@ -223,7 +223,7 @@ contains
           if(l<=grid%nC)then
             do j=1,nF(grid%sE(l))
               if(nNear<MAX_N_NEAR.and.grid%neib(j,l)>0&
-              &  .and.grid%neib(j,l)<=grid%nC& ! only neighbor facets are mirrored to ghost position
+              &  .and.grid%neib(j,l)<=grid%nC& ! exclude non-neighbor facets
               &  .and.all(grid%near(1:nNear,i)/=grid%neib(j,l))&
               &  .and.grid%neib(j,l)/=i)then
                 nNear=nNear+1
