@@ -17,24 +17,21 @@ contains
   
   !> find Newtonian viscous force on polyFvGrid
   !> \f[ \int_A \hat{n} \cdot \mathbf{\tau} dA \f]
-  subroutine findViscForcePoly(grid,u,visc,dRhou)
+  subroutine findViscForcePoly(grid,u,gradU,visc,dRhou)
     use modPolyFvGrid
-    use modGradient
     class(polyFvGrid),intent(inout)::grid !< the grid
     double precision,intent(in)::u(:,:) !< state variables
+    double precision,intent(in)::gradU(:,:,:) !< gradient of u
     double precision,intent(in)::visc(:) !< viscosity
     double precision,allocatable,intent(inout)::dRhou(:,:) !< force (net flow of rhou)
     double precision::sf(DIMS),tf(DIMS),rf(DIMS),dPF,Afs,flow(DIMS),fPF,viscF,&
     &                 gradUF(DIMS,DIMS)
-    double precision,allocatable::gradU(:,:,:)
     
     call grid%up()
     if(.not.(allocated(dRhou)))then
       allocate(dRhou(DIMS,grid%nC))
     end if
     dRhou(:,:)=0d0
-    allocate(gradU(DIMS,DIMS,grid%nC))
-    call findGrad(grid,u,gradU)
     !$omp parallel do default(shared)&
     !$omp& private(m,n,fPF,viscF,gradUF,sf,dPF,k,l,tf,rf,Afs,flow)
     do i=1,grid%nP
@@ -85,7 +82,6 @@ contains
       end if
     end do
     !$omp end parallel do
-    deallocate(gradU)
   end subroutine
   
 end module

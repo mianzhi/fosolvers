@@ -69,7 +69,11 @@ module modPbc
   double precision,allocatable::advRho(:) !< mass advection into cell [kg/s]
   double precision,allocatable::advRhou(:,:) !< momentum advection into cell [kg*m/s^2]
   double precision,allocatable::advRhoH(:) !< enthalpy advection into cell [W]
-  double precision,allocatable::gradP(:,:) !< gradient of p [Pa/m]
+  double precision,allocatable::gradRho(:,:) !< gradient of density [kg/m^4]
+  double precision,allocatable::gradU(:,:,:) !< gradient of velocity [1/s]
+  double precision,allocatable::gradP(:,:) !< gradient of pressure [Pa/m]
+  double precision,allocatable::gradH(:,:) !< gradient of static enthalpy [J/kg/m]
+  double precision,allocatable::gradTemp(:,:) !< gradient of temp [K/m]
   double precision,allocatable::viscF(:,:) !< viscous force applied on cell [N]
   double precision,allocatable::presF(:,:) !< pressure force applied on cell [N]
   double precision,allocatable::condQ(:) !< heat conduction into cell [W]
@@ -183,7 +187,11 @@ contains
     allocate(advRho(grid%nC))
     allocate(advRhou(DIMS,grid%nC))
     allocate(advRhoH(grid%nC))
+    allocate(gradRho(DIMS,grid%nC))
+    allocate(gradU(DIMS,DIMS,grid%nC))
     allocate(gradP(DIMS,grid%nC))
+    allocate(gradH(DIMS,grid%nC))
+    allocate(gradTemp(DIMS,grid%nC))
     allocate(viscF(DIMS,grid%nC))
     allocate(presF(DIMS,grid%nC))
     allocate(condQ(grid%nC))
@@ -461,6 +469,7 @@ contains
   
   !> solve the coupled momentum and pressure equations while keeping isothermal
   subroutine solvePBC()
+    use modGradient
     double precision,allocatable,save::x(:)
     integer::info
     
@@ -474,6 +483,10 @@ contains
       x((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=u(:,i)
       x((DIMS+1)*(i-1)+(DIMS+1))=p(i)
     end forall
+    call setBC()
+    call findGrad(grid,p,gradP)
+    call findGrad(grid,u,gradU)
+    call findGrad(grid,rho,gradRho)
     call pbcEq%solve(x,info=info)
     needRetry=info<0
     call pbcEq%getNIt(n)
@@ -491,7 +504,6 @@ contains
     use modNumerics
     use modAdvection
     use modDiffusion
-    use modGradient
     use modPressure
     use modNewtonian
     type(C_PTR),value::oldVector !< old N_Vector
@@ -511,11 +523,10 @@ contains
       rhou(:,i)=rho(i)*u(:,i)
     end forall
     call setBC()
-    call findGrad(grid,p,gradP)
     call findPresForce(grid,p,gradP,presF)
-    call findViscForce(grid,u,visc,viscF)
-    call findMassFlow(grid,rho,u,p,presF,dt,flowRho)
-    call findVarFlow(grid,u,flowRho,flowRhou)
+    call findViscForce(grid,u,gradU,visc,viscF)
+    call findMassFlow(grid,rho,gradRho,u,p,presF,dt,flowRho)
+    call findVarFlow(grid,u,gradU,flowRho,flowRhou)
     call findAdv(grid,flowRho,advRho)
     call findAdv(grid,flowRhou,advRhou)
     forall(i=1:grid%nC)
@@ -531,6 +542,7 @@ contains
   
   !> solve the energy equation
   subroutine solveEnergy()
+    use modGradient
     double precision,allocatable,save::x(:)
     integer::info
     
@@ -541,6 +553,9 @@ contains
       allocate(x(grid%nC))
     end if
     x(1:grid%nC)=rhoE(1:grid%nC)
+    call setBC()
+    call findGrad(grid,(rhoE+p)/rho,gradH)
+    call findGrad(grid,temp,gradTemp)
     call energyEq%solve(x,info=info)
     needRetry=info<0
     call energyEq%getNIt(n)
@@ -573,9 +588,9 @@ contains
       temp(i)=(rhoE(i)/rho(i)-0.5d0*dot_product(u(:,i),u(:,i)))/(1d0/(gamm-1d0))/Rgas
     end forall
     call setBC()
-    call findVarFlow(grid,(rhoE+p)/rho,flowRho,flowRhoH)
+    call findVarFlow(grid,(rhoE+p)/rho,gradH,flowRho,flowRhoH)
     call findAdv(grid,flowRhoH,advRhoH)
-    call findDiff(grid,temp,cond,condQ)
+    call findDiff(grid,temp,gradTemp,cond,condQ)
     forall(i=1:grid%nC)
       y(i)=rhoE0(i)+dt/grid%v(i)*(advRhoH(i)+condQ(i)) ! TODO add viscous heating
     end forall

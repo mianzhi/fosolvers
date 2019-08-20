@@ -42,11 +42,11 @@ contains
   
   !> find mass flow rate on polyFvGrid with Rhie-Chow u interpolation and TVD rho reconstruction
   !> \f[ \int_A \rho\mathbf{u} \cdot \hat{n} dA \f]
-  subroutine findMassFlowMagicPoly(grid,rho,u,p,presF,dt,flow)
+  subroutine findMassFlowMagicPoly(grid,rho,gradRho,u,p,presF,dt,flow)
     use modPolyFvGrid
-    use modGradient
     class(polyFvGrid),intent(inout)::grid !< the grid
     double precision,intent(in)::rho(:) !< density
+    double precision,intent(in)::gradRho(:,:) !< gradient of rho
     double precision,intent(in)::u(:,:) !< velocity
     double precision,intent(in)::p(:) !< pressure
     double precision,intent(in)::presF(:,:) !< pressure force
@@ -54,15 +54,12 @@ contains
     double precision,allocatable,intent(inout)::flow(:) !< mass flow rate output
     integer::up,dn
     double precision::vMN(DIMS),vMP(DIMS),vPN(DIMS),flux(DIMS),eps,rhoUp,rhoDn,dRho,r,rhof
-    double precision,allocatable::gradRho(:,:)
     
     call grid%up()
     if(.not.allocated(flow))then
       allocate(flow(grid%nP))
     end if
     flow(:)=0d0
-    allocate(gradRho(DIMS,grid%nC))
-    call findGrad(grid,rho,gradRho)
     !$omp parallel do default(shared)&
     !$omp& private(m,n,up,dn,rhoUp,rhoDn,dRho,r,rhof,vMN,vMP,vPN,eps,flux)
     do i=1,grid%nP
@@ -100,19 +97,17 @@ contains
       flow(i)=grid%aP(i)*dot_product(grid%normP(:,i),flux(:))
     end do
     !$omp end parallel do
-    deallocate(gradRho)
   end subroutine
   
   !> find flow rate of vector v on polyFvGrid using mass flow rate
   !> \f[ \int_A \rho\mathbf{v}(\mathbf{u} \cdot \hat{n}) dA \f]
-  subroutine findVarFlowPolyVect(grid,v,mFlow,flow)
+  subroutine findVarFlowPolyVect(grid,v,gradV,mFlow,flow)
     use modPolyFvGrid
-    use modGradient
     class(polyFvGrid),intent(inout)::grid !< the grid
     double precision,intent(in)::v(:,:) !< transported variables
+    double precision,intent(in)::gradV(:,:,:) !< gradient of v
     double precision,intent(in)::mFlow(:) !< mass flow through pairs
     double precision,allocatable,intent(inout)::flow(:,:) !< v flow rate output
-    double precision,allocatable::gradV(:,:,:)
     double precision::vf(size(v,1)),dV(size(v,1)),r(size(v,1))
     integer::up,dn
     
@@ -121,8 +116,6 @@ contains
       allocate(flow(size(v,1),grid%nP))
     end if
     flow(:,:)=0d0
-    allocate(gradV(DIMS,size(v,1),grid%nC))
-    call findGrad(grid,v,gradV)
     !$omp parallel do default(shared)&
     !$omp& private(m,n,up,dn,dV,r,vf)
     do i=1,grid%nP
@@ -151,31 +144,34 @@ contains
       end if
     end do
     !$omp end parallel do
-    deallocate(gradV)
   end subroutine
   
   !> find flow rate of scalar v on polyFvGrid using mass flow rate
   !> \f[ \int_A \rho v(\mathbf{u} \cdot \hat{n}) dA \f]
-  subroutine findVarFlowPolyScal(grid,v,mFlow,flow)
+  subroutine findVarFlowPolyScal(grid,v,gradV,mFlow,flow)
     use modPolyFvGrid
     class(polyFvGrid),intent(inout)::grid !< the grid
     double precision,intent(in)::v(:) !< transported variable
+    double precision,intent(in)::gradV(:,:) !< gradient of v
     double precision,intent(in)::mFlow(:) !< mass flow through pairs
     double precision,allocatable,intent(inout)::flow(:) !< v flow rate output
-    double precision,allocatable::vv(:,:),flowv(:,:)
+    double precision,allocatable::vv(:,:),flowv(:,:),gradVv(:,:,:)
     
     allocate(vv(1,size(v)))
+    allocate(gradVv(DIMS,1,size(v)))
     if(allocated(flow))then
       allocate(flowv(1,size(flow)))
     end if
     vv(1,:)=v(:)
-    call findVarFlowPolyVect(grid,vv,mFlow,flowv)
+    gradVv(:,1,:)=gradV(:,:)
+    call findVarFlowPolyVect(grid,vv,gradVv,mFlow,flowv)
     if(.not.allocated(flow))then
       allocate(flow(size(flowv,2)),source=flowv(1,:))!FIXME:remove work-around
     else
       flow(:)=flowv(1,:)
     end if
     deallocate(vv)
+    deallocate(gradVv)
     deallocate(flowv)
   end subroutine
   

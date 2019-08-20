@@ -18,24 +18,21 @@ contains
   
   !> find diffusion due to gradient of vector s on polyFvGrid
   !> \f[ \int_A D_i \nabla \mathbf{s} \cdot \hat{n} dA \f]
-  subroutine findDiffPolyVect(grid,s,d,diff)
+  subroutine findDiffPolyVect(grid,s,gradS,d,diff)
     use modPolyFvGrid
-    use modGradient
     class(polyFvGrid),intent(inout)::grid !< the grid
     double precision,intent(in)::s(:,:) !< state variables
+    double precision,intent(in)::gradS(:,:,:) !< gradient of s
     double precision,intent(in)::d(:,:) !< diffusivities
     double precision,allocatable,intent(inout)::diff(:,:) !< diffusion output
     double precision::sf(DIMS),tf(DIMS),rf(DIMS),dPF,Afs,flow(size(s,1)),fPF,dF(size(s,1)),&
     &                 gradSF(DIMS,size(s,1))
-    double precision,allocatable::gradS(:,:,:)
     
     call grid%up()
     if(.not.(allocated(diff)))then
       allocate(diff(size(s,1),grid%nC))
     end if
     diff(:,:)=0d0
-    allocate(gradS(DIMS,size(s,1),grid%nC))
-    call findGrad(grid,s,gradS)
     !$omp parallel do default(shared)&
     !$omp& private(m,n,fPF,dF,gradSF,sf,dPF,k,l,tf,rf,Afs,flow)
     do i=1,grid%nP
@@ -79,27 +76,29 @@ contains
       end if
     end do
     !$omp end parallel do
-    deallocate(gradS)
   end subroutine
   
   !> find diffusion due to gradient of scalar s on polyFvGrid
   !> \f[ \int_A D \nabla \mathbf{s} \cdot \hat{n} dA \f]
-  subroutine findDiffPolyScal(grid,s,d,diff)
+  subroutine findDiffPolyScal(grid,s,gradS,d,diff)
     use modPolyFvGrid
     class(polyFvGrid),intent(inout)::grid !< the grid
     double precision,intent(in)::s(:) !< state variable
+    double precision,allocatable::gradS(:,:) !< gradient of s
     double precision,intent(in)::d(:) !< diffusivity
     double precision,allocatable,intent(inout)::diff(:) !< diffusion output
-    double precision,allocatable::sv(:,:),dv(:,:),diffv(:,:)
+    double precision,allocatable::sv(:,:),gradSv(:,:,:),dv(:,:),diffv(:,:)
     
     allocate(sv(1,size(s)))
     allocate(dv(1,size(s)))
+    allocate(gradSv(DIMS,1,size(s)))
     if(allocated(diff))then
       allocate(diffv(1,size(diff)))
     end if
     sv(1,:)=s(:)
     dv(1,:)=d(:)
-    call findDiffPolyVect(grid,sv,dv,diffv)
+    gradSv(:,1,:)=gradS(:,:)
+    call findDiffPolyVect(grid,sv,gradSv,dv,diffv)
     if(.not.allocated(diff))then
       allocate(diff(size(diffv,2)),source=diffv(1,:))!FIXME:remove work-around
     else
@@ -107,6 +106,7 @@ contains
     end if
     deallocate(sv)
     deallocate(dv)
+    deallocate(gradSv)
     deallocate(diffv)
   end subroutine
   

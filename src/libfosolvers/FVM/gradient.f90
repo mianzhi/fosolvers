@@ -32,7 +32,7 @@ contains
     integer,parameter::L_IWORK=200
     integer::nNear,iNear(MAX_N_NEAR),lwork,iwork(L_IWORK),rank,ier
     double precision::dx(MAX_N_NEAR,DIMS),dv(MAX_N_NEAR,size(v,1)),stat(DIMS),work(MAX_L_WORK),rcond
-    double precision::tmp,eps,tmpP(DIMS)
+    double precision::maxDv
     
     call grid%up()
     m=size(v,1) ! number of components
@@ -43,7 +43,7 @@ contains
     end if
     ! find gradient
     !$omp parallel do default(shared)&
-    !$omp& private(nNear,iNear,dx,dv,vF,lwork,work,iwork,stat,rcond,rank,ier,j)
+    !$omp& private(nNear,iNear,dx,dv,vF,lwork,work,iwork,stat,rcond,rank,ier,j,maxDv)
     do i=1,grid%nC
       ! process the list of nearby points
       nNear=0
@@ -75,40 +75,13 @@ contains
         call DGELSD(nNear,DIMS,m,dx,MAX_N_NEAR,dv,MAX_N_NEAR,stat,rcond,rank,work,lwork,iwork,ier)
         gradv(:,:,i)=dv(1:DIMS,:)
       end if
+      do j=1,m
+        maxDv=maxval(abs(v(j,grid%neib(:,i))-v(j,i)),&
+        &            mask=grid%neib(:,i)>0.and.grid%neib(:,i)<=merge(grid%nC,grid%nE,useCellOnly))
+        gradv(:,j,i)=gradv(:,j,i)*min(1d0,maxDv/(norm2(gradv(:,j,i))*grid%v(i)**(1d0/3d0)))
+      end do
     end do
     !$end omp parallel do
-    ! limit the gradient
-    do i=1,grid%nP
-      m=grid%iEP(1,i)
-      n=grid%iEP(2,i)
-      eps=norm2(grid%pP(:,i)-grid%p(:,n))&
-      &   /(norm2(grid%pP(:,i)-grid%p(:,m))+norm2(grid%pP(:,i)-grid%p(:,n)))
-      tmpP(:)=eps*grid%p(:,m)+(1d0-eps)*grid%p(:,n)
-      if(m<=grid%nC.and.n<=grid%nC)then
-        do j=1,size(gradv,2)
-          tmp=v(j,m)+dot_product(gradv(:,j,m),tmpP(:)-grid%p(:,m))
-          if(tmp>max(v(j,m),v(j,n)))then
-            gradv(:,j,m)=gradv(:,j,m)&
-            &            -(tmpP(:)-grid%p(:,m))*(tmp-max(v(j,m),v(j,n)))&
-            &             /dot_product(tmpP(:)-grid%p(:,m),tmpP(:)-grid%p(:,m))
-          else if(tmp<min(v(j,m),v(j,n)))then
-            gradv(:,j,m)=gradv(:,j,m)&
-            &            -(tmpP(:)-grid%p(:,m))*(tmp-min(v(j,m),v(j,n)))&
-            &             /dot_product(tmpP(:)-grid%p(:,m),tmpP(:)-grid%p(:,m))
-          end if
-          tmp=v(j,n)+dot_product(gradv(:,j,n),tmpP(:)-grid%p(:,n))
-          if(tmp>max(v(j,m),v(j,n)))then
-            gradv(:,j,n)=gradv(:,j,n)&
-            &            -(tmpP(:)-grid%p(:,n))*(tmp-max(v(j,m),v(j,n)))&
-            &             /dot_product(tmpP(:)-grid%p(:,n),tmpP(:)-grid%p(:,n))
-          else if(tmp<min(v(j,m),v(j,n)))then
-            gradv(:,j,n)=gradv(:,j,n)&
-            &            -(tmpP(:)-grid%p(:,n))*(tmp-min(v(j,m),v(j,n)))&
-            &             /dot_product(tmpP(:)-grid%p(:,n),tmpP(:)-grid%p(:,n))
-          end if
-        end do
-      end if
-    end do
   end subroutine
   
   !> find gradient of scalar v on polyFvGrid

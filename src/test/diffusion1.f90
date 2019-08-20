@@ -4,9 +4,10 @@ function diffusion1() result(ierr)
   use modFileIO
   use modPolyFvGrid
   use modDiffusion
+  use modGradient
   integer ierr
   type(polyFvGrid)::grid
-  double precision,allocatable::s(:),d(:),tmps(:)
+  double precision,allocatable::s(:),d(:),tmps(:),gradS(:,:)
   double precision::p(3),dt
   
   ierr=0
@@ -16,6 +17,7 @@ function diffusion1() result(ierr)
   call grid%up()
   allocate(s(grid%nC))
   allocate(d(grid%nC))
+  allocate(gradS(3,grid%nC))
   do i=1,grid%nC
     p=grid%p(:,i)
     if(p(1)<0.6d0.and.p(1)>0.4d0)then
@@ -27,7 +29,8 @@ function diffusion1() result(ierr)
   d(:)=1d-3
   dt=0.0005d0
   do l=1,500
-    call findDiff(grid,s,d,tmps)
+    call findGrad(grid,s,gradS)
+    call findDiff(grid,s,gradS,d,tmps)
     s(:)=s(:)+dt*tmps(:)/grid%v(:)
   end do
   open(10,file='diffusion1_rst.vtk',action='write')
@@ -36,5 +39,5 @@ function diffusion1() result(ierr)
   call writeVTK(10,'s',[s,[(0d0,i=1,grid%nE-grid%nC)]])
   close(10)
   call grid%clear()
-  deallocate(s,d,tmps)
+  deallocate(s,d,tmps,gradS)
 end function
