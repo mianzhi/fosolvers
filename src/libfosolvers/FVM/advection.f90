@@ -586,7 +586,13 @@ contains
     double precision::vanAlbada !< limit function
     double precision,parameter::R_LMT=1d20
     
-    vanAlbada=merge((r+r**2)/(1d0+r**2),1d0,abs(r)<R_LMT)
+    if(r<0d0)then
+      vanAlbada=0d0
+    else if(r<R_LMT)then
+      vanAlbada=(r+r**2)/(1d0+r**2)
+    else
+      vanAlbada=1d0
+    end if
   end function
   
   !> Euler normal flux Jacobian
