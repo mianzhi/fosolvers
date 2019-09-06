@@ -42,16 +42,16 @@ contains
   
   !> find mass flow rate on polyFvGrid with Rhie-Chow u interpolation and TVD rho reconstruction
   !> \f[ \int_A \rho\mathbf{u} \cdot \hat{n} dA \f]
-  subroutine findMassFlowMagicPoly(grid,rho,gradRho,u,p,presF,dt,flow)
+  subroutine findMassFlowMagicPoly(grid,rho,u,p,presF,dt,flow,gradRho)
     use modPolyFvGrid
     class(polyFvGrid),intent(inout)::grid !< the grid
     double precision,intent(in)::rho(:) !< density
-    double precision,intent(in)::gradRho(:,:) !< gradient of rho
     double precision,intent(in)::u(:,:) !< velocity
     double precision,intent(in)::p(:) !< pressure
     double precision,intent(in)::presF(:,:) !< pressure force
     double precision,intent(in)::dt !< time step size
     double precision,allocatable,intent(inout)::flow(:) !< mass flow rate output
+    double precision,intent(in),optional::gradRho(:,:) !< gradient of rho
     integer::up,dn
     double precision::vMN(DIMS),vMP(DIMS),vPN(DIMS),flux(DIMS),eps,rhoUp,rhoDn,dRho,r,rhof
     
@@ -75,9 +75,13 @@ contains
       rhoUp=rho(up)
       rhoDn=rho(dn)
       if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
-        dRho=dot_product(grid%p(:,dn)-grid%p(:,up),gradRho(:,up))
-        r=merge(2d0*dRho/(rhoDn-rhoUp)-1d0,0d0,abs(rhoDn-rhoUp)>tiny(1d0))
-        rhof=rhoUp+0.5d0*vanAlbada(r)*(rhoDn-rhoUp)
+        if(present(gradRho))then
+          dRho=dot_product(grid%p(:,dn)-grid%p(:,up),gradRho(:,up))
+          r=merge(2d0*dRho/(rhoDn-rhoUp)-1d0,0d0,abs(rhoDn-rhoUp)>tiny(1d0))
+          rhof=rhoUp+0.5d0*vanAlbada(r)*(rhoDn-rhoUp)
+        else
+          rhof=rhoUp
+        end if
         vMN(:)=grid%p(:,n)-grid%p(:,m)
         vMP(:)=grid%pP(:,i)-grid%p(:,m)
         vPN(:)=grid%p(:,n)-grid%pP(:,i)
@@ -101,13 +105,13 @@ contains
   
   !> find flow rate of vector v on polyFvGrid using mass flow rate
   !> \f[ \int_A \rho\mathbf{v}(\mathbf{u} \cdot \hat{n}) dA \f]
-  subroutine findVarFlowPolyVect(grid,v,gradV,mFlow,flow)
+  subroutine findVarFlowPolyVect(grid,v,mFlow,flow,gradV)
     use modPolyFvGrid
     class(polyFvGrid),intent(inout)::grid !< the grid
     double precision,intent(in)::v(:,:) !< transported variables
-    double precision,intent(in)::gradV(:,:,:) !< gradient of v
     double precision,intent(in)::mFlow(:) !< mass flow through pairs
     double precision,allocatable,intent(inout)::flow(:,:) !< v flow rate output
+    double precision,intent(in),optional::gradV(:,:,:) !< gradient of v
     double precision::vf(size(v,1)),dV(size(v,1)),r(size(v,1))
     integer::up,dn
     
@@ -132,12 +136,11 @@ contains
             up=n
             dn=m
           end if
-          if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
+          vf(:)=v(:,up)
+          if(m<=grid%nC.and.n<=grid%nC.and.present(gradV))then ! internal pairs and gradV available
             dV(:)=matmul(grid%p(:,dn)-grid%p(:,up),gradV(:,:,up))
             r(:)=merge(2d0*dV/(v(:,dn)-v(:,up))-1d0,0d0,abs(v(:,dn)-v(:,up))>tiny(1d0))
-            vf(:)=v(:,up)+0.5d0*vanAlbada(r)*(v(:,dn)-v(:,up))
-          else ! boundary pairs
-            vf(:)=v(:,up)
+            vf(:)=vf(:)+0.5d0*vanAlbada(r)*(v(:,dn)-v(:,up))
           end if
           flow(:,i)=vf(:)*mFlow(i)
         end if
@@ -148,30 +151,34 @@ contains
   
   !> find flow rate of scalar v on polyFvGrid using mass flow rate
   !> \f[ \int_A \rho v(\mathbf{u} \cdot \hat{n}) dA \f]
-  subroutine findVarFlowPolyScal(grid,v,gradV,mFlow,flow)
+  subroutine findVarFlowPolyScal(grid,v,mFlow,flow,gradV)
     use modPolyFvGrid
     class(polyFvGrid),intent(inout)::grid !< the grid
     double precision,intent(in)::v(:) !< transported variable
-    double precision,intent(in)::gradV(:,:) !< gradient of v
     double precision,intent(in)::mFlow(:) !< mass flow through pairs
     double precision,allocatable,intent(inout)::flow(:) !< v flow rate output
+    double precision,intent(in),optional::gradV(:,:) !< gradient of v
     double precision,allocatable::vv(:,:),flowv(:,:),gradVv(:,:,:)
     
     allocate(vv(1,size(v)))
-    allocate(gradVv(DIMS,1,size(v)))
     if(allocated(flow))then
       allocate(flowv(1,size(flow)))
     end if
     vv(1,:)=v(:)
-    gradVv(:,1,:)=gradV(:,:)
-    call findVarFlowPolyVect(grid,vv,gradVv,mFlow,flowv)
+    if(present(gradV))then
+      allocate(gradVv(DIMS,1,size(v)))
+      gradVv(:,1,:)=gradV(:,:)
+      call findVarFlowPolyVect(grid,vv,mFlow,flowv,gradV=gradVv)
+      deallocate(gradVv)
+    else
+      call findVarFlowPolyVect(grid,vv,mFlow,flowv)
+    end if
     if(.not.allocated(flow))then
       allocate(flow(size(flowv,2)),source=flowv(1,:))!FIXME:remove work-around
     else
       flow(:)=flowv(1,:)
     end if
     deallocate(vv)
-    deallocate(gradVv)
     deallocate(flowv)
   end subroutine
   

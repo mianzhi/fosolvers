@@ -69,10 +69,8 @@ module modPbc
   double precision,allocatable::advRho(:) !< mass advection into cell [kg/s]
   double precision,allocatable::advRhou(:,:) !< momentum advection into cell [kg*m/s^2]
   double precision,allocatable::advRhoH(:) !< enthalpy advection into cell [W]
-  double precision,allocatable::gradRho(:,:) !< gradient of density [kg/m^4]
   double precision,allocatable::gradU(:,:,:) !< gradient of velocity [1/s]
   double precision,allocatable::gradP(:,:) !< gradient of pressure [Pa/m]
-  double precision,allocatable::gradH(:,:) !< gradient of static enthalpy [J/kg/m]
   double precision,allocatable::gradTemp(:,:) !< gradient of temp [K/m]
   double precision,allocatable::viscF(:,:) !< viscous force applied on cell [N]
   double precision,allocatable::presF(:,:) !< pressure force applied on cell [N]
@@ -187,10 +185,8 @@ contains
     allocate(advRho(grid%nC))
     allocate(advRhou(DIMS,grid%nC))
     allocate(advRhoH(grid%nC))
-    allocate(gradRho(DIMS,grid%nC))
     allocate(gradU(DIMS,DIMS,grid%nC))
     allocate(gradP(DIMS,grid%nC))
-    allocate(gradH(DIMS,grid%nC))
     allocate(gradTemp(DIMS,grid%nC))
     allocate(viscF(DIMS,grid%nC))
     allocate(presF(DIMS,grid%nC))
@@ -486,7 +482,6 @@ contains
     call setBC()
     call findGrad(grid,p,gradP)
     call findGrad(grid,u,gradU)
-    call findGrad(grid,rho,gradRho)
     call pbcEq%solve(x,info=info)
     needRetry=info<0
     call pbcEq%getNIt(n)
@@ -525,8 +520,8 @@ contains
     call setBC()
     call findPresForce(grid,p,gradP,presF)
     call findViscForce(grid,u,gradU,visc,viscF)
-    call findMassFlow(grid,rho,gradRho,u,p,presF,dt,flowRho)
-    call findVarFlow(grid,u,gradU,flowRho,flowRhou)
+    call findMassFlow(grid,rho,u,p,presF,dt,flowRho)
+    call findVarFlow(grid,u,flowRho,flowRhou)
     call findAdv(grid,flowRho,advRho)
     call findAdv(grid,flowRhou,advRhou)
     forall(i=1:grid%nC)
@@ -554,7 +549,6 @@ contains
     end if
     x(1:grid%nC)=rhoE(1:grid%nC)
     call setBC()
-    call findGrad(grid,(rhoE+p)/rho,gradH)
     call findGrad(grid,temp,gradTemp)
     call energyEq%solve(x,info=info)
     needRetry=info<0
@@ -588,7 +582,7 @@ contains
       temp(i)=(rhoE(i)/rho(i)-0.5d0*dot_product(u(:,i),u(:,i)))/(1d0/(gamm-1d0))/Rgas
     end forall
     call setBC()
-    call findVarFlow(grid,(rhoE+p)/rho,gradH,flowRho,flowRhoH)
+    call findVarFlow(grid,(rhoE+p)/rho,flowRho,flowRhoH)
     call findAdv(grid,flowRhoH,advRhoH)
     call findDiff(grid,temp,gradTemp,cond,condQ)
     forall(i=1:grid%nC)
