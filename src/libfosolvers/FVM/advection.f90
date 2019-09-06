@@ -85,9 +85,9 @@ contains
         flux(:)=rhof*(eps*u(:,m)+(1d0-eps)*u(:,n))&
         &       -dt/(1d0/rho(m)+1d0/rho(n))*&
         &        (presF(:,m)/grid%v(m)/rho(m)+presF(:,n)/grid%v(n)/rho(n))&
-        &       +dt*vMN(:)*(p(m)-p(n))/dot_product(vMN,vMN)
+        &       +dt*grid%normP(:,i)*(p(m)-p(n))/dot_product(vMN,grid%normP(:,i))
       else ! boundary pairs
-        flux(:)=rho(up)*0.5d0*(u(:,m)+u(:,n))
+        flux(:)=rhoUp*0.5d0*(u(:,m)+u(:,n))
         if(abs(dot_product(grid%normP(:,i),flux(:)))>tiny(1d0))then
           vMP(:)=grid%pP(:,i)-grid%p(:,m)
           flux(:)=flux(:)-0.5d0*dt*presF(:,m)/grid%v(m)&
