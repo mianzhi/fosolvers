@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------------- best with 100 columns
 
 !> environment for Euler problem
-module modEuler
+module modFOEuler
   use modPolyFvGrid
   use modCondition
   use modUDF
@@ -359,7 +359,7 @@ contains
   
   !> the ODE to be advanced
   function rhs(c_time,c_x,c_dxdt,dat)
-    use modAdvection
+    use modEuler
     real(C_DOUBLE),value::c_time
     type(C_PTR),value::c_x,c_dxdt,dat
     integer(C_INT)::rhs
@@ -374,7 +374,7 @@ contains
     
     call setBC(x)
     call syncState(x)
-    call findAdv(grid,rho,rhou,rhoE,p,gamm,dRho,dRhou,dRhoE)
+    call findEuler(grid,rho,rhou,rhoE,p,gamm,dRho,dRhou,dRhoE)
     forall(i=1:grid%nC)
       dxdt(i)=dRho(i)/grid%v(i)
       dxdt(grid%nC+i)=dRhou(1,i)/grid%v(i)
@@ -388,7 +388,7 @@ contains
   
   !> setup/factor preconditioning matrix
   function pset(c_time,c_x,c_fx,Jok,Jcur,c_pGamm,dat)
-    use modAdvection
+    use modEuler
     real(C_DOUBLE),value::c_time,c_pGamm
     type(C_PTR),value::c_x,c_fx,dat
     integer(C_INT),value::Jok
@@ -410,7 +410,7 @@ contains
     else
       call setBC(x)
       call syncState(x)
-      call findAdvJac(grid,rho,rhou,rhoE,p,gamm,JacP,JacC)
+      call findEulerJac(grid,rho,rhou,rhoE,p,gamm,JacP,JacC)
       if(.not.allocated(JacS))then
         allocate(JacS(size(JacC,1),size(JacC,2),size(JacC,3)))
       end if
@@ -507,7 +507,7 @@ end module
 
 !> Euler solver
 program foeuler
-  use modEuler
+  use modFOEuler
   character(20)::tmpStr
   
   call init()

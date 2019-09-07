@@ -3,7 +3,7 @@
 function euler() result(ierr)
   use modFileIO
   use modPolyFvGrid
-  use modAdvection
+  use modEuler
   integer ierr
   type(polyFvGrid)::grid
   double precision,allocatable::rho(:),rhou(:,:),rhoE(:),p(:),dRho(:),dRhou(:,:),dRhoE(:)
@@ -32,7 +32,7 @@ function euler() result(ierr)
   end do
   dt=1d-6
   do l=1,500
-    call findAdv(grid,rho,rhou,rhoE,p,1.4d0,dRho,dRhou,dRhoE)
+    call findEuler(grid,rho,rhou,rhoE,p,1.4d0,dRho,dRhou,dRhoE)
     forall(i=1:grid%nC)
       rho(i)=rho(i)+dt*dRho(i)/grid%v(i)
       rhou(:,i)=rhou(:,i)+dt*dRhou(:,i)/grid%v(i)

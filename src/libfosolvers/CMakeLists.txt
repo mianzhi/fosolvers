@@ -20,6 +20,7 @@ SET(libfosolvers_src
   FVM/diffusion.f90
   FVM/Newtonian.f90
   FVM/pressure.f90
+  FVM/Euler.f90
   numerics/numerics.f90
 )
 

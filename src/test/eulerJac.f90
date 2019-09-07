@@ -3,7 +3,7 @@
 function eulerJac() result(ierr)
   use modFileIO
   use modPolyFvGrid
-  use modAdvection
+  use modEuler
   integer ierr
   type(polyFvGrid)::grid
   double precision,allocatable::rho(:),rhou(:,:),rhoE(:),p(:),&
@@ -41,7 +41,7 @@ function eulerJac() result(ierr)
   forall(i=1:grid%nC)
     p1(i)=(1.4d0-1d0)*(rhoE1(i)-0.5d0*dot_product(rhou1(:,i),rhou1(:,i))/rho1(i))
   end forall
-  call findAdv(grid,rho1,rhou1,rhoE1,p1,1.4d0,dRho,dRhou,dRhoE)
+  call findEuler(grid,rho1,rhou1,rhoE1,p1,1.4d0,dRho,dRhou,dRhoE)
   JacM(:,:)=spread([dRho(M),dRhou(:,M),dRhoE(M)],2,5)
   JacN(:,:)=spread([dRho(M),dRhou(:,M),dRhoE(M)],2,5)
   ! disturbance 1
@@ -52,7 +52,7 @@ function eulerJac() result(ierr)
   forall(i=1:grid%nC)
     p1(i)=(1.4d0-1d0)*(rhoE1(i)-0.5d0*dot_product(rhou1(:,i),rhou1(:,i))/rho1(i))
   end forall
-  call findAdv(grid,rho1,rhou1,rhoE1,p1,1.4d0,dRho,dRhou,dRhoE)
+  call findEuler(grid,rho1,rhou1,rhoE1,p1,1.4d0,dRho,dRhou,dRhoE)
   JacM(:,1)=([dRho(M),dRhou(:,M),dRhoE(M)]-JacM(:,1))/E1
   ! disturbance 2
   rho1(:)=rho(:)
@@ -62,7 +62,7 @@ function eulerJac() result(ierr)
   forall(i=1:grid%nC)
     p1(i)=(1.4d0-1d0)*(rhoE1(i)-0.5d0*dot_product(rhou1(:,i),rhou1(:,i))/rho1(i))
   end forall
-  call findAdv(grid,rho1,rhou1,rhoE1,p1,1.4d0,dRho,dRhou,dRhoE)
+  call findEuler(grid,rho1,rhou1,rhoE1,p1,1.4d0,dRho,dRhou,dRhoE)
   JacM(:,2)=([dRho(M),dRhou(:,M),dRhoE(M)]-JacM(:,2))/E1
   ! disturbance 3
   rho1(:)=rho(:)
@@ -72,7 +72,7 @@ function eulerJac() result(ierr)
   forall(i=1:grid%nC)
     p1(i)=(1.4d0-1d0)*(rhoE1(i)-0.5d0*dot_product(rhou1(:,i),rhou1(:,i))/rho1(i))
   end forall
-  call findAdv(grid,rho1,rhou1,rhoE1,p1,1.4d0,dRho,dRhou,dRhoE)
+  call findEuler(grid,rho1,rhou1,rhoE1,p1,1.4d0,dRho,dRhou,dRhoE)
   JacM(:,3)=([dRho(M),dRhou(:,M),dRhoE(M)]-JacM(:,3))/E1
   ! disturbance 4
   rho1(:)=rho(:)
@@ -82,7 +82,7 @@ function eulerJac() result(ierr)
   forall(i=1:grid%nC)
     p1(i)=(1.4d0-1d0)*(rhoE1(i)-0.5d0*dot_product(rhou1(:,i),rhou1(:,i))/rho1(i))
   end forall
-  call findAdv(grid,rho1,rhou1,rhoE1,p1,1.4d0,dRho,dRhou,dRhoE)
+  call findEuler(grid,rho1,rhou1,rhoE1,p1,1.4d0,dRho,dRhou,dRhoE)
   JacM(:,4)=([dRho(M),dRhou(:,M),dRhoE(M)]-JacM(:,4))/E1
   ! disturbance 5
   rho1(:)=rho(:)
@@ -92,7 +92,7 @@ function eulerJac() result(ierr)
   forall(i=1:grid%nC)
     p1(i)=(1.4d0-1d0)*(rhoE1(i)-0.5d0*dot_product(rhou1(:,i),rhou1(:,i))/rho1(i))
   end forall
-  call findAdv(grid,rho1,rhou1,rhoE1,p1,1.4d0,dRho,dRhou,dRhoE)
+  call findEuler(grid,rho1,rhou1,rhoE1,p1,1.4d0,dRho,dRhou,dRhoE)
   JacM(:,5)=([dRho(M),dRhou(:,M),dRhoE(M)]-JacM(:,5))/E2
   ! disturbance 6
   rho1(:)=rho(:)
@@ -102,7 +102,7 @@ function eulerJac() result(ierr)
   forall(i=1:grid%nC)
     p1(i)=(1.4d0-1d0)*(rhoE1(i)-0.5d0*dot_product(rhou1(:,i),rhou1(:,i))/rho1(i))
   end forall
-  call findAdv(grid,rho1,rhou1,rhoE1,p1,1.4d0,dRho,dRhou,dRhoE)
+  call findEuler(grid,rho1,rhou1,rhoE1,p1,1.4d0,dRho,dRhou,dRhoE)
   JacN(:,1)=([dRho(M),dRhou(:,M),dRhoE(M)]-JacN(:,1))/E1
   ! disturbance 7
   rho1(:)=rho(:)
@@ -112,7 +112,7 @@ function eulerJac() result(ierr)
   forall(i=1:grid%nC)
     p1(i)=(1.4d0-1d0)*(rhoE1(i)-0.5d0*dot_product(rhou1(:,i),rhou1(:,i))/rho1(i))
   end forall
-  call findAdv(grid,rho1,rhou1,rhoE1,p1,1.4d0,dRho,dRhou,dRhoE)
+  call findEuler(grid,rho1,rhou1,rhoE1,p1,1.4d0,dRho,dRhou,dRhoE)
   JacN(:,2)=([dRho(M),dRhou(:,M),dRhoE(M)]-JacN(:,2))/E1
   ! disturbance 8
   rho1(:)=rho(:)
@@ -122,7 +122,7 @@ function eulerJac() result(ierr)
   forall(i=1:grid%nC)
     p1(i)=(1.4d0-1d0)*(rhoE1(i)-0.5d0*dot_product(rhou1(:,i),rhou1(:,i))/rho1(i))
   end forall
-  call findAdv(grid,rho1,rhou1,rhoE1,p1,1.4d0,dRho,dRhou,dRhoE)
+  call findEuler(grid,rho1,rhou1,rhoE1,p1,1.4d0,dRho,dRhou,dRhoE)
   JacN(:,3)=([dRho(M),dRhou(:,M),dRhoE(M)]-JacN(:,3))/E1
   ! disturbance 9
   rho1(:)=rho(:)
@@ -132,7 +132,7 @@ function eulerJac() result(ierr)
   forall(i=1:grid%nC)
     p1(i)=(1.4d0-1d0)*(rhoE1(i)-0.5d0*dot_product(rhou1(:,i),rhou1(:,i))/rho1(i))
   end forall
-  call findAdv(grid,rho1,rhou1,rhoE1,p1,1.4d0,dRho,dRhou,dRhoE)
+  call findEuler(grid,rho1,rhou1,rhoE1,p1,1.4d0,dRho,dRhou,dRhoE)
   JacN(:,4)=([dRho(M),dRhou(:,M),dRhoE(M)]-JacN(:,4))/E1
   ! disturbance 10
   rho1(:)=rho(:)
@@ -142,10 +142,10 @@ function eulerJac() result(ierr)
   forall(i=1:grid%nC)
     p1(i)=(1.4d0-1d0)*(rhoE1(i)-0.5d0*dot_product(rhou1(:,i),rhou1(:,i))/rho1(i))
   end forall
-  call findAdv(grid,rho1,rhou1,rhoE1,p1,1.4d0,dRho,dRhou,dRhoE)
+  call findEuler(grid,rho1,rhou1,rhoE1,p1,1.4d0,dRho,dRhou,dRhoE)
   JacN(:,5)=([dRho(M),dRhou(:,M),dRhoE(M)]-JacN(:,5))/E2
   ! approximate analytical Jacobian
-  call findAdvJac(grid,rho,rhou,rhoE,p,1.4d0,JacP,JacC)
+  call findEulerJac(grid,rho,rhou,rhoE,p,1.4d0,JacP,JacC)
   ! compare
   open(10,file='jac',action='write')
   write(10,*)'numerical'
