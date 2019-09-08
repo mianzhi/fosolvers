@@ -71,14 +71,19 @@ contains
         &                                 dot_product(gradUF(2,:),grid%normP(:,i)),&
         &                                 dot_product(gradUF(3,:),grid%normP(:,i))]&
         &      -2d0/3d0*viscF*grid%aP(i)*(gradUF(1,1)+gradUF(2,2)+gradUF(3,3))*grid%normP(:,i)
-        !$omp critical
         if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
-          dRhou(:,m)=dRhou(:,m)+flow(:)
-          dRhou(:,n)=dRhou(:,n)-flow(:)
+          do j=1,DIMS
+            !$omp atomic
+            dRhou(j,m)=dRhou(j,m)+flow(j)
+            !$omp atomic
+            dRhou(j,n)=dRhou(j,n)-flow(j)
+          end do
         else ! boundary pairs
-          dRhou(:,m)=dRhou(:,m)+flow(:)
+          do j=1,DIMS
+            !$omp atomic
+            dRhou(j,m)=dRhou(j,m)+flow(j)
+          end do
         end if
-        !$omp end critical
       end if
     end do
     !$omp end parallel do
