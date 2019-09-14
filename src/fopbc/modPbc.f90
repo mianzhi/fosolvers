@@ -156,7 +156,7 @@ contains
       close(FID)
     end if
     ! initialize algebraic solver
-    call pbcEq%init(grid%nC*(DIMS+1),pbcRHS)
+    call pbcEq%init(grid%nC*(DIMS+1),pbcRHS,maxl=MAXIT_PBC)
     call pbcEq%setMaxIt(MAXIT_PBC)
     call energyEq%init(grid%nC,energyRHS,maa=MAXIT_ENERGY)
     call energyEq%setMaxIt(MAXIT_ENERGY)
