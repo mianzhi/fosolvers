@@ -32,6 +32,8 @@ contains
       allocate(dRhou(DIMS,grid%nC))
     end if
     dRhou(:,:)=0d0
+    !$omp parallel do default(shared)&
+    !$omp& private(m,n,vMP,vNP,vM1P,vN1P,vMM1,vNN1,eps,pf,flow)
     do i=1,grid%nP
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
@@ -47,17 +49,25 @@ contains
           pf=eps*(p(m)+dot_product(gradP(:,m),vMM1(:)))&
           &  +(1d0-eps)*(p(n)+dot_product(gradP(:,n),vNN1(:)))
           flow(:)=-pf*grid%aP(i)*grid%normP(:,i)
-          dRhou(:,m)=dRhou(:,m)+flow(:)
-          dRhou(:,n)=dRhou(:,n)-flow(:)
+          do j=1,DIMS
+            !$omp atomic
+            dRhou(j,m)=dRhou(j,m)+flow(j)
+            !$omp atomic
+            dRhou(j,n)=dRhou(j,n)-flow(j)
+          end do
         else ! boundary pairs
           vMP(:)=grid%pP(:,i)-grid%p(:,m)
           vM1P(:)=grid%normP(:,i)*dot_product(vMP(:),grid%normP(:,i))
           pf=0.5d0*(p(m)+p(n))+dot_product(gradP(:,m),vMP(:)-vM1P(:))
           flow(:)=-pf*grid%aP(i)*grid%normP(:,i)
-          dRhou(:,m)=dRhou(:,m)+flow(:)
+          do j=1,DIMS
+            !$omp atomic
+            dRhou(j,m)=dRhou(j,m)+flow(j)
+          end do
         end if
       end if
     end do
+    !$omp end parallel do
   end subroutine
   
   !> find pressure force on polyFvGrid without skewness correction by pressure gradient

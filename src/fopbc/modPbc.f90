@@ -511,12 +511,14 @@ contains
     call associateVector(oldVector,x)
     call associateVector(newVector,y)
     
+    !$omp parallel workshare
     forall(i=1:grid%nC)
       u(:,i)=x((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)
       p(i)=x((DIMS+1)*(i-1)+(DIMS+1))
       rho(i)=p(i)/Rgas/temp(i)
       rhou(:,i)=rho(i)*u(:,i)
     end forall
+    !$omp end parallel workshare
     call setBC()
     call findPresForce(grid,p,gradP,presF)
     call findViscForce(grid,u,gradU,visc,viscF)
@@ -524,12 +526,14 @@ contains
     call findVarFlow(grid,u,flowRho,flowRhou)
     call findAdv(grid,flowRho,advRho)
     call findAdv(grid,flowRhou,advRhou)
+    !$omp parallel workshare
     forall(i=1:grid%nC)
       y((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=& ! momentum equation residual
       &  rhou(:,i)-rhou0(:,i)-dt/grid%v(i)*(advRhou(:,i)+presF(:,i)+viscF(:,i))
       y((DIMS+1)*(i-1)+(DIMS+1))=& ! pressure equation residual
       &  rho(i)-rho0(i)-dt/grid%v(i)*advRho(i)
     end forall
+    !$omp end parallel workshare
     pbcRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
     if(c_associated(dat))then
     end if
@@ -578,16 +582,20 @@ contains
     call associateVector(newVector,y)
     
     rhoE(1:grid%nC)=x(1:grid%nC)
+    !$omp parallel workshare
     forall(i=1:grid%nC)
       temp(i)=(rhoE(i)/rho(i)-0.5d0*dot_product(u(:,i),u(:,i)))/(1d0/(gamm-1d0))/Rgas
     end forall
+    !$omp end parallel workshare
     call setBC()
     call findVarFlow(grid,(rhoE+p)/rho,flowRho,flowRhoH)
     call findAdv(grid,flowRhoH,advRhoH)
     call findDiff(grid,temp,gradTemp,cond,condQ)
+    !$omp parallel workshare
     forall(i=1:grid%nC)
       y(i)=rhoE0(i)+dt/grid%v(i)*(advRhoH(i)+condQ(i)) ! TODO add viscous heating
     end forall
+    !$omp end parallel workshare
     energyRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
     if(c_associated(dat))then
     end if
