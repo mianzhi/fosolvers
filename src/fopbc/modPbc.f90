@@ -53,10 +53,10 @@ module modPbc
   double precision,allocatable::p(:) !< pressure [Pa]
   double precision,allocatable::u(:,:) !< velocity [m/s]
   double precision,allocatable::temp(:) !< temperature [K]
-  double precision,allocatable::Y(:,:) !< mass fraction of species
+  double precision,allocatable::massFrac(:,:) !< mass fraction of species
   
   ! state at the beginning of a time step
-  double precision,allocatable::rho0(:),rhou0(:,:),rhoE0(:),p0(:),u0(:,:),temp0(:),Y0(:,:)
+  double precision,allocatable::rho0(:),rhou0(:,:),rhoE0(:),p0(:),u0(:,:),temp0(:),massFrac0(:,:)
   
   ! state at the beginning of an outer iteration
   double precision,allocatable::rho1(:)
@@ -98,7 +98,7 @@ contains
     use modFileIO
     integer,parameter::FID=10
     double precision::pInit,uInit(DIMS),TInit,pE(DIMS),tmpD
-    double precision,allocatable::YInit(:)
+    double precision,allocatable::massFracInit(:)
     integer::udfIc,udfBc,iUdf(5)
     
     ! read inputs
@@ -174,9 +174,9 @@ contains
     allocate(u0(DIMS,grid%nE))
     allocate(temp(grid%nE))
     allocate(temp0(grid%nE))
-    allocate(Y(1,grid%nE))! FIXME fix nSp
-    allocate(Y0(1,grid%nE))! FIXME fix nSp
-    allocate(YInit(1))! FIXME fix nSp
+    allocate(massFrac(1,grid%nE))! FIXME fix nSp
+    allocate(massFrac0(1,grid%nE))! FIXME fix nSp
+    allocate(massFracInit(1))! FIXME fix nSp
     allocate(visc(grid%nE))
     allocate(cond(grid%nE))
     allocate(flowRho(grid%nP))
@@ -203,18 +203,18 @@ contains
         uInit(3)=udf%eval(iUdf(5),pE,0d0)
       end if
       ! FIXME remove below
-      YInit=[1d0]
+      massFracInit=[1d0]
       ! FIXME remove above
       p(i)=pInit
       u(:,i)=uInit(:)
       temp(i)=TInit
-      Y(:,i)=YInit(:)
+      massFrac(:,i)=massFracInit(:)
     end do
-    call recoverState(p,u,temp,Y,rho,rhou,rhoE)
+    call recoverState(p,u,temp,massFrac,rho,rhou,rhoE)
     t=0d0
     tNext=tInt
     iOut=0
-    deallocate(YInit)
+    deallocate(massFracInit)
   end subroutine
   
   !> clear the simulation environment
@@ -222,7 +222,7 @@ contains
     call grid%clear()
   end subroutine
   
-  !> record {rho,rhoU,rhoE,p,u,temp,Y} in {rho0,rhoU0,rhoE0,p0,u0,temp0,Y0}
+  !> record {rho,rhoU,rhoE,p,u,temp,massFrac} in {rho0,rhoU0,rhoE0,p0,u0,temp0,massFrac0}
   subroutine recordState0()
     rho0(:)=rho(:)
     rhou0(:,:)=rhou(:,:)
@@ -230,10 +230,10 @@ contains
     p0(:)=p(:)
     u0(:,:)=u(:,:)
     temp0(:)=temp(:)
-    Y0(:,:)=Y(:,:)
+    massFrac0(:,:)=massFrac(:,:)
   end subroutine
   
-  !> load {rho,rhoU,rhoE,p,u,temp,Y} from {rho0,rhoU0,rhoE0,p0,u0,temp0,Y0}
+  !> load {rho,rhoU,rhoE,p,u,temp,massFrac} from {rho0,rhoU0,rhoE0,p0,u0,temp0,massFrac0}
   subroutine loadState0()
     rho(:)=rho0(:)
     rhou(:,:)=rhou0(:,:)
@@ -241,15 +241,15 @@ contains
     p(:)=p0(:)
     u(:,:)=u0(:,:)
     temp(:)=temp0(:)
-    Y(:,:)=Y0(:,:)
+    massFrac(:,:)=massFrac0(:,:)
   end subroutine
   
   !> derive primitive state {p,u,T} from conserved state {rho,rhou,rhoE}
-  subroutine deriveState(rhoi,rhoui,rhoEi,Yi,po,uo,tempo)
+  subroutine deriveState(rhoi,rhoui,rhoEi,massFraci,po,uo,tempo)
     double precision,intent(in)::rhoi(:) !< density
     double precision,intent(in)::rhoui(:,:) !< momentum
     double precision,intent(in)::rhoEi(:) !< total energy
-    double precision,intent(in)::Yi(:,:) !< mass fraction of species
+    double precision,intent(in)::massFraci(:,:) !< mass fraction of species
     double precision,intent(inout)::po(:) !< pressure
     double precision,intent(inout)::uo(:,:) !< velocity
     double precision,intent(inout)::tempo(:) !< temperature
@@ -265,11 +265,11 @@ contains
   end subroutine
   
   !> recover conserved state {rho,rhou,rhoE} from primitive state {p,u,T}
-  subroutine recoverState(pi,ui,tempi,Yi,rhoo,rhouo,rhoEo)
+  subroutine recoverState(pi,ui,tempi,massFraci,rhoo,rhouo,rhoEo)
     double precision,intent(in)::pi(:) !< pressure
     double precision,intent(in)::ui(:,:) !< velocity
     double precision,intent(in)::tempi(:) !< temperature
-    double precision,intent(in)::Yi(:,:) !< mass fraction of species
+    double precision,intent(in)::massFraci(:,:) !< mass fraction of species
     double precision,intent(inout)::rhoo(:) !< density
     double precision,intent(inout)::rhouo(:,:) !< momentum
     double precision,intent(inout)::rhoEo(:) !< total energy
