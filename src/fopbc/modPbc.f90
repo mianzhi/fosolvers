@@ -15,6 +15,7 @@ module modPbc
   integer,parameter::MAXIT_PBC=50 !< max number of momentum and pressure equation iterations
   integer,parameter::MAXIT_ENERGY=50 !< max number of energy equation iterations
   integer,parameter::MAXIT_OUTER=20 !< max number of outer iterations
+  integer,parameter::MAXIT_FULL=50 !< max number of full NS equation iterations
   
   integer,parameter::BC_WALL_TEMP=0 !< wall boundary with prescribed temperature
   integer,parameter::BC_WALL_TEMP_UDF=5 !< wall boundary with prescribed temperature by UDF
@@ -85,11 +86,14 @@ module modPbc
   double precision,allocatable::tempScale !< temperature scale [K]
   double precision,allocatable::pbcXFact(:) !< pbc solution scaling factor vector
   double precision,allocatable::pbcRFact(:) !< pbc residual scaling factor vector
+  double precision,allocatable::fullXFact(:) !< full system solution scaling factor vector
+  double precision,allocatable::fullRFact(:) !< full system residual scaling factor vector
   
   ! data for algebraic solver
   type(NewtonKrylov)::pbcEq !< momentum and pressure equations (isothermal) solved by Newton-GMRES
   type(fixPt)::energyEq !< energy equation as a fix point problem
-  integer::nItPBC,nItEnergy,nItOuter !< number of iterations
+  type(NewtonKrylov)::fullEq !< full NS equations solved by Newton-GMRES
+  integer::nItPBC,nItEnergy,nItOuter,nItFull !< number of iterations
   
 contains
   
@@ -160,6 +164,8 @@ contains
     call pbcEq%setMaxIt(MAXIT_PBC)
     call energyEq%init(grid%nC,energyRHS,maa=MAXIT_ENERGY)
     call energyEq%setMaxIt(MAXIT_ENERGY)
+    call fullEq%init(grid%nC*(DIMS+2),fullRHS,maxl=MAXIT_FULL)
+    call fullEq%setMaxIt(MAXIT_FULL)
     ! work space and initial state
     allocate(rho(grid%nE))
     allocate(rho0(grid%nE))
@@ -193,6 +199,8 @@ contains
     allocate(condQ(grid%nC))
     allocate(pbcXFact((DIMS+1)*grid%nC))
     allocate(pbcRFact((DIMS+1)*grid%nC))
+    allocate(fullXFact((DIMS+2)*grid%nC))
+    allocate(fullRFact((DIMS+2)*grid%nC))
     do i=1,grid%nE
       if(udfIc/=0)then
         pE(:)=grid%p(:,i)
@@ -341,11 +349,19 @@ contains
       pbcXFact((DIMS+1)*(i-1)+(DIMS+1))=1d0/pScale
       pbcRFact((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=1d0/rhouScale
       pbcRFact((DIMS+1)*(i-1)+(DIMS+1))=1d0/rhoScale
+      fullXFact((DIMS+2)*(i-1)+1:(DIMS+2)*(i-1)+DIMS)=1d0/uScale
+      fullXFact((DIMS+2)*(i-1)+(DIMS+1))=1d0/pScale
+      fullXFact((DIMS+2)*(i-1)+(DIMS+2))=1d0/tempScale
+      fullRFact((DIMS+2)*(i-1)+1:(DIMS+2)*(i-1)+DIMS)=1d0/rhouScale
+      fullRFact((DIMS+2)*(i-1)+(DIMS+1))=1d0/rhoScale
+      fullRFact((DIMS+2)*(i-1)+(DIMS+2))=1d0/rhoEScale
     end forall
     call pbcEq%setScale(pbcXFact,pbcRFact)
+    call fullEq%setScale(fullXFact,fullRfact)
     
     nItPBC=0
     nItEnergy=0
+    nItFull=0
     
     write(*,'(a,g12.6,a,g12.6)')'[i] starting step, t: ',t,' dt: ',dt
   end subroutine
@@ -597,6 +613,88 @@ contains
     end forall
     !$omp end parallel workshare
     energyRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
+    if(c_associated(dat))then
+    end if
+  end function
+  
+  !> solve the full NS equations
+  subroutine solveFull()
+    double precision,allocatable,save::x(:)
+    integer::info
+    
+    if(.not.allocated(x))then
+      allocate(x((DIMS+2)*grid%nC))
+    else if(size(x)/=(DIMS+2)*grid%nC)then
+      deallocate(x)
+      allocate(x((DIMS+2)*grid%nC))
+    end if
+    forall(i=1:grid%nC)
+      x((DIMS+2)*(i-1)+1:(DIMS+2)*(i-1)+DIMS)=u(:,i)
+      x((DIMS+2)*(i-1)+(DIMS+1))=p(i)
+      x((DIMS+2)*(i-1)+(DIMS+2))=temp(i)
+    end forall
+    call setBC()
+    call fullEq%solve(x,info=info)
+    needRetry=info<0
+    call fullEq%getNIt(nItFull)
+    forall(i=1:grid%nC)
+      u(:,i)=x((DIMS+2)*(i-1)+1:(DIMS+2)*(i-1)+DIMS)
+      p(i)=x((DIMS+2)*(i-1)+(DIMS+1))
+      temp(i)=x((DIMS+2)*(i-1)+(DIMS+2))
+    end forall
+  end subroutine
+  
+  !> residual function of the full NS equations
+  function fullRHS(oldVector,newVector,dat)
+    use iso_c_binding
+    use ieee_arithmetic
+    use modNumerics
+    use modGradient
+    use modAdvection
+    use modDiffusion
+    use modPressure
+    use modNewtonian
+    type(C_PTR),value::oldVector !< old N_Vector
+    type(C_PTR),value::newVector !< new N_Vector
+    type(C_PTR),value::dat !< optional user data object
+    integer(C_INT)::fullRHS !< error code
+    double precision,pointer::x(:) !< fortran pointer associated with oldVector
+    double precision,pointer::y(:) !< fortran pointer associated with newVector
+    
+    call associateVector(oldVector,x)
+    call associateVector(newVector,y)
+    
+    !$omp parallel workshare
+    forall(i=1:grid%nC)
+      u(:,i)=x((DIMS+2)*(i-1)+1:(DIMS+2)*(i-1)+DIMS)
+      p(i)=x((DIMS+2)*(i-1)+(DIMS+1))
+      temp(i)=x((DIMS+2)*(i-1)+(DIMS+2))
+    end forall
+    !$omp end parallel workshare
+    call recoverState(p,u,temp,massFrac,rho,rhou,rhoE)
+    call setBC()
+    call findGrad(grid,p,gradP)
+    call findGrad(grid,u,gradU)
+    call findPresForce(grid,p,gradP,presF)
+    call findViscForce(grid,u,gradU,visc,viscF)
+    call findMassFlow(grid,rho,u,p,presF,dt,flowRho)
+    call findVarFlow(grid,u,flowRho,flowRhou)
+    call findVarFlow(grid,(rhoE+p)/rho,flowRho,flowRhoH)
+    call findAdv(grid,flowRho,advRho)
+    call findAdv(grid,flowRhou,advRhou)
+    call findAdv(grid,flowRhoH,advRhoH)
+    call findDiff(grid,temp,gradTemp,cond,condQ)
+    !$omp parallel workshare
+    forall(i=1:grid%nC)
+      y((DIMS+2)*(i-1)+1:(DIMS+2)*(i-1)+DIMS)=& ! momentum equation residual
+      &  rhou(:,i)-rhou0(:,i)-dt/grid%v(i)*(advRhou(:,i)+presF(:,i)+viscF(:,i))
+      y((DIMS+2)*(i-1)+(DIMS+1))=& ! pressure equation residual
+      &  rho(i)-rho0(i)-dt/grid%v(i)*advRho(i)
+      y((DIMS+2)*(i-1)+(DIMS+2))=& ! energy equation residual
+      &  rhoE(i)-rhoE0(i)-dt/grid%v(i)*(advRhoH(i)+condQ(i))
+    end forall
+    !$omp end parallel workshare
+    fullRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
     if(c_associated(dat))then
     end if
   end function
