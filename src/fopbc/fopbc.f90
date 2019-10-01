@@ -20,8 +20,8 @@ program fopbc
     end if
     call setBC()
     call recordState0()
-    visc(:)=2d-3! TODO update transport properties according to state0
-    cond(:)=3d0! TODO update transport properties according to state0
+    visc(:)=2d-4! TODO update transport properties according to state0
+    cond(:)=3d-1! TODO update transport properties according to state0
     call preSolve()
     do nItOuter=1,MAXIT_OUTER
       rho1(:)=rho(:)
@@ -29,7 +29,7 @@ program fopbc
       if(needRetry) exit
       call solveEnergy()
       if(needRetry) exit
-      if(maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale<=1d-6)then
+      if(maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale<=1d-4)then
         exit
       else if(nItOuter==MAXIT_OUTER)then
         needRetry=.true.
