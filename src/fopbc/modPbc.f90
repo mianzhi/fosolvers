@@ -386,7 +386,8 @@ contains
   
   !> set the boundary conditions
   subroutine setBC()
-    double precision::pGst,TGst,uGst(DIMS),rhoGst,rhouGst(DIMS),rhoEGst,Mach,pP(DIMS),Tt,pt
+    double precision::pGst,TGst,uGst(DIMS),rhoGst,rhouGst(DIMS),rhoEGst,Mach,pP(DIMS),Tt,pt,&
+    &                 un(DIMS),ut(DIMS),ui(DIMS),charI,charO
     
     do i=1,grid%nP
       m=grid%iEP(1,i)
@@ -461,7 +462,28 @@ contains
             uGst(:)=u(:,m)
             TGst=temp(m)
           case(BC_FAR,BC_FAR_UDF) ! far-field boundary
-            ! TODO implement this
+            if(bc%t(iBC(n))==BC_FAR)then
+              pGst=bc%p(1,iBC(n))
+              TGst=bc%p(2,iBC(n))
+              uGst(:)=bc%p(3:5,iBC(n))
+            else
+              pP(:)=grid%pP(:,i)
+              pGst=udf%eval(int(bc%p(1,iBC(n))),pP,t)
+              TGst=udf%eval(int(bc%p(2,iBC(n))),pP,t)
+              uGst(1)=udf%eval(int(bc%p(3,iBC(n))),pP,t)
+              uGst(2)=udf%eval(int(bc%p(4,iBC(n))),pP,t)
+              uGst(3)=udf%eval(int(bc%p(5,iBC(n))),pP,t)
+            end if
+            charO=dot_product(uGst,grid%normP(:,i))-2d0*sqrt(gamm*Rgas*TGst)/(gamm-1d0)
+            ui(:)=u(:,m)
+            charI=dot_product(ui,grid%normP(:,i))+2d0*sqrt(gamm*Rgas*temp(m))/(gamm-1d0)
+            un(:)=0.5d0*grid%normP(:,i)*(charI+charO)
+            if(dot_product(un(:),grid%normP(:,i))>0d0)then
+              ut(:)=ui(:)-grid%normP(:,i)*dot_product(grid%normP(:,i),ui(:))
+            else
+              ut(:)=uGst(:)-un
+            end if
+            uGst(:)=un(:)+ut(:)
           case default
           end select
           rhoGst=pGst/Rgas/TGst
