@@ -61,6 +61,7 @@ module modPbc
   
   ! state at the beginning of an outer iteration
   double precision,allocatable::rho1(:)
+  double precision,allocatable::p1(:)
   
   double precision,allocatable::visc(:) !< viscosity [Pa*s]
   double precision,allocatable::cond(:) !< thermal conductivity [W/m/K]
@@ -176,6 +177,7 @@ contains
     allocate(rhoE0(grid%nE))
     allocate(p(grid%nE))
     allocate(p0(grid%nE))
+    allocate(p1(grid%nE))
     allocate(u(DIMS,grid%nE))
     allocate(u0(DIMS,grid%nE))
     allocate(temp(grid%nE))
@@ -501,7 +503,7 @@ contains
     end do
   end subroutine
   
-  !> solve the coupled momentum and pressure equations while keeping isothermal
+  !> solve the coupled momentum and pressure equations while keeping isentropic
   subroutine solvePBC()
     use modGradient
     double precision,allocatable,save::x(:)
@@ -553,7 +555,7 @@ contains
     forall(i=1:grid%nC)
       u(:,i)=x((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)
       p(i)=x((DIMS+1)*(i-1)+(DIMS+1))
-      rho(i)=p(i)/Rgas/temp(i)
+      rho(i)=p1(i)/Rgas/temp(i)*(p(i)/p1(i))**(1d0/gamm)
       rhou(:,i)=rho(i)*u(:,i)
     end forall
     !$omp end parallel workshare

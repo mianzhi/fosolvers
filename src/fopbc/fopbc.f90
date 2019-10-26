@@ -25,6 +25,7 @@ program fopbc
     call preSolve()
     do nItOuter=1,MAXIT_OUTER
       rho1(:)=rho(:)
+      p1(:)=p(:)
       call solvePBC()
       if(needRetry) exit
       call solveEnergy()
