@@ -17,18 +17,17 @@ module modPbc
   integer,parameter::MAXIT_OUTER=20 !< max number of outer iterations
   integer,parameter::MAXIT_FULL=50 !< max number of full NS equation iterations
   
-  integer,parameter::BC_WALL_TEMP=0 !< wall boundary with prescribed temperature
-  integer,parameter::BC_WALL_TEMP_UDF=5 !< wall boundary with prescribed temperature by UDF
-  integer,parameter::BC_WALL_FLUX=1 !< wall boundary with prescribed heat flux
-  integer,parameter::BC_WALL_FLUX_UDF=6 !< wall boundary with prescribed heat flux by UDF
+  integer,parameter::BC_WALL_TEMP=1 !< wall boundary with prescribed temperature
+  integer,parameter::BC_WALL_TEMP_UDF=101 !< wall boundary with prescribed temperature by UDF
+  integer,parameter::BC_WALL_SLIP=2 !< adiabatic slip wall
   integer,parameter::BC_IN_STATIC=10 !< inflow boundary with static properties
-  integer,parameter::BC_IN_STATIC_UDF=15 !< inflow boundary with static properties by UDF
+  integer,parameter::BC_IN_STATIC_UDF=110 !< inflow boundary with static properties by UDF
   integer,parameter::BC_IN_TOTAL=11 !< inflow boundary with total properties
-  integer,parameter::BC_IN_TOTAL_UDF=16 !< inflow boundary with total properties by UDF
+  integer,parameter::BC_IN_TOTAL_UDF=111 !< inflow boundary with total properties by UDF
   integer,parameter::BC_OUT=20 !< outflow boundary
-  integer,parameter::BC_OUT_UDF=25 !< outflow boundary by UDF
+  integer,parameter::BC_OUT_UDF=120 !< outflow boundary by UDF
   integer,parameter::BC_FAR=30 !< far-field boundary
-  integer,parameter::BC_FAR_UDF=35 !< far-field boundary by UDF
+  integer,parameter::BC_FAR_UDF=130 !< far-field boundary by UDF
   
   type(polyFvGrid)::grid !< computational grid
   type(condTab)::bc !< boundary conditions
@@ -116,7 +115,6 @@ contains
     close(FID)
     call mapCondTab(grid,bc,iBC)
     if(any(bc%t(:)==BC_WALL_TEMP_UDF).or.&
-    &  any(bc%t(:)==BC_WALL_FLUX_UDF).or.&
     &  any(bc%t(:)==BC_IN_STATIC_UDF).or.&
     &  any(bc%t(:)==BC_IN_TOTAL_UDF).or.&
     &  any(bc%t(:)==BC_OUT_UDF).or.&
@@ -406,8 +404,10 @@ contains
           select case(bc%t(iBC(n)))
           case(BC_WALL_TEMP,BC_WALL_TEMP_UDF) ! wall temperature boundary
             ! TODO implement this
-          case(BC_WALL_FLUX,BC_WALL_FLUX_UDF) ! wall heat flux boundary
-            ! TODO implement this
+          case(BC_WALL_SLIP) ! adiabatic slip wall boundary
+            pGst=p(m)
+            TGst=temp(m)
+            uGst(:)=u(:,m)-2d0*grid%normP(:,i)*dot_product(grid%normP(:,i),u(:,m))
           case(BC_IN_STATIC,BC_IN_STATIC_UDF) ! inflow boundary with static properties
             if(bc%t(iBC(n))==BC_IN_STATIC)then
               pGst=bc%p(1,iBC(n))
