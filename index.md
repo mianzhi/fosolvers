@@ -3,7 +3,7 @@
 * 3-D unstructured grid
 * [GMSH](http://geuz.org/gmsh/) for grid generation
 * [ParaView](http://www.paraview.org/) for post-processing
-* Coupled pressure-velocity coupling, segregated energy equation
+* Coupled pressure-velocity solving, segregated energy solving
 * State-of-art nonlinear [solver](https://computation.llnl.gov/casc/sundials/main.html)
 * Jacobian-free implementation
 * Simple UDF by [libmatheval](http://www.gnu.org/software/libmatheval/)
