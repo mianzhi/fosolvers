@@ -1,0 +1,25 @@
+FOSolverS, a suite of free and open source solvers, is a scientific computation
+project created with the following design goals:
+
+  1. The product should be able to solve practical engineering problems. (It is
+  likely to be more useful than your CFD course project from grad-school.)
+  
+  2. The product should be easy to hack. (There are not many fluid dynamics
+  expert who are also experienced C++ architect.)
+
+
+Currently the project consists of three major components:
+
+  libfosolvers: unstructured grid data structures and procedures, grid and data
+  IO, interface to algebraic solvers, FVM spatial schemes, condition management
+  framework, UDF management framework.
+  
+  fopbc: a general-purpose, compressible, "all-Mach-range" fluid solver. The
+  solver employs a pressure-based-coupled method which solves the pressure and
+  momentum equations simultaneously, and solves the energy equation in a
+  segregated way.
+  
+  foeuler: a general-purpose, compressible Euler equation (invisid flow) solver.
+  The solver uses first-order Roe's scheme for spatial discretization, and
+  BDF-Newton-Krylov method for temporal stepping.
+
