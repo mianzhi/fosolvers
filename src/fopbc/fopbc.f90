@@ -30,7 +30,7 @@ program fopbc
       if(needRetry) exit
       call solveEnergy()
       if(needRetry) exit
-      if(maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale<=1d-4)then
+      if(maxval(abs(rho(1:grid%nC)-rho1(1:grid%nC)))/rhoScale<=1d-5)then
         exit
       else if(nItOuter==MAXIT_OUTER)then
         needRetry=.true.

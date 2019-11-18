@@ -321,7 +321,7 @@ contains
   
   !> calculate time step size, scaling vectors and initial solution vector
   subroutine preSolve()
-    double precision,parameter::CFL_ACCOUSTIC=10d0
+    double precision,parameter::CFL_ACCOUSTIC=50d0
     double precision,parameter::CFL_FLOW=0.5d0
     double precision,parameter::CFL_DIFFUSION=0.5d0
     
