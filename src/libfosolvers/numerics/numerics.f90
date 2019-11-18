@@ -128,12 +128,13 @@ module modNumerics
       type(C_PTR)::mem !< location of memory pointer
     end subroutine
     
-    !> KINSOL set sparse iterative linear solver
-    function kinspilssetlinearsolver(mem,ls) bind(c,name='KINSpilsSetLinearSolver')
+    !> KINSOL set linear solver
+    function kinsetlinearsolver(mem,ls,mat) bind(c,name='KINSetLinearSolver')
       use iso_c_binding
       type(C_PTR),value::mem !< memory pointer
       type(C_PTR),value::ls !< sparse iterative linear solver pointer
-      integer(C_INT)::kinspilssetlinearsolver !< error code
+      type(C_PTR),value::mat !< matrix template
+      integer(C_INT)::kinsetlinearsolver !< error code
     end function
     
     !> KINSOL solve
@@ -212,21 +213,22 @@ module modNumerics
       type(C_PTR)::mem !< location of memory pointer
     end subroutine
     
-    !> CVODE set sparse iterative linear solver
-    function cvspilssetlinearsolver(mem,ls) bind(c,name='CVSpilsSetLinearSolver')
+    !> CVODE set linear solver
+    function cvodesetlinearsolver(mem,ls,mat) bind(c,name='CVodeSetLinearSolver')
       use iso_c_binding
       type(C_PTR),value::mem !< memory pointer
       type(C_PTR),value::ls !< sparse iterative linear solver pointer
-      integer(C_INT)::cvspilssetlinearsolver !< error code
+      type(C_PTR),value::mat !< matrix template
+      integer(C_INT)::cvodesetlinearsolver !< error code
     end function
     
     !> CVODE set preconditoner setup and solve routines
-    function cvspilssetpreconditioner(mem,pSet,pSol) bind(c,name='CVSpilsSetPreconditioner')
+    function cvodesetpreconditioner(mem,pSet,pSol) bind(c,name='CVodeSetPreconditioner')
       use iso_c_binding
       type(C_PTR),value::mem !< memory pointer
       type(C_FUNPTR),value::pSet !< preconditioner setup function pointer
       type(C_FUNPTR),value::pSol !< preconditioner solve function pointer
-      integer(C_INT)::cvspilssetpreconditioner !< error code
+      integer(C_INT)::cvodesetpreconditioner !< error code
     end function
     
     !> CVODE solve
@@ -266,12 +268,12 @@ module modNumerics
     end function
     
     !> SUNLinearSolver create GMRES linear solver
-    function sunspgmr(tmpl,pType,maxl) bind(c,name='SUNSPGMR')
+    function sunlinsol_spgmr(tmpl,pType,maxl) bind(c,name='SUNLinSol_SPGMR')
       use iso_c_binding
       type(C_PTR),value::tmpl !< template N_Vector pointer
       integer(C_INT),value::pType !< preconditioning type
       integer(C_INT),value::maxl !< maximum dimensions of the Krylov subspace
-      type(C_PTR)::sunspgmr !< value of the linear solver pointer
+      type(C_PTR)::sunlinsol_spgmr !< value of the linear solver pointer
     end function
     
     !> SUNLinearSolver free linear solver
@@ -464,14 +466,14 @@ contains
     else
       c_maxl=0
     end if
-    this%ls=sunspgmr(this%x,PREC_NONE,c_maxl) ! use solution vector as template
+    this%ls=sunlinsol_spgmr(this%x,PREC_NONE,c_maxl) ! use solution vector as template
     if(.not.c_associated(this%ls))then
       write(*,'(a)')"[E] initNewtonKrylov(): linear solver object not allocated"
       stop
     end if
-    info=kinspilssetlinearsolver(this%work,this%ls)
+    info=kinsetlinearsolver(this%work,this%ls,C_NULL_PTR)
     if(info/=0)then
-      write(*,'(a,i3)')"[E] initNewtonKrylov(): KINSpilsSetLinearSolver error code ",info
+      write(*,'(a,i3)')"[E] initNewtonKrylov(): KINSetLinearSolver error code ",info
       stop
     end if
   end subroutine
@@ -676,23 +678,23 @@ contains
     else
       c_maxl=0
     end if
-    this%ls=sunspgmr(this%x,pOpt,c_maxl) ! use solution vector as template
+    this%ls=sunlinsol_spgmr(this%x,pOpt,c_maxl) ! use solution vector as template
     if(.not.c_associated(this%ls))then
       write(*,'(a)')"[E] initBDFNewtonKrylov(): linear solver object not allocated"
       stop
     end if
-    info=cvspilssetlinearsolver(this%work,this%ls)
+    info=cvodesetlinearsolver(this%work,this%ls,C_NULL_PTR)
     if(info/=0)then
-      write(*,'(a,i3)')"[E] initBDFNewtonKrylov(): CVSpilsSetLinearSolver error code ",info
+      write(*,'(a,i3)')"[E] initBDFNewtonKrylov(): CVodeSetLinearSolver error code ",info
       stop
     end if
     if(present(pSet).and.present(pSol))then
       pOpt=PREC_LEFT
       this%pSet=c_funloc(pSet)
       this%pSol=c_funloc(pSol)
-      info=cvspilssetpreconditioner(this%work,this%pSet,this%pSol)
+      info=cvodesetpreconditioner(this%work,this%pSet,this%pSol)
       if(info/=0)then
-        write(*,'(a,i3)')"[E] initBDFNewtonKrylov(): CVSpilsSetPreconditioner error code ",info
+        write(*,'(a,i3)')"[E] initBDFNewtonKrylov(): CVodeSetPreconditioner error code ",info
         stop
       end if
     else
