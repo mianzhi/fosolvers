@@ -1,0 +1,3 @@
+0.2                # simulation end time [s]
+1e-7               # initial time step size [s]
+1e-3               # output interval [s]
