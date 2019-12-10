@@ -90,21 +90,59 @@ contains
     class(polyFvGrid),intent(inout)::grid !< the grid
     double precision,intent(in)::v(:) !< input data
     double precision,allocatable,intent(inout)::gradv(:,:) !< gradient output
-    double precision,allocatable::vv(:,:),gradvv(:,:,:)
+    logical::useCellOnly
+    integer,parameter::MAX_N_NEAR=25
+    integer,parameter::MAX_L_WORK=2000
+    integer,parameter::L_IWORK=200
+    integer::nNear,iNear(MAX_N_NEAR),lwork,iwork(L_IWORK),rank,ier
+    double precision::dx(MAX_N_NEAR,DIMS),dv(MAX_N_NEAR),stat(DIMS),work(MAX_L_WORK),rcond
+    double precision::maxDv
     
-    allocate(vv(1,size(v)))
-    if(allocated(gradv))then
-      allocate(gradvv(DIMS,1,size(gradv,2)))
-    end if
-    vv(1,:)=v(:)
-    call findGradPolyVect(grid,vv,gradvv)
+    call grid%up()
+    ! handling non-cell elements
+    useCellOnly=size(v)<grid%nE
     if(.not.allocated(gradv))then
-      allocate(gradv(DIMS,size(gradvv,3)),source=gradvv(:,1,:))!FIXME:remove work-around
-    else
-      gradv(:,:)=gradvv(:,1,:)
+      allocate(gradv(DIMS,grid%nC))
     end if
-    deallocate(vv)
-    deallocate(gradvv)
+    ! find gradient
+    !$omp parallel do default(shared)&
+    !$omp& private(nNear,iNear,dx,dv,vF,lwork,work,iwork,stat,rcond,rank,ier,j,maxDv)
+    do i=1,grid%nC
+      ! process the list of nearby points
+      nNear=0
+      do j=1,size(grid%near,1)
+        if(grid%near(j,i)>0.and.grid%near(j,i)<=merge(grid%nC,grid%nE,useCellOnly))then
+          nNear=nNear+1
+          iNear(nNear)=grid%near(j,i)
+        else if(grid%near(j,i)==0)then
+          exit
+        end if
+      end do
+      ! LSQ method
+      if(.not.useCellOnly)then ! use gradient mapping (constructed by DEGSDD)
+        forall(j=1:nNear)
+          dv(j)=v(iNear(j))-v(i)
+        end forall
+        gradv(1:DIMS,i)=matmul(grid%gradMap(1:DIMS,1:nNear,i),dv(1:nNear))
+      else ! use DGELSD
+        forall(j=1:nNear)
+          dx(j,:)=grid%p(:,iNear(j))-grid%p(:,i)
+          dv(j)=v(iNear(j))-v(i)
+          dv(j)=dv(j)/dot_product(dx(j,:),dx(j,:))
+          dx(j,:)=dx(j,:)/dot_product(dx(j,:),dx(j,:))
+        end forall
+        rcond=-1d0
+        lwork=-1
+        call DGELSD(nNear,DIMS,1,dx,MAX_N_NEAR,dv,MAX_N_NEAR,stat,rcond,rank,work,lwork,iwork,ier)
+        lwork=min(MAX_L_WORK,int(work(1)))
+        call DGELSD(nNear,DIMS,1,dx,MAX_N_NEAR,dv,MAX_N_NEAR,stat,rcond,rank,work,lwork,iwork,ier)
+        gradv(:,i)=dv(1:DIMS)
+      end if
+      maxDv=maxval(abs(v(grid%neib(:,i))-v(i)),&
+      &            mask=grid%neib(:,i)>0.and.grid%neib(:,i)<=merge(grid%nC,grid%nE,useCellOnly))
+      gradv(:,i)=gradv(:,i)*min(1d0,maxDv/(norm2(gradv(:,i))*grid%v(i)**(1d0/3d0)))
+    end do
+    !$end omp parallel do
   end subroutine
   
   !> find gradient of vector v on otGrid

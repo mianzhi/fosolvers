@@ -151,28 +151,41 @@ contains
     double precision,intent(in)::mFlow(:) !< mass flow through pairs
     double precision,allocatable,intent(inout)::flow(:) !< v flow rate output
     double precision,intent(in),optional::gradV(:,:) !< gradient of v
-    double precision,allocatable::vv(:,:),flowv(:,:),gradVv(:,:,:)
+    double precision::vf,dV,r
+    integer::up,dn
     
-    allocate(vv(1,size(v)))
-    if(allocated(flow))then
-      allocate(flowv(1,size(flow)))
-    end if
-    vv(1,:)=v(:)
-    if(present(gradV))then
-      allocate(gradVv(DIMS,1,size(v)))
-      gradVv(:,1,:)=gradV(:,:)
-      call findVarFlowPolyVect(grid,vv,mFlow,flowv,gradV=gradVv)
-      deallocate(gradVv)
-    else
-      call findVarFlowPolyVect(grid,vv,mFlow,flowv)
-    end if
+    call grid%up()
     if(.not.allocated(flow))then
-      allocate(flow(size(flowv,2)),source=flowv(1,:))!FIXME:remove work-around
-    else
-      flow(:)=flowv(1,:)
+      allocate(flow(grid%nP))
     end if
-    deallocate(vv)
-    deallocate(flowv)
+    flow(:)=0d0
+    !$omp parallel do default(shared)&
+    !$omp& private(m,n,up,dn,dV,r,vf)
+    do i=1,grid%nP
+      m=grid%iEP(1,i)
+      n=grid%iEP(2,i)
+      if(m<=size(v).and.n<=size(v))then
+        if(abs(mFlow(i))<=tiny(1d0))then ! no mass flux
+          cycle
+        else ! upwinding by mass flux
+          if(mFlow(i)>=0d0)then
+            up=m
+            dn=n
+          else
+            up=n
+            dn=m
+          end if
+          vf=v(up)
+          if(m<=grid%nC.and.n<=grid%nC.and.present(gradV))then ! internal pairs and gradV available
+            dV=dot_product(grid%p(:,dn)-grid%p(:,up),gradV(:,up))
+            r=merge(2d0*dV/(v(dn)-v(up))-1d0,0d0,abs(v(dn)-v(up))>tiny(1d0))
+            vf=vf+0.5d0*vanAlbada(r)*(v(dn)-v(up))
+          end if
+          flow(i)=vf*mFlow(i)
+        end if
+      end if
+    end do
+    !$omp end parallel do
   end subroutine
   
   !> find advection according to the vector flow rate through pairs on polyFvGrid
