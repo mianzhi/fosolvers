@@ -118,25 +118,23 @@ contains
     do i=1,grid%nP
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
-      if(m<=size(v,2).and.n<=size(v,2))then
-        if(abs(mFlow(i))<=tiny(1d0))then ! no mass flux
-          cycle
-        else ! upwinding by mass flux
-          if(mFlow(i)>=0d0)then
-            up=m
-            dn=n
-          else
-            up=n
-            dn=m
-          end if
-          vf(:)=v(:,up)
-          if(m<=grid%nC.and.n<=grid%nC.and.present(gradV))then ! internal pairs and gradV available
-            dV(:)=matmul(grid%p(:,dn)-grid%p(:,up),gradV(:,:,up))
-            r(:)=merge(2d0*dV/(v(:,dn)-v(:,up))-1d0,0d0,abs(v(:,dn)-v(:,up))>tiny(1d0))
-            vf(:)=vf(:)+0.5d0*vanAlbada(r)*(v(:,dn)-v(:,up))
-          end if
-          flow(:,i)=vf(:)*mFlow(i)
+      if(abs(mFlow(i))<=tiny(1d0))then ! no mass flux
+        cycle
+      else ! upwinding by mass flux
+        if(mFlow(i)>=0d0)then
+          up=m
+          dn=n
+        else
+          up=n
+          dn=m
         end if
+        vf(:)=v(:,up)
+        if(m<=grid%nC.and.n<=grid%nC.and.present(gradV))then ! internal pairs and gradV available
+          dV(:)=matmul(grid%p(:,dn)-grid%p(:,up),gradV(:,:,up))
+          r(:)=merge(2d0*dV/(v(:,dn)-v(:,up))-1d0,0d0,abs(v(:,dn)-v(:,up))>tiny(1d0))
+          vf(:)=vf(:)+0.5d0*vanAlbada(r)*(v(:,dn)-v(:,up))
+        end if
+        flow(:,i)=vf(:)*mFlow(i)
       end if
     end do
     !$omp end parallel do
@@ -164,25 +162,23 @@ contains
     do i=1,grid%nP
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
-      if(m<=size(v).and.n<=size(v))then
-        if(abs(mFlow(i))<=tiny(1d0))then ! no mass flux
-          cycle
-        else ! upwinding by mass flux
-          if(mFlow(i)>=0d0)then
-            up=m
-            dn=n
-          else
-            up=n
-            dn=m
-          end if
-          vf=v(up)
-          if(m<=grid%nC.and.n<=grid%nC.and.present(gradV))then ! internal pairs and gradV available
-            dV=dot_product(grid%p(:,dn)-grid%p(:,up),gradV(:,up))
-            r=merge(2d0*dV/(v(dn)-v(up))-1d0,0d0,abs(v(dn)-v(up))>tiny(1d0))
-            vf=vf+0.5d0*vanAlbada(r)*(v(dn)-v(up))
-          end if
-          flow(i)=vf*mFlow(i)
+      if(abs(mFlow(i))<=tiny(1d0))then ! no mass flux
+        cycle
+      else ! upwinding by mass flux
+        if(mFlow(i)>=0d0)then
+          up=m
+          dn=n
+        else
+          up=n
+          dn=m
         end if
+        vf=v(up)
+        if(m<=grid%nC.and.n<=grid%nC.and.present(gradV))then ! internal pairs and gradV available
+          dV=dot_product(grid%p(:,dn)-grid%p(:,up),gradV(:,up))
+          r=merge(2d0*dV/(v(dn)-v(up))-1d0,0d0,abs(v(dn)-v(up))>tiny(1d0))
+          vf=vf+0.5d0*vanAlbada(r)*(v(dn)-v(up))
+        end if
+        flow(i)=vf*mFlow(i)
       end if
     end do
     !$omp end parallel do

@@ -37,53 +37,51 @@ contains
     do i=1,grid%nP
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
-      if(m<=size(u,2).and.n<=size(u,2))then
-        if(n<=grid%nC)then
-          fPF=norm2(grid%pP(:,i)-grid%p(:,n))&
-          &   /(norm2(grid%pP(:,i)-grid%p(:,m))+norm2(grid%pP(:,i)-grid%p(:,n)))
-          viscF=fPF*visc(m)+(1d0-fPF)*visc(n)
-          gradUF(:,:)=fPF*gradU(:,:,m)+(1d0-fPF)*gradU(:,:,n)
-        else
-          viscF=visc(m)
-          gradUF(:,:)=gradU(:,:,m)
-        end if
-        sf(:)=grid%p(:,n)-grid%p(:,m)
-        dPF=norm2(sf)
-        sf(:)=sf(:)/dPF
-        k=maxloc(abs(grid%normP(:,i)),dim=1)
-        l=merge(1,k+1,k==3)
-        tf(:)=0d0
-        tf(l)=grid%normP(k,i)
-        tf(k)=-grid%normP(l,i)
-        tf(:)=tf(:)/norm2(tf)
-        rf(1)=grid%normP(2,i)*tf(3)-grid%normP(3,i)*tf(2)
-        rf(2)=-grid%normP(1,i)*tf(3)+grid%normP(3,i)*tf(1)
-        rf(3)=grid%normP(1,i)*tf(2)-grid%normP(2,i)*tf(1)
-        Afs=grid%aP(i)/dot_product(sf,grid%normP(:,i))
-        if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
-          flow(:)=viscF*Afs*((u(:,n)-u(:,m))/dPF&
-          &                  -matmul(transpose(gradUF(:,:)),&
-          &                          dot_product(sf,tf)*tf+dot_product(sf,rf)*rf))
-        else ! boundary pairs
-          flow(:)=viscF*Afs*(u(:,n)-u(:,m))/(2d0*dPF)
-        end if
-        flow(:)=flow(:)+viscF*grid%aP(i)*[dot_product(gradUF(1,:),grid%normP(:,i)),&
-        &                                 dot_product(gradUF(2,:),grid%normP(:,i)),&
-        &                                 dot_product(gradUF(3,:),grid%normP(:,i))]&
-        &      -2d0/3d0*viscF*grid%aP(i)*(gradUF(1,1)+gradUF(2,2)+gradUF(3,3))*grid%normP(:,i)
-        if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
-          do j=1,DIMS
-            !$omp atomic
-            dRhou(j,m)=dRhou(j,m)+flow(j)
-            !$omp atomic
-            dRhou(j,n)=dRhou(j,n)-flow(j)
-          end do
-        else ! boundary pairs
-          do j=1,DIMS
-            !$omp atomic
-            dRhou(j,m)=dRhou(j,m)+flow(j)
-          end do
-        end if
+      if(n<=grid%nC)then
+        fPF=norm2(grid%pP(:,i)-grid%p(:,n))&
+        &   /(norm2(grid%pP(:,i)-grid%p(:,m))+norm2(grid%pP(:,i)-grid%p(:,n)))
+        viscF=fPF*visc(m)+(1d0-fPF)*visc(n)
+        gradUF(:,:)=fPF*gradU(:,:,m)+(1d0-fPF)*gradU(:,:,n)
+      else
+        viscF=visc(m)
+        gradUF(:,:)=gradU(:,:,m)
+      end if
+      sf(:)=grid%p(:,n)-grid%p(:,m)
+      dPF=norm2(sf)
+      sf(:)=sf(:)/dPF
+      k=maxloc(abs(grid%normP(:,i)),dim=1)
+      l=merge(1,k+1,k==3)
+      tf(:)=0d0
+      tf(l)=grid%normP(k,i)
+      tf(k)=-grid%normP(l,i)
+      tf(:)=tf(:)/norm2(tf)
+      rf(1)=grid%normP(2,i)*tf(3)-grid%normP(3,i)*tf(2)
+      rf(2)=-grid%normP(1,i)*tf(3)+grid%normP(3,i)*tf(1)
+      rf(3)=grid%normP(1,i)*tf(2)-grid%normP(2,i)*tf(1)
+      Afs=grid%aP(i)/dot_product(sf,grid%normP(:,i))
+      if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
+        flow(:)=viscF*Afs*((u(:,n)-u(:,m))/dPF&
+        &                  -matmul(transpose(gradUF(:,:)),&
+        &                          dot_product(sf,tf)*tf+dot_product(sf,rf)*rf))
+      else ! boundary pairs
+        flow(:)=viscF*Afs*(u(:,n)-u(:,m))/(2d0*dPF)
+      end if
+      flow(:)=flow(:)+viscF*grid%aP(i)*[dot_product(gradUF(1,:),grid%normP(:,i)),&
+      &                                 dot_product(gradUF(2,:),grid%normP(:,i)),&
+      &                                 dot_product(gradUF(3,:),grid%normP(:,i))]&
+      &      -2d0/3d0*viscF*grid%aP(i)*(gradUF(1,1)+gradUF(2,2)+gradUF(3,3))*grid%normP(:,i)
+      if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
+        do j=1,DIMS
+          !$omp atomic
+          dRhou(j,m)=dRhou(j,m)+flow(j)
+          !$omp atomic
+          dRhou(j,n)=dRhou(j,n)-flow(j)
+        end do
+      else ! boundary pairs
+        do j=1,DIMS
+          !$omp atomic
+          dRhou(j,m)=dRhou(j,m)+flow(j)
+        end do
       end if
     end do
     !$omp end parallel do
