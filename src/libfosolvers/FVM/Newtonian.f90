@@ -24,8 +24,7 @@ contains
     double precision,intent(in)::gradU(:,:,:) !< gradient of u
     double precision,intent(in)::visc(:) !< viscosity
     double precision,allocatable,intent(inout)::dRhou(:,:) !< force (net flow of rhou)
-    double precision::sf(DIMS),tf(DIMS),rf(DIMS),dPF,Afs,flow(DIMS),fPF,viscF,&
-    &                 gradUF(DIMS,DIMS)
+    double precision::sf(DIMS),dPF,Afs,flow(DIMS),fPF,viscF,gradUF(DIMS,DIMS)
     
     call grid%up()
     if(.not.(allocated(dRhou)))then
@@ -33,7 +32,7 @@ contains
     end if
     dRhou(:,:)=0d0
     !$omp parallel do default(shared)&
-    !$omp& private(m,n,fPF,viscF,gradUF,sf,dPF,k,l,tf,rf,Afs,flow)
+    !$omp& private(m,n,fPF,viscF,gradUF,sf,dPF,Afs,flow,j)
     do i=1,grid%nP
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
@@ -49,20 +48,11 @@ contains
       sf(:)=grid%p(:,n)-grid%p(:,m)
       dPF=norm2(sf)
       sf(:)=sf(:)/dPF
-      k=maxloc(abs(grid%normP(:,i)),dim=1)
-      l=merge(1,k+1,k==3)
-      tf(:)=0d0
-      tf(l)=grid%normP(k,i)
-      tf(k)=-grid%normP(l,i)
-      tf(:)=tf(:)/norm2(tf)
-      rf(1)=grid%normP(2,i)*tf(3)-grid%normP(3,i)*tf(2)
-      rf(2)=-grid%normP(1,i)*tf(3)+grid%normP(3,i)*tf(1)
-      rf(3)=grid%normP(1,i)*tf(2)-grid%normP(2,i)*tf(1)
       Afs=grid%aP(i)/dot_product(sf,grid%normP(:,i))
       if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
         flow(:)=viscF*Afs*((u(:,n)-u(:,m))/dPF&
         &                  -matmul(transpose(gradUF(:,:)),&
-        &                          dot_product(sf,tf)*tf+dot_product(sf,rf)*rf))
+        &                          sf-grid%normP(:,i)*dot_product(sf,grid%normP(:,i))))
       else ! boundary pairs
         flow(:)=viscF*Afs*(u(:,n)-u(:,m))/(2d0*dPF)
       end if

@@ -25,8 +25,7 @@ contains
     double precision,intent(in)::gradS(:,:,:) !< gradient of s
     double precision,intent(in)::d(:,:) !< diffusivities
     double precision,allocatable,intent(inout)::diff(:,:) !< diffusion output
-    double precision::sf(DIMS),tf(DIMS),rf(DIMS),dPF,Afs,flow(size(s,1)),fPF,dF(size(s,1)),&
-    &                 gradSF(DIMS,size(s,1))
+    double precision::sf(DIMS),dPF,Afs,flow(size(s,1)),fPF,dF(size(s,1)),gradSF(DIMS,size(s,1))
     
     call grid%up()
     if(.not.(allocated(diff)))then
@@ -34,7 +33,7 @@ contains
     end if
     diff(:,:)=0d0
     !$omp parallel do default(shared)&
-    !$omp& private(m,n,fPF,dF,gradSF,sf,dPF,k,l,tf,rf,Afs,flow)
+    !$omp& private(m,n,fPF,dF,gradSF,sf,dPF,Afs,flow,j)
     do i=1,grid%nP
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
@@ -50,20 +49,11 @@ contains
       sf(:)=grid%p(:,n)-grid%p(:,m)
       dPF=norm2(sf)
       sf(:)=sf(:)/dPF
-      k=maxloc(abs(grid%normP(:,i)),dim=1)
-      l=merge(1,k+1,k==3)
-      tf(:)=0d0
-      tf(l)=grid%normP(k,i)
-      tf(k)=-grid%normP(l,i)
-      tf(:)=tf(:)/norm2(tf)
-      rf(1)=grid%normP(2,i)*tf(3)-grid%normP(3,i)*tf(2)
-      rf(2)=-grid%normP(1,i)*tf(3)+grid%normP(3,i)*tf(1)
-      rf(3)=grid%normP(1,i)*tf(2)-grid%normP(2,i)*tf(1)
       Afs=grid%aP(i)/dot_product(sf,grid%normP(:,i))
       if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
         flow(:)=dF(:)*Afs*((s(:,n)-s(:,m))/dPF&
         &                  -matmul(transpose(gradSF(:,:)),&
-        &                          dot_product(sf,tf)*tf+dot_product(sf,rf)*rf))
+        &                          sf-grid%normP(:,i)*dot_product(sf,grid%normP(:,i))))
         do j=1,size(flow)
           !$omp atomic
           diff(j,m)=diff(j,m)+flow(j)
@@ -90,7 +80,7 @@ contains
     double precision,allocatable::gradS(:,:) !< gradient of s
     double precision,intent(in)::d(:) !< diffusivity
     double precision,allocatable,intent(inout)::diff(:) !< diffusion output
-    double precision::sf(DIMS),tf(DIMS),rf(DIMS),dPF,Afs,flow,fPF,dF,gradSF(DIMS)
+    double precision::sf(DIMS),dPF,Afs,flow,fPF,dF,gradSF(DIMS)
     
     call grid%up()
     if(.not.(allocated(diff)))then
@@ -98,7 +88,7 @@ contains
     end if
     diff(:)=0d0
     !$omp parallel do default(shared)&
-    !$omp& private(m,n,fPF,dF,gradSF,sf,dPF,k,l,tf,rf,Afs,flow)
+    !$omp& private(m,n,fPF,dF,gradSF,sf,dPF,Afs,flow)
     do i=1,grid%nP
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
@@ -114,19 +104,10 @@ contains
       sf(:)=grid%p(:,n)-grid%p(:,m)
       dPF=norm2(sf)
       sf(:)=sf(:)/dPF
-      k=maxloc(abs(grid%normP(:,i)),dim=1)
-      l=merge(1,k+1,k==3)
-      tf(:)=0d0
-      tf(l)=grid%normP(k,i)
-      tf(k)=-grid%normP(l,i)
-      tf(:)=tf(:)/norm2(tf)
-      rf(1)=grid%normP(2,i)*tf(3)-grid%normP(3,i)*tf(2)
-      rf(2)=-grid%normP(1,i)*tf(3)+grid%normP(3,i)*tf(1)
-      rf(3)=grid%normP(1,i)*tf(2)-grid%normP(2,i)*tf(1)
       Afs=grid%aP(i)/dot_product(sf,grid%normP(:,i))
       if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
         flow=dF*Afs*((s(n)-s(m))/dPF&
-        &            -dot_product(gradSF(:),dot_product(sf,tf)*tf+dot_product(sf,rf)*rf))
+        &            -dot_product(gradSF(:),sf-grid%normP(:,i)*dot_product(sf,grid%normP(:,i))))
         !$omp atomic
         diff(m)=diff(m)+flow
         !$omp atomic
