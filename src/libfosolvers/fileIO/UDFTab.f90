@@ -7,14 +7,13 @@ subroutine readUDFTab(fid,udf)
   integer,intent(in)::fid !< file id
   type(UDFTab),intent(inout)::udf !< result
   integer,parameter::STR_LEN=400
-  character(STR_LEN)::str
-  integer(C_LONG)::evaluator_create_
+  character(len=STR_LEN,kind=C_CHAR)::str
   
   read(fid,*)n
   call udf%init(n)
   do i=1,n
     str=''
     read(fid,'(a)')str
-    udf%ptr(i)=evaluator_create_(trim(adjustl(str)))
+    udf%ptr(i)=evaluator_create(trim(adjustl(str))//C_NULL_CHAR)
   end do
 end subroutine
