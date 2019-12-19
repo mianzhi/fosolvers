@@ -22,6 +22,8 @@ SET(libfosolvers_src
   FVM/pressure.f90
   FVM/Euler.f90
   numerics/numerics.f90
+  contrib/fmetis/metis_interface.f90
+  misc/sort.f90
 )
 
 SET(libfosolvers_lib
