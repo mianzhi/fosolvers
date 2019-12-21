@@ -49,6 +49,7 @@ contains
     if(.not.this%isUp)then
       call this%polyGrid%up()
       call getNeibPolyFvGrid(this)
+      call sortPolyFvGrid(this)
       call getNearPolyFvGrid(this)
     end if
   end subroutine
@@ -188,6 +189,35 @@ contains
     deallocate(iEP)
     deallocate(aP)
     deallocate(normP)
+  end subroutine
+  
+  !> sort polyFvGrid pairs
+  subroutine sortPolyFvGrid(grid)
+    use modSort
+    class(polyFvGrid),intent(inout)::grid !< the polyFvGrid
+    integer,allocatable::a(:),perm(:),iEP(:,:)
+    double precision,allocatable::aP(:),normP(:,:),pP(:,:)
+
+    ! reorder pairs for data locality
+    allocate(a(grid%nP))
+    allocate(perm(grid%nP))
+    a(:)=maxval(grid%iEP(:,1:grid%nP),dim=1) ! boundary pairs will naturally be at the end after sorting
+    call sort(a,perm=perm)
+    allocate(iEP(2,grid%nP))
+    allocate(aP(grid%nP))
+    allocate(normP(DIMS,grid%nP))
+    allocate(pP(DIMS,grid%nP))
+    forall(i=1:grid%nP)
+      iEP(:,i)=grid%iEP(:,perm(i))
+      aP(i)=grid%aP(perm(i))
+      normP(:,i)=grid%normP(:,perm(i))
+      pP(:,i)=grid%pP(:,perm(i))
+    end forall
+    grid%iEP(:,1:grid%nP)=iEP(:,:)
+    grid%aP(1:grid%nP)=aP(:)
+    grid%normP(:,1:grid%nP)=normP(:,:)
+    grid%pP(:,1:grid%nP)=pP(:,:)
+    deallocate(a,perm,iEP,aP,normP,pP)
   end subroutine
   
   !> get the list of nearby elements (and gradient mapping matrix) for each cell

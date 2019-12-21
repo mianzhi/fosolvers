@@ -25,7 +25,7 @@ contains
   end subroutine
   
   !> quicksort integer array (actual)
-  subroutine qsortI_actual(a,perm,first,last)
+  recursive subroutine qsortI_actual(a,perm,first,last)
     integer,intent(inout)::a(*) !< the array
     integer,intent(inout),optional::perm(*) !< the permutation array
     integer,intent(in)::first,last !< sort section from first to last
