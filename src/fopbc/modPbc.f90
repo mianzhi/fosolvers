@@ -76,6 +76,7 @@ module modPbc
   double precision,allocatable::viscF(:,:) !< viscous force applied on cell [N]
   double precision,allocatable::presF(:,:) !< pressure force applied on cell [N]
   double precision,allocatable::condQ(:) !< heat conduction into cell [W]
+  double precision,allocatable::H(:) !< mass-specific enthalpy [J/kg]
   
   ! scales and scaling factors
   double precision,allocatable::rhoScale !< density scale [kg/m^3]
@@ -197,6 +198,7 @@ contains
     allocate(viscF(DIMS,grid%nC))
     allocate(presF(DIMS,grid%nC))
     allocate(condQ(grid%nC))
+    allocate(H(grid%nC))
     allocate(pbcXFact((DIMS+1)*grid%nC))
     allocate(pbcRFact((DIMS+1)*grid%nC))
     allocate(fullXFact((DIMS+2)*grid%nC))
@@ -564,16 +566,22 @@ contains
     call findViscForce(grid,u,gradU,visc,viscF)
     call findMassFlow(grid,rho,u,p,presF,dt,flowRho)
     call findVarFlow(grid,u,flowRho,flowRhou)
+    !$omp parallel
+    !$omp   sections
+    !$omp     section
     call findAdv(grid,flowRho,advRho)
+    !$omp     section
     call findAdv(grid,flowRhou,advRhou)
-    !$omp parallel workshare
+    !$omp   end sections
+    !$omp   workshare
     forall(i=1:grid%nC)
       y((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=& ! momentum equation residual
       &  rhou(:,i)-rhou0(:,i)-dt/grid%v(i)*(advRhou(:,i)+presF(:,i)+viscF(:,i))
       y((DIMS+1)*(i-1)+(DIMS+1))=& ! pressure equation residual
       &  rho(i)-rho0(i)-dt/grid%v(i)*advRho(i)
     end forall
-    !$omp end parallel workshare
+    !$omp   end workshare
+    !$omp end parallel
     pbcRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
     if(c_associated(dat))then
     end if
@@ -626,9 +634,10 @@ contains
     forall(i=1:grid%nC)
       temp(i)=(rhoE(i)/rho(i)-0.5d0*dot_product(u(:,i),u(:,i)))/(1d0/(gamm-1d0))/Rgas
     end forall
+    H=(rhoE+p)/rho
     !$omp end parallel workshare
     call setBC()
-    call findVarFlow(grid,(rhoE+p)/rho,flowRho,flowRhoH)
+    call findVarFlow(grid,H,flowRho,flowRhoH)
     call findAdv(grid,flowRhoH,advRhoH)
     call findDiff(grid,temp,gradTemp,cond,condQ)
     !$omp parallel workshare
