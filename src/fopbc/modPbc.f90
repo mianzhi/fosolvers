@@ -566,22 +566,16 @@ contains
     call findViscForce(grid,u,gradU,visc,viscF)
     call findMassFlow(grid,rho,u,p,presF,dt,flowRho)
     call findVarFlow(grid,u,flowRho,flowRhou)
-    !$omp parallel
-    !$omp   sections
-    !$omp     section
     call findAdv(grid,flowRho,advRho)
-    !$omp     section
     call findAdv(grid,flowRhou,advRhou)
-    !$omp   end sections
-    !$omp   workshare
+    !$omp parallel workshare
     forall(i=1:grid%nC)
       y((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=& ! momentum equation residual
       &  rhou(:,i)-rhou0(:,i)-dt/grid%v(i)*(advRhou(:,i)+presF(:,i)+viscF(:,i))
       y((DIMS+1)*(i-1)+(DIMS+1))=& ! pressure equation residual
       &  rho(i)-rho0(i)-dt/grid%v(i)*advRho(i)
     end forall
-    !$omp   end workshare
-    !$omp end parallel
+    !$omp end parallel workshare
     pbcRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
     if(c_associated(dat))then
     end if
