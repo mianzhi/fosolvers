@@ -13,6 +13,8 @@ module modPolyFvGrid
   !> polyhedron and polygon finite volume grid type
   type,extends(polyGrid),public::polyFvGrid
     integer::nP !< number of pairs of elements
+    integer::nPi !< internal pairs
+    integer::nPb !< boundary pairs
     integer,allocatable::iEP(:,:) !< indices of elements of each pair
     integer,allocatable::neib(:,:) !< list of neighbor (adjacent via pair) elements to cells
     integer,allocatable::near(:,:) !< list of nearby elements to cells
@@ -96,6 +98,8 @@ contains
     allocate(pP(DIMS,sum(nFace)))
     grid%neib(:,:)=0
     grid%nP=0
+    grid%nPi=0
+    grid%nPb=0
     do i=1,grid%nC
       do j=1,nFace(i)
         if(grid%neib(j,i)==0)then
@@ -117,6 +121,7 @@ contains
                 if(all([(any(iNF1(:)==iNF(ii)),ii=1,size(iNF))]))then ! matching pair
                   grid%neib(j,i)=m
                   grid%nP=grid%nP+1
+                  grid%nPb=grid%nPb+1
                   iEP(:,grid%nP)=[i,m]
                   select case(count(iNF(:)>0))
                   case(3)
@@ -154,6 +159,7 @@ contains
                   grid%neib(j,i)=m
                   grid%neib(l,m)=i
                   grid%nP=grid%nP+1
+                  grid%nPi=grid%nPi+1
                   iEP(:,grid%nP)=[i,m]
                   select case(count(iNF(:)>0))
                   case(3)
@@ -201,7 +207,7 @@ contains
     ! reorder pairs for data locality
     allocate(a(grid%nP))
     allocate(perm(grid%nP))
-    a(:)=maxval(grid%iEP(:,1:grid%nP),dim=1) ! boundary pairs will naturally be at the end after sorting
+    a(:)=maxval(grid%iEP(:,1:grid%nP),dim=1) ! boundary pairs will naturally be at the end
     call sort(a,perm=perm)
     allocate(iEP(2,grid%nP))
     allocate(aP(grid%nP))
