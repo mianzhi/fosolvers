@@ -17,7 +17,9 @@ contains
     integer,intent(inout),optional::perm(*) !< the permutation array
     
     if(present(perm))then
-      perm(1:size(a))=[(i,i=1,size(a))]
+      forall(i=1:size(a))
+        perm(i)=i
+      end forall
       call qsortI_actual(a,perm=perm,first=1,last=size(a))
     else
       call qsortI_actual(a,first=1,last=size(a))
