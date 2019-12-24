@@ -173,7 +173,8 @@ contains
       dRhou(:,i)=0d0
       dRhoE(i)=0d0
     end forall
-    call ode%init(nEq,rhs,pSet=pset,pSol=psol)
+    !call ode%init(nEq,rhs,pSet=pset,pSol=psol)
+    call ode%init(nEq,rhs)
     call ode%setTol(RTOL,ATOL)
     call ode%setMaxSteps(-1)
     call ode%setIV(t,y)
