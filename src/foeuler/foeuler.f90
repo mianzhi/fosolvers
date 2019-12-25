@@ -187,8 +187,8 @@ contains
   subroutine clear()
     deallocate(iBC,rho,rhou,rhoE,u,p,temp,c)
     deallocate(y,dRho,dRhou,dRhoE)
-    deallocate(JacP,JacC,JacS)
-    deallocate(precPiv,precRhs)
+    !deallocate(JacP,JacC,JacS)
+    !deallocate(precPiv,precRhs)
     call grid%clear()
     call bc%clear()
   end subroutine
