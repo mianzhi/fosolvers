@@ -300,12 +300,21 @@ contains
     character(*),intent(in)::fName
     integer,parameter::FID=10
     double precision::eps
+    double precision,save,allocatable::tmp1(:),tmp2(:,:)
     
+    if(.not.allocated(tmp1))then
+      allocate(tmp1(grid%nE))
+      allocate(tmp2(DIMS,grid%nE))
+    end if
     open(FID,file=trim(fName),action='write')
     call writeVTK(FID,grid)
     call writeVTK(FID,grid,E_DATA)
-    call writeVTK(FID,'geoID',dble(grid%gid))
-    call writeVTK(FID,'geoType',[(merge(0d0,1d0,i<=grid%nC),i=1,grid%nE)])
+    tmp1=dble(grid%gid)
+    call writeVTK(FID,'geoID',tmp1)
+    forall(i=1:grid%nE)
+      tmp1(i)=merge(0d0,1d0,i<=grid%nC)
+    end forall
+    call writeVTK(FID,'geoType',tmp1)
     if(iOut==0)then
       call writeVTK(FID,'density',rho)
       call writeVTK(FID,'velocity',u)
@@ -313,10 +322,14 @@ contains
       call writeVTK(FID,'temperature',temp)
     else
       eps=(t-tNext)/dt
-      call writeVTK(FID,'density',eps*rho0+(1d0-eps)*rho)
-      call writeVTK(FID,'velocity',eps*u0+(1d0-eps)*u)
-      call writeVTK(FID,'pressure',eps*p0+(1d0-eps)*p)
-      call writeVTK(FID,'temperature',eps*temp0+(1d0-eps)*temp)
+      tmp1=eps*rho0+(1d0-eps)*rho
+      call writeVTK(FID,'density',tmp1)
+      tmp2=eps*u0+(1d0-eps)*u
+      call writeVTK(FID,'velocity',tmp2)
+      tmp1=eps*p0+(1d0-eps)*p
+      call writeVTK(FID,'pressure',tmp1)
+      tmp1=eps*temp0+(1d0-eps)*temp
+      call writeVTK(FID,'temperature',tmp1)
     end if
     close(FID)
   end subroutine
