@@ -46,17 +46,12 @@ module modFOEuler
   double precision,allocatable::p(:) !< pressure
   double precision,allocatable::temp(:) !< temperature
   double precision,allocatable::c(:) !< speed of sound
-  double precision,allocatable::JacP(:,:,:) !< Jacobian matrix on pairs
-  double precision,allocatable::JacC(:,:,:) !< Jacobian matrix in cells
   
   double precision,allocatable::y(:) !< solution vector
   double precision,allocatable::dRho(:) !< time derivative of density
   double precision,allocatable::dRhou(:,:) !< time derivative of momentum
   double precision,allocatable::dRhoE(:) !< time derivative of total energy
   integer::nEq !< number of equations
-  real,allocatable::JacS(:,:,:) !< single precision version of JacC
-  integer,allocatable::precPiv(:,:) !< pivoting arrays for Lapack
-  real,allocatable::precRhs(:,:) !< RHS arrays for Lapack
   type(BDFNewtonKrylov)::ode !< the ODE problem
 
 contains
@@ -173,22 +168,16 @@ contains
       dRhou(:,i)=0d0
       dRhoE(i)=0d0
     end forall
-    !call ode%init(nEq,rhs,pSet=pset,pSol=psol)
-    call ode%init(nEq,rhs)
+    call ode%init(nEq,rhs,pSet=pset,pSol=psol)
     call ode%setTol(RTOL,ATOL)
     call ode%setMaxSteps(-1)
     call ode%setIV(t,y)
-    ! initialize preconditioning solver
-    allocate(precPiv(5,grid%nC))
-    allocate(precRhs(5,grid%nC))
   end subroutine
   
   !> clear the simulation environment
   subroutine clear()
     deallocate(iBC,rho,rhou,rhoE,u,p,temp,c)
     deallocate(y,dRho,dRhou,dRhoE)
-    !deallocate(JacP,JacC,JacS)
-    !deallocate(precPiv,precRhs)
     call grid%clear()
     call bc%clear()
   end subroutine
@@ -396,7 +385,6 @@ contains
     double precision,pointer::x(:)
     double precision,pointer::fx(:)
     double precision::pGamm
-    integer::ier
     type(C_PTR)::foo
     
     time=c_time
@@ -407,27 +395,11 @@ contains
     if(Jok==1)then
       Jcur=0
     else
-      call setBC(x)
-      call syncState(x)
-      call findEulerJac(grid,rho,rhou,rhoE,p,gamm,JacP,JacC)
-      if(.not.allocated(JacS))then
-        allocate(JacS(size(JacC,1),size(JacC,2),size(JacC,3)))
-      end if
-      JacS(:,:,:)=real(JacC(:,:,:))
+      ! update problem Jacobian
       Jcur=1
     end if
-    JacS(:,:,:)=-real(pGamm)*JacS(:,:,:)
-    forall(i=1:grid%nC)
-      forall(j=1:5)
-        JacS(j,j,i)=JacS(j,j,i)+1e0
-      end forall
-    end forall
-    !$omp parallel do default(shared)&
-    !$omp& private(ier)
-    do i=1,grid%nC
-      call SGETRF(5,5,JacS(:,1:5,i),5,precPiv(:,i),ier)
-    end do
-    !$end omp parallel do
+    ! re-scale problem Jacobian with pGamm to get preconditioning matrix
+    ! factor preconditioning matrix
     pset=0
     foo=dat
   end function
@@ -446,7 +418,6 @@ contains
     double precision::pGamm
     double precision::delta
     integer::lr
-    integer::ier
     type(C_PTR)::foo
     
     time=c_time
@@ -459,45 +430,8 @@ contains
     call associateVector(c_z,z)
     
     n=max(floor(-log10(pGamm)),0)
-    ! adaptive number of Jacobi iteration
-    if(n>=6)then
-      z(1:5*grid%nC)=res(1:5*grid%nC)
-      psol=0
-      return
-    else if(n>=5)then
-      n=0
-    else
-      n=1
-    end if
-    !$omp parallel do default(shared)&
-    !$omp& private(ier)
-    do i=1,grid%nC
-      precRhs(:,i)=real(res([0,1,2,3,4]*grid%nC+i))
-      call SGETRS('N',5,1,JacS(:,1:5,i),5,precPiv(:,i),precRhs(:,i),5,ier)
-      z([0,1,2,3,4]*grid%nC+i)=dble(precRhs(:,i))
-    end do
-    !$end omp parallel do
-    do l=1,n ! additional Jacobi loops
-      !$omp parallel do default(shared)&
-      !$omp& private(j,m,ier)
-      do i=1,grid%nC
-        precRhs(:,i)=real(res([0,1,2,3,4]*grid%nC+i))
-        do j=1,size(grid%neib,1)
-          m=grid%neib(j,i)
-          if(1<=m.and.m<=grid%nC)then
-            precRhs(:,i)=precRhs(:,i)-matmul(JacS(:,j*5+1:j*5+5,i),real(z([0,1,2,3,4]*grid%nC+m)))
-          end if
-        end do
-      end do
-      !$end omp parallel do
-      !$omp parallel do default(shared)&
-      !$omp& private(ier)
-      do i=1,grid%nC
-        call SGETRS('N',5,1,JacS(:,1:5,i),5,precPiv(:,i),precRhs(:,i),5,ier)
-        z([0,1,2,3,4]*grid%nC+i)=dble(precRhs(:,i))
-      end do
-      !$end omp parallel do
-    end do
+    ! find z base on res
+    z(1:5*grid%nC)=res(1:5*grid%nC)
     psol=0
     foo=dat
   end function
