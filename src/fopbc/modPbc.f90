@@ -5,7 +5,7 @@ module modPbc
   use modPolyFvGrid
   use modCondition
   use modUDF
-  use modNumerics
+  use modSUNDIALS
   use iso_c_binding
   
   public
@@ -549,7 +549,7 @@ contains
   function pbcRHS(oldVector,newVector,dat)
     use iso_c_binding
     use ieee_arithmetic
-    use modNumerics
+    use modSUNDIALS
     use modAdvection
     use modDiffusion
     use modPressure
@@ -621,7 +621,7 @@ contains
   function energyRHS(oldVector,newVector,dat)
     use iso_c_binding
     use ieee_arithmetic
-    use modNumerics
+    use modSUNDIALS
     use modAdvection
     use modDiffusion
     type(C_PTR),value::oldVector !< old N_Vector
@@ -686,7 +686,7 @@ contains
   function fullRHS(oldVector,newVector,dat)
     use iso_c_binding
     use ieee_arithmetic
-    use modNumerics
+    use modSUNDIALS
     use modGradient
     use modAdvection
     use modDiffusion

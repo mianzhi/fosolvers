@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------------- best with 100 columns
 
-!> algebraic solvers and interface to external algebraic solvers
-module modNumerics
+!> interface to SUNDIALS
+module modSUNDIALS
   use iso_c_binding
   private
   

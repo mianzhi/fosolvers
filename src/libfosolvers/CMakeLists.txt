@@ -21,7 +21,7 @@ SET(libfosolvers_src
   FVM/Newtonian.f90
   FVM/pressure.f90
   FVM/Euler.f90
-  numerics/numerics.f90
+  numerics/SUNDIALS.f90
   contrib/fmetis/metis_interface.f90
   misc/sort.f90
 )

@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------------- best with 100 columns
 
 function fixPt1()
-  use modNumerics
+  use modSUNDIALS
   integer fixPt1
   type(fixPt)::p
   double precision::s(3)
@@ -19,7 +19,7 @@ contains
   
   function func(cx,cy,dat)
     use iso_c_binding
-    use modNumerics
+    use modSUNDIALS
     type(C_PTR),value::cx,cy,dat
     integer(C_INT)::func
     double precision,pointer::x(:)

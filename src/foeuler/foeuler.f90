@@ -5,7 +5,7 @@ module modFOEuler
   use modPolyFvGrid
   use modCondition
   use modUDF
-  use modNumerics
+  use modSUNDIALS
   use iso_c_binding
   
   public

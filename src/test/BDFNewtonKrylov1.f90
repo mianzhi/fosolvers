@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------------- best with 100 columns
 
 function BDFNewtonKrylov1()
-  use modNumerics
+  use modSUNDIALS
   use iso_c_binding
   integer::BDFNewtonKrylov1
   type(BDFNewtonKrylov)::p
@@ -26,7 +26,7 @@ contains
   
   function func(ct,cx,cdx,dat)
     use iso_c_binding
-    use modNumerics
+    use modSUNDIALS
     real(C_DOUBLE),value::ct
     type(C_PTR),value::cx,cdx,dat
     integer(C_INT)::func
