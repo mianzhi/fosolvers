@@ -137,6 +137,15 @@ module modSUNDIALS
       integer(C_INT)::kinsetlinearsolver !< error code
     end function
     
+    !> KINSOL set preconditoner setup and solve routines
+    function kinsetpreconditioner(mem,pSet,pSol) bind(c,name='KINSetPreconditioner')
+      use iso_c_binding
+      type(C_PTR),value::mem !< memory pointer
+      type(C_FUNPTR),value::pSet !< preconditioner setup function pointer
+      type(C_FUNPTR),value::pSol !< preconditioner solve function pointer
+      integer(C_INT)::kinsetpreconditioner !< error code
+    end function
+    
     !> KINSOL solve
     function kinsol(mem,x,method,xScale,rScale) bind(c,name='KINSol')
       use iso_c_binding
@@ -447,13 +456,16 @@ contains
   end subroutine
   
   !> initialize the Newton-Krylov problem
-  subroutine initNewtonKrylov(this,nEq,f,maxl)
+  subroutine initNewtonKrylov(this,nEq,f,maxl,pSet,pSol)
     class(NewtonKrylov),intent(inout)::this !< this NewtonKrylov
     integer,intent(in)::nEq !< number of equations
     procedure(integer(C_INT))::f !< the RHS subroutine in Fortran
     integer,intent(in),optional::maxl !< maximum dimension of the Krylov subspace
-    integer(C_INT)::c_maxl,info
+    procedure(integer(C_INT)),optional::pSet !< preconditioner setup function in Fortran
+    procedure(integer(C_INT)),optional::pSol !< preconditioner solve function in Fortran
+    integer(C_INT)::pOpt,c_maxl,info
     integer(C_INT),parameter::PREC_NONE=0
+    integer(C_INT),parameter::PREC_LEFT=1
     
     call this%noLinEq%initNoLinEq(nEq,f)
     info=kininit(this%work,this%f,this%x) ! use solution vector as template
@@ -461,6 +473,7 @@ contains
       write(*,'(a,i3)')"[E] initNewtonKrylov(): KINInit error code ",info
       stop
     end if
+    pOpt=merge(PREC_LEFT,PREC_NONE,present(pSet).and.present(pSol))
     if(present(maxl))then
       c_maxl=maxl
     else
@@ -475,6 +488,15 @@ contains
     if(info/=0)then
       write(*,'(a,i3)')"[E] initNewtonKrylov(): KINSetLinearSolver error code ",info
       stop
+    end if
+    if(present(pSet).and.present(pSol))then
+      this%pSet=c_funloc(pSet)
+      this%pSol=c_funloc(pSol)
+      info=kinsetpreconditioner(this%work,this%pSet,this%pSol)
+      if(info/=0)then
+        write(*,'(a,i3)')"[E] initNewtonKrylov(): KINSetPreconditioner error code ",info
+        stop
+      end if
     end if
   end subroutine
   
@@ -689,7 +711,6 @@ contains
       stop
     end if
     if(present(pSet).and.present(pSol))then
-      pOpt=PREC_LEFT
       this%pSet=c_funloc(pSet)
       this%pSol=c_funloc(pSol)
       info=cvodesetpreconditioner(this%work,this%pSet,this%pSol)
@@ -697,8 +718,6 @@ contains
         write(*,'(a,i3)')"[E] initBDFNewtonKrylov(): CVodeSetPreconditioner error code ",info
         stop
       end if
-    else
-      pOpt=PREC_NONE
     end if
   end subroutine
   

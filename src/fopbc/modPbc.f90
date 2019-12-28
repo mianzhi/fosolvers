@@ -160,7 +160,7 @@ contains
       close(FID)
     end if
     ! initialize algebraic solver
-    call pbcEq%init(grid%nC*(DIMS+1),pbcRHS,maxl=MAXIT_PBC)
+    call pbcEq%init(grid%nC*(DIMS+1),pbcRHS,maxl=MAXIT_PBC,pset=pbcPSet,psol=pbcPSol)
     call pbcEq%setMaxIt(MAXIT_PBC)
     call energyEq%init(grid%nC,energyRHS,maa=MAXIT_ENERGY)
     call energyEq%setMaxIt(MAXIT_ENERGY)
@@ -590,6 +590,44 @@ contains
     pbcRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
     if(c_associated(dat))then
     end if
+  end function
+  
+  !> momentum and pressure preconditioning matrix setup/factor
+  function pbcPSet(c_x,c_xScale,c_f,c_fScale,dat)
+    use modEuler
+    type(C_PTR),value::c_x,c_xScale,c_f,c_fScale,dat
+    integer(C_INT)::pbcPSet
+    double precision,pointer::x(:),xScale(:),f(:),fScale(:)
+    type(C_PTR)::foo
+    
+    call associateVector(c_x,x)
+    call associateVector(c_xScale,xScale)
+    call associateVector(c_f,f)
+    call associateVector(c_fScale,fScale)
+    
+    ! construct preconditioning matrix
+    ! factor preconditioning matrix
+    pbcPSet=0
+    foo=dat
+  end function
+  
+  !> momentum and pressure preconditioning problem solving
+  function pbcPSol(c_x,c_xScale,c_f,c_fScale,c_v,dat)
+    type(C_PTR),value::c_x,c_xScale,c_f,c_fScale,c_v,dat
+    integer(C_INT)::pbcPSol
+    double precision,pointer::x(:),xScale(:),f(:),v(:),fScale(:)
+    type(C_PTR)::foo
+    
+    call associateVector(c_x,x)
+    call associateVector(c_xScale,xScale)
+    call associateVector(c_f,f)
+    call associateVector(c_fScale,fScale)
+    call associateVector(c_v,v)
+    
+    ! find correction from residual v and save back to v
+    v(1:4*grid%nC)=v(1:4*grid%nC)
+    pbcPsol=0
+    foo=dat
   end function
   
   !> solve the energy equation
