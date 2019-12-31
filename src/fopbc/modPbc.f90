@@ -624,8 +624,11 @@ contains
     call associateVector(c_fScale,fScale)
     call associateVector(c_v,v)
     
-    ! find correction from residual v and save back to v
-    v(1:4*grid%nC)=v(1:4*grid%nC)
+    ! find x increment from f increment v and save back to v
+    forall(i=1:grid%nC)
+      v((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=v((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)/rho(i)
+      v((DIMS+1)*(i-1)+(DIMS+1))=v((DIMS+1)*(i-1)+(DIMS+1))*Rgas*temp(i)*gamm
+    end forall
     pbcPsol=0
     foo=dat
   end function
