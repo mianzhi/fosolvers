@@ -594,7 +594,6 @@ contains
   
   !> momentum and pressure preconditioning matrix setup/factor
   function pbcPSet(c_x,c_xScale,c_f,c_fScale,dat)
-    use modEuler
     type(C_PTR),value::c_x,c_xScale,c_f,c_fScale,dat
     integer(C_INT)::pbcPSet
     double precision,pointer::x(:),xScale(:),f(:),fScale(:)
@@ -613,10 +612,15 @@ contains
   
   !> momentum and pressure preconditioning problem solving
   function pbcPSol(c_x,c_xScale,c_f,c_fScale,c_v,dat)
+    use modAdvection
+    use modDiffusion
+    use modPressure
+    use modNewtonian
     type(C_PTR),value::c_x,c_xScale,c_f,c_fScale,c_v,dat
     integer(C_INT)::pbcPSol
     double precision,pointer::x(:),xScale(:),f(:),v(:),fScale(:)
     type(C_PTR)::foo
+    double precision,allocatable,save::tmpRho(:),tmpP(:)
     
     call associateVector(c_x,x)
     call associateVector(c_xScale,xScale)
@@ -624,11 +628,51 @@ contains
     call associateVector(c_fScale,fScale)
     call associateVector(c_v,v)
     
+    if(.not.allocated(tmpP))then
+      allocate(tmpRho(grid%nC))
+      allocate(tmpP(grid%nC))
+    end if
+    
     ! find x increment from f increment v and save back to v
+    ! initiate disturbed u and p
+    !$omp parallel workshare
     forall(i=1:grid%nC)
-      v((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=v((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)/rho(i)
-      v((DIMS+1)*(i-1)+(DIMS+1))=v((DIMS+1)*(i-1)+(DIMS+1))*Rgas*temp(i)*gamm
+      tmpP(i)=x((DIMS+1)*(i-1)+(DIMS+1))
+      tmpRho(i)=p1(i)/Rgas/temp(i)*(tmpP(i)/p1(i))**(1d0/gamm)
+      rhou(:,i)=tmpRho(i)*x((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)&
+      &         +v((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS) ! add momentum residual increment
+      rho(i)=tmpRho(i)+v((DIMS+1)*(i-1)+(DIMS+1)) ! add density residual increment
+      u(:,i)=rhou(:,i)/rho(i)
+      p(i)=tmpP(i)*(rho(i)/tmpRho(i))**gamm
     end forall
+    !$omp end parallel workshare
+    ! non-linear functional iterations on disturbed u and p (analogous to Jacobian iterations)
+    do l=1,3
+      call setBC()
+      call findPresForce(grid,p,gradP,presF)
+      call findViscForce(grid,u,gradU,visc,viscF)
+      call findMassFlow(grid,rho,u,p,presF,dt,flowRho)
+      call findVarFlow(grid,u,flowRho,flowRhou)
+      call findAdv(grid,flowRho,advRho)
+      call findAdv(grid,flowRhou,advRhou)
+      !$omp parallel workshare
+      forall(i=1:grid%nC)
+        rhou(:,i)=rhou0(:,i)+dt/grid%v(i)*(advRhou(:,i)+presF(:,i)+viscF(:,i))&
+        &         +v((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS) ! add momentum residual increment
+        rho(i)=rho0(i)+dt/grid%v(i)*advRho(i)&
+        &      +v((DIMS+1)*(i-1)+(DIMS+1)) ! add density residual increment
+        u(:,i)=rhou(:,i)/rho(i)
+        p(i)=tmpP(i)*(rho(i)/tmpRho(i))**gamm
+      end forall
+      !$omp end parallel workshare
+    end do
+    ! save u and p increment back to v
+    !$omp parallel workshare
+    forall(i=1:grid%nC)
+      v((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=u(:,i)-x((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)
+      v((DIMS+1)*(i-1)+(DIMS+1))=p(i)-x((DIMS+1)*(i-1)+(DIMS+1))
+    end forall
+    !$omp end parallel workshare
     pbcPsol=0
     foo=dat
   end function
