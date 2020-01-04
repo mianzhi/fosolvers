@@ -612,8 +612,8 @@ contains
   
   !> momentum and pressure preconditioning problem solving
   function pbcPSol(c_x,c_xScale,c_f,c_fScale,c_v,dat)
+    use modGradient
     use modAdvection
-    use modDiffusion
     use modPressure
     use modNewtonian
     type(C_PTR),value::c_x,c_xScale,c_f,c_fScale,c_v,dat
@@ -646,22 +646,26 @@ contains
       p(i)=tmpP(i)*(rho(i)/tmpRho(i))**gamm
     end forall
     !$omp end parallel workshare
-    ! non-linear functional iterations on disturbed u and p (analogous to Jacobian iterations)
-    do l=1,3
+    ! linearized terms
+    call findGrad(grid,p,gradP)
+    call findGrad(grid,u,gradU)
+    call findPresForce(grid,p,gradP,presF)
+    ! non-linear functional iterations on disturbed u and p (analogous to Jacobi iterations)
+    do l=1,10
       call setBC()
-      call findPresForce(grid,p,gradP,presF)
-      call findViscForce(grid,u,gradU,visc,viscF)
+      !call findGrad(grid,u,gradU)
+      !call findViscForce(grid,u,gradU,visc,viscF)
       call findMassFlow(grid,rho,u,p,presF,dt,flowRho)
-      call findVarFlow(grid,u,flowRho,flowRhou)
+      !call findVarFlow(grid,u,flowRho,flowRhou)
       call findAdv(grid,flowRho,advRho)
-      call findAdv(grid,flowRhou,advRhou)
+      !call findAdv(grid,flowRhou,advRhou)
       !$omp parallel workshare
       forall(i=1:grid%nC)
-        rhou(:,i)=rhou0(:,i)+dt/grid%v(i)*(advRhou(:,i)+presF(:,i)+viscF(:,i))&
-        &         +v((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS) ! add momentum residual increment
+        !rhou(:,i)=rhou0(:,i)+dt/grid%v(i)*(advRhou(:,i)+presF(:,i)+viscF(:,i))&
+        !&         +v((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS) ! add momentum residual increment
         rho(i)=rho0(i)+dt/grid%v(i)*advRho(i)&
         &      +v((DIMS+1)*(i-1)+(DIMS+1)) ! add density residual increment
-        u(:,i)=rhou(:,i)/rho(i)
+        !u(:,i)=rhou(:,i)/rho(i)
         p(i)=tmpP(i)*(rho(i)/tmpRho(i))**gamm
       end forall
       !$omp end parallel workshare
