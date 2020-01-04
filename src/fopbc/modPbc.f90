@@ -12,7 +12,7 @@ module modPbc
   
   integer,parameter::DIMS=3 !< three dimensions
   
-  integer,parameter::MAXIT_PBC=50 !< max number of momentum and pressure equation iterations
+  integer,parameter::MAXIT_PBC=15 !< max number of momentum and pressure equation iterations
   integer,parameter::MAXIT_ENERGY=50 !< max number of energy equation iterations
   integer,parameter::MAXIT_OUTER=20 !< max number of outer iterations
   integer,parameter::MAXIT_FULL=50 !< max number of full NS equation iterations
