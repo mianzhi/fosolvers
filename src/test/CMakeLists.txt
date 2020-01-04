@@ -10,13 +10,6 @@ SET(tests_src
   readVTK1.f90
   writeVTK1.f90
   readCondTab1.f90
-  gradient1.f90
-  gradient2.f90
-  advection1.f90
-  advection2.f90
-  diffusion1.f90
-  euler.f90
-  eulerJac.f90
   UDF1.f90
   fixPt1.f90
   NewtonKrylov1.f90

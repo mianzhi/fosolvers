@@ -79,7 +79,7 @@ subroutine readCGNSPolyGrid(fname,grid)
       grid%iNE(1:m,iStart:iEnd)=reshape(conn(:),[m,iEnd-iStart+1])
     end if
     grid%gid(iStart:iEnd)=i ! gid is defined as section number
-    deallocate(conn)
+    deallocate(conn) ! FIXME: memory bug here
     deallocate(tmpI)
   end do
   call cg_close_f(fid,ier)

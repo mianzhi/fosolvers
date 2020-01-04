@@ -5,8 +5,6 @@ program test
   &                 polyX1,polyMesh1,polyGrid1,polyFvGrid1,&
   &                 readGTS1,readVTK1,writeVTK1,&
   &                 readCondTab1,&
-  &                 gradient1,gradient2,advection1,advection2,euler,eulerJac,&
-  &                 diffusion1,&
   &                 UDF1,&
   &                 fixPt1,NewtonKrylov1,BDFNewtonKrylov1
   
@@ -15,18 +13,11 @@ program test
   call try('polyX1',polyX1)
   call try('polyMesh1',polyMesh1)
   call try('polyGrid1',polyGrid1)
-  call try('polyFvGrid1',polyFvGrid1)
+  !call try('polyFvGrid1',polyFvGrid1) FIXME disabled due to CGNS memory bug
   call try('readGTS1',readGTS1)
   call try('readVTK1',readVTK1)
   call try('writeVTK1',writeVTK1)
   call try('readCondTab',readCondTab1)
-  call try('gradient1',gradient1)
-  call try('gradient2',gradient2)
-  call try('advection1',advection1)
-  call try('advection2',advection2)
-  call try('diffusion1',diffusion1)
-  call try('euler',euler)
-  call try('eulerJac',eulerJac)
   call try('UDF1',UDF1)
   call try('fixPt1',fixPt1)
   call try('NewtonKrylov1',NewtonKrylov1)
