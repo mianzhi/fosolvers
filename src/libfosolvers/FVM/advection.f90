@@ -47,6 +47,7 @@ contains
     double precision,intent(in),optional::gradRho(:,:) !< gradient of rho
     integer::up,dn
     double precision::vMN(DIMS),vMP(DIMS),vPN(DIMS),flux(DIMS),eps,rhoUp,rhoDn,dRho,r,rhof
+    logical::sameDirection
     
     call grid%up()
     if(.not.allocated(flow))then
@@ -58,13 +59,9 @@ contains
     do i=1,grid%nP
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
-      if(dot_product(u(:,m)+u(:,n),grid%normP(:,i))>=0d0)then ! upwind by velocity
-        up=m
-        dn=n
-      else
-        up=n
-        dn=m
-      end if
+      sameDirection=dot_product(u(:,m)+u(:,n),grid%normP(:,i))>=0d0 ! upwind by velocity
+      up=merge(m,n,sameDirection)
+      dn=merge(m,n,.not.sameDirection)
       rhoUp=rho(up)
       rhoDn=rho(dn)
       if(m<=grid%nC.and.n<=grid%nC)then ! internal pairs
@@ -107,6 +104,7 @@ contains
     double precision,intent(in),optional::gradV(:,:,:) !< gradient of v
     double precision::vf(size(v,1)),dV(size(v,1)),r(size(v,1))
     integer::up,dn
+    logical::sameDirection
     
     call grid%up()
     if(.not.allocated(flow))then
@@ -121,13 +119,9 @@ contains
       if(abs(mFlow(i))<=tiny(1d0))then ! no mass flux
         cycle
       else ! upwinding by mass flux
-        if(mFlow(i)>=0d0)then
-          up=m
-          dn=n
-        else
-          up=n
-          dn=m
-        end if
+        sameDirection=mFlow(i)>=0d0
+        up=merge(m,n,sameDirection)
+        dn=merge(m,n,.not.sameDirection)
         vf(:)=v(:,up)
         if(m<=grid%nC.and.n<=grid%nC.and.present(gradV))then ! internal pairs and gradV available
           dV(:)=matmul(grid%p(:,dn)-grid%p(:,up),gradV(:,:,up))
@@ -151,6 +145,7 @@ contains
     double precision,intent(in),optional::gradV(:,:) !< gradient of v
     double precision::vf,dV,r
     integer::up,dn
+    logical::sameDirection
     
     call grid%up()
     if(.not.allocated(flow))then
@@ -165,13 +160,9 @@ contains
       if(abs(mFlow(i))<=tiny(1d0))then ! no mass flux
         cycle
       else ! upwinding by mass flux
-        if(mFlow(i)>=0d0)then
-          up=m
-          dn=n
-        else
-          up=n
-          dn=m
-        end if
+        sameDirection=mFlow(i)>=0d0
+        up=merge(m,n,sameDirection)
+        dn=merge(m,n,.not.sameDirection)
         vf=v(up)
         if(m<=grid%nC.and.n<=grid%nC.and.present(gradV))then ! internal pairs and gradV available
           dV=dot_product(grid%p(:,dn)-grid%p(:,up),gradV(:,up))
