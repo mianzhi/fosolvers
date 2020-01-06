@@ -12,8 +12,8 @@ module modPbc
   
   integer,parameter::DIMS=3 !< three dimensions
   
-  integer,parameter::MAXIT_PBC=50 !< max number of momentum and pressure equation iterations
-  integer,parameter::MAXL_PBC=20 !< max dimensions of PBC Krylov subspace
+  integer,parameter::MAXIT_PBC=10 !< max number of momentum and pressure equation iterations
+  integer,parameter::MAXL_PBC=100 !< max dimensions of PBC Krylov subspace
   integer,parameter::MAXIT_ENERGY=50 !< max number of energy equation iterations
   integer,parameter::MAXIT_OUTER=20 !< max number of outer iterations
   integer,parameter::MAXIT_FULL=50 !< max number of full NS equation iterations
@@ -652,7 +652,7 @@ contains
     call findGrad(grid,u,gradU)
     call findPresForce(grid,p,gradP,presF)
     ! non-linear functional iterations on disturbed u and p (analogous to Jacobi iterations)
-    do l=1,20
+    do l=1,5
       call setBC()
       !call findGrad(grid,u,gradU)
       !call findViscForce(grid,u,gradU,visc,viscF)
