@@ -465,7 +465,7 @@ contains
     procedure(integer(C_INT)),optional::pSol !< preconditioner solve function in Fortran
     integer(C_INT)::pOpt,c_maxl,info
     integer(C_INT),parameter::PREC_NONE=0
-    integer(C_INT),parameter::PREC_LEFT=1
+    integer(C_INT),parameter::PREC_RIGHT=2
     
     call this%noLinEq%initNoLinEq(nEq,f)
     info=kininit(this%work,this%f,this%x) ! use solution vector as template
@@ -473,13 +473,13 @@ contains
       write(*,'(a,i3)')"[E] initNewtonKrylov(): KINInit error code ",info
       stop
     end if
-    pOpt=merge(PREC_LEFT,PREC_NONE,present(pSet).and.present(pSol))
+    pOpt=merge(PREC_RIGHT,PREC_NONE,present(pSet).and.present(pSol))
     if(present(maxl))then
       c_maxl=maxl
     else
       c_maxl=0
     end if
-    this%ls=sunlinsol_spgmr(this%x,PREC_NONE,c_maxl) ! use solution vector as template
+    this%ls=sunlinsol_spgmr(this%x,pOpt,c_maxl) ! use solution vector as template
     if(.not.c_associated(this%ls))then
       write(*,'(a)')"[E] initNewtonKrylov(): linear solver object not allocated"
       stop
