@@ -12,8 +12,8 @@ module modPbc
   
   integer,parameter::DIMS=3 !< three dimensions
   
-  integer,parameter::MAXIT_PBC=10 !< max number of momentum and pressure equation iterations
-  integer,parameter::MAXL_PBC=100 !< max dimensions of PBC Krylov subspace
+  integer,parameter::MAXIT_PBC=20 !< max number of momentum and pressure equation iterations
+  integer,parameter::MAXL_PBC=20 !< max dimensions of PBC Krylov subspace
   integer,parameter::MAXIT_ENERGY=50 !< max number of energy equation iterations
   integer,parameter::MAXIT_OUTER=20 !< max number of outer iterations
   integer,parameter::MAXIT_FULL=50 !< max number of full NS equation iterations
@@ -613,15 +613,10 @@ contains
   
   !> momentum and pressure preconditioning problem solving
   function pbcPSol(c_x,c_xScale,c_f,c_fScale,c_v,dat)
-    use modGradient
-    use modAdvection
-    use modPressure
-    use modNewtonian
     type(C_PTR),value::c_x,c_xScale,c_f,c_fScale,c_v,dat
     integer(C_INT)::pbcPSol
     double precision,pointer::x(:),xScale(:),f(:),v(:),fScale(:)
     type(C_PTR)::foo
-    double precision,allocatable,save::tmpRho(:),tmpP(:)
     
     call associateVector(c_x,x)
     call associateVector(c_xScale,xScale)
@@ -629,55 +624,17 @@ contains
     call associateVector(c_fScale,fScale)
     call associateVector(c_v,v)
     
-    if(.not.allocated(tmpP))then
-      allocate(tmpRho(grid%nC))
-      allocate(tmpP(grid%nC))
-    end if
-    
     ! find x increment from f increment v and save back to v
-    ! initiate disturbed u and p
-    !$omp parallel workshare
-    forall(i=1:grid%nC)
-      tmpP(i)=x((DIMS+1)*(i-1)+(DIMS+1))
-      tmpRho(i)=p1(i)/Rgas/temp(i)*(tmpP(i)/p1(i))**(1d0/gamm)
-      rhou(:,i)=tmpRho(i)*x((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)&
-      &         +v((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS) ! add momentum residual increment
-      rho(i)=tmpRho(i)+v((DIMS+1)*(i-1)+(DIMS+1)) ! add density residual increment
-      u(:,i)=rhou(:,i)/rho(i)
-      p(i)=tmpP(i)*(rho(i)/tmpRho(i))**gamm
-    end forall
-    !$omp end parallel workshare
-    ! linearized terms
-    call findGrad(grid,p,gradP)
-    call findGrad(grid,u,gradU)
-    call findPresForce(grid,p,gradP,presF)
-    ! non-linear functional iterations on disturbed u and p (analogous to Jacobi iterations)
-    do l=1,5
-      call setBC()
-      !call findGrad(grid,u,gradU)
-      !call findViscForce(grid,u,gradU,visc,viscF)
-      call findMassFlow(grid,rho,u,p,presF,dt,flowRho)
-      !call findVarFlow(grid,u,flowRho,flowRhou)
-      call findAdv(grid,flowRho,advRho)
-      !call findAdv(grid,flowRhou,advRhou)
-      !$omp parallel workshare
-      forall(i=1:grid%nC)
-        !rhou(:,i)=rhou0(:,i)+dt/grid%v(i)*(advRhou(:,i)+presF(:,i)+viscF(:,i))&
-        !&         +v((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS) ! add momentum residual increment
-        rho(i)=rho0(i)+dt/grid%v(i)*advRho(i)&
-        &      +v((DIMS+1)*(i-1)+(DIMS+1)) ! add density residual increment
-        !u(:,i)=rhou(:,i)/rho(i)
-        p(i)=tmpP(i)*(rho(i)/tmpRho(i))**gamm
-      end forall
-      !$omp end parallel workshare
+    !$omp parallel do
+    do i=1,grid%nC ! TODO: need to figure out why cannot use forall with omp workshare here
+      v((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=v((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)/rho(i)&
+      &                                       *xScale((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)&
+      &                                       /fScale((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)
+      v((DIMS+1)*(i-1)+(DIMS+1))=v((DIMS+1)*(i-1)+(DIMS+1))*Rgas*temp(i)*gamm&
+      &                          *xScale((DIMS+1)*(i-1)+(DIMS+1))&
+      &                          /fScale((DIMS+1)*(i-1)+(DIMS+1))
     end do
-    ! save u and p increment back to v
-    !$omp parallel workshare
-    forall(i=1:grid%nC)
-      v((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=u(:,i)-x((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)
-      v((DIMS+1)*(i-1)+(DIMS+1))=p(i)-x((DIMS+1)*(i-1)+(DIMS+1))
-    end forall
-    !$omp end parallel workshare
+    !$omp end parallel do
     pbcPsol=0
     foo=dat
   end function
