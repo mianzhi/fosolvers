@@ -627,12 +627,8 @@ contains
     ! find x increment from f increment v and save back to v
     !$omp parallel do
     do i=1,grid%nC ! TODO: need to figure out why cannot use forall with omp workshare here
-      v((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=v((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)/rho(i)&
-      &                                       *xScale((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)&
-      &                                       /fScale((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)
-      v((DIMS+1)*(i-1)+(DIMS+1))=v((DIMS+1)*(i-1)+(DIMS+1))*Rgas*temp(i)*gamm&
-      &                          *xScale((DIMS+1)*(i-1)+(DIMS+1))&
-      &                          /fScale((DIMS+1)*(i-1)+(DIMS+1))
+      v((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=v((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)/rho(i)
+      v((DIMS+1)*(i-1)+(DIMS+1))=v((DIMS+1)*(i-1)+(DIMS+1))
     end do
     !$omp end parallel do
     pbcPsol=0
