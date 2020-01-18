@@ -682,9 +682,9 @@ contains
     forall(i=1:grid%nC)
       temp(i)=(rhoE(i)/rho(i)-0.5d0*dot_product(u(:,i),u(:,i)))/(1d0/(gamm-1d0))/Rgas
     end forall
-    H=(rhoE+p)/rho
     !$omp end parallel workshare
     call setBC()
+    H=(rhoE+p)/rho
     call findVarFlow(grid,H,flowRho,flowRhoH)
     call findAdv(grid,flowRhoH,advRhoH)
     call findDiff(grid,temp,gradTemp,cond,condQ)
@@ -754,13 +754,14 @@ contains
     !$omp end parallel workshare
     call recoverState(p,u,temp,massFrac,rho,rhou,rhoE)
     call setBC()
+    H=(rhoE+p)/rho
     call findGrad(grid,p,gradP)
     call findGrad(grid,u,gradU)
     call findPresForce(grid,p,gradP,presF)
     call findViscForce(grid,u,gradU,visc,viscF)
     call findMassFlow(grid,rho,u,p,presF,dt,flowRho)
     call findVarFlow(grid,u,flowRho,flowRhou)
-    call findVarFlow(grid,(rhoE+p)/rho,flowRho,flowRhoH)
+    call findVarFlow(grid,H,flowRho,flowRhoH)
     call findAdv(grid,flowRho,advRho)
     call findAdv(grid,flowRhou,advRhou)
     call findAdv(grid,flowRhoH,advRhoH)
