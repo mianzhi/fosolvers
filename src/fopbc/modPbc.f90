@@ -165,7 +165,7 @@ contains
     call pbcEq%setMaxIt(MAXIT_PBC)
     call energyEq%init(grid%nC,energyRHS,maa=MAXIT_ENERGY)
     call energyEq%setMaxIt(MAXIT_ENERGY)
-    call fullEq%init(grid%nC*(DIMS+2),fullRHS,maxl=MAXIT_FULL)
+    call fullEq%init(grid%nC*(DIMS+2),fullRHS,maxl=MAXIT_FULL,pset=fullPSet,psol=fullPSol)
     call fullEq%setMaxIt(MAXIT_FULL)
     ! work space and initial state
     allocate(rho(grid%nE))
@@ -779,6 +779,49 @@ contains
     fullRHS=merge(1,0,any(ieee_is_nan(y).or.(.not.ieee_is_finite(y))))
     if(c_associated(dat))then
     end if
+  end function
+  
+   !> full NS equations preconditioning matrix setup/factor
+  function fullPSet(c_x,c_xScale,c_f,c_fScale,dat)
+    type(C_PTR),value::c_x,c_xScale,c_f,c_fScale,dat
+    integer(C_INT)::fullPSet
+    double precision,pointer::x(:),xScale(:),f(:),fScale(:)
+    type(C_PTR)::foo
+    
+    call associateVector(c_x,x)
+    call associateVector(c_xScale,xScale)
+    call associateVector(c_f,f)
+    call associateVector(c_fScale,fScale)
+    
+    ! construct preconditioning matrix
+    ! factor preconditioning matrix
+    fullPSet=0
+    foo=dat
+  end function
+  
+  !> full NS equations preconditioning problem solving
+  function fullPSol(c_x,c_xScale,c_f,c_fScale,c_v,dat)
+    type(C_PTR),value::c_x,c_xScale,c_f,c_fScale,c_v,dat
+    integer(C_INT)::fullPSol
+    double precision,pointer::x(:),xScale(:),f(:),v(:),fScale(:)
+    type(C_PTR)::foo
+    
+    call associateVector(c_x,x)
+    call associateVector(c_xScale,xScale)
+    call associateVector(c_f,f)
+    call associateVector(c_fScale,fScale)
+    call associateVector(c_v,v)
+    
+    ! find x increment from f increment v and save back to v
+    !$omp parallel do
+    do i=1,grid%nC ! TODO: need to figure out why cannot use forall with omp workshare here
+      v((DIMS+2)*(i-1)+1:(DIMS+2)*(i-1)+DIMS)=v((DIMS+2)*(i-1)+1:(DIMS+2)*(i-1)+DIMS)/rho(i)
+      v((DIMS+2)*(i-1)+(DIMS+1))=v((DIMS+2)*(i-1)+(DIMS+1))
+      v((DIMS+2)*(i-1)+(DIMS+2))=v((DIMS+2)*(i-1)+(DIMS+2))/rho(i)/(Rgas/(gamm-1d0))
+    end do
+    !$omp end parallel do
+    fullPsol=0
+    foo=dat
   end function
   
 end module

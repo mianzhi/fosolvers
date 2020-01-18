@@ -23,6 +23,7 @@ program fopbc
     visc(:)=2d-4! TODO update transport properties according to state0
     cond(:)=3d-1! TODO update transport properties according to state0
     call preSolve()
+    !call solveFull()
     do nItOuter=1,MAXIT_OUTER
       rho1(:)=rho(:)
       p1(:)=p(:)
