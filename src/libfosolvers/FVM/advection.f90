@@ -35,7 +35,7 @@ contains
   
   !> find mass flow rate on polyFvGrid with Rhie-Chow u interpolation and TVD rho reconstruction
   !> \f[ \int_A \rho\mathbf{u} \cdot \hat{n} dA \f]
-  subroutine findMassFlowMagicPoly(grid,rho,u,p,presF,dt,flow,gradRho)
+  subroutine findMassFlowMagicPoly(grid,rho,u,p,presF,dt,flow,gradRho,sensP)
     use modPolyFvGrid
     class(polyFvGrid),intent(inout)::grid !< the grid
     double precision,intent(in)::rho(:) !< density
@@ -45,6 +45,7 @@ contains
     double precision,intent(in)::dt !< time step size
     double precision,allocatable,intent(inout)::flow(:) !< mass flow rate output
     double precision,intent(in),optional::gradRho(:,:) !< gradient of rho
+    double precision,allocatable,intent(inout),optional::sensP(:,:) !< flow's sensitivity on p
     integer::up,dn
     double precision::vMN(DIMS),vMP(DIMS),vPN(DIMS),flux(DIMS),eps,rhoUp,rhoDn,dRho,r,rhof
     logical::sameDirection
@@ -54,6 +55,12 @@ contains
       allocate(flow(grid%nP))
     end if
     flow(:)=0d0
+    if(present(sensP))then
+      if(.not.allocated(sensP))then
+        allocate(sensP(2,grid%nP))
+      end if
+      sensP(:,:)=0d0
+    end if
     !$omp parallel do default(shared)&
     !$omp& private(m,n,up,dn,rhoUp,rhoDn,dRho,r,rhof,vMN,vMP,vPN,eps,flux)
     do i=1,grid%nP
@@ -80,12 +87,20 @@ contains
         &       -dt/(1d0/rho(m)+1d0/rho(n))*&
         &        (presF(:,m)/grid%v(m)/rho(m)+presF(:,n)/grid%v(n)/rho(n))&
         &       +dt*grid%normP(:,i)*(p(m)-p(n))/dot_product(vMN,grid%normP(:,i))
+        if(present(sensP))then
+          sensP(1,i)=grid%aP(i)*dt/dot_product(vMN,grid%normP(:,i))
+          sensP(2,i)=-grid%aP(i)*dt/dot_product(vMN,grid%normP(:,i))
+        end if
       else ! boundary pairs
         flux(:)=rhoUp*0.5d0*(u(:,m)+u(:,n))
         if(abs(dot_product(grid%normP(:,i),flux(:)))>tiny(1d0))then
           vMP(:)=grid%pP(:,i)-grid%p(:,m)
           flux(:)=flux(:)-0.5d0*dt*presF(:,m)/grid%v(m)&
           &       +0.5d0*dt*grid%normP(:,i)*(p(m)-p(n))/(2d0*dot_product(vMP,grid%normP(:,i)))
+          if(present(sensP))then
+            sensP(1,i)=grid%aP(i)*0.5d0*dt/(2d0*dot_product(vMP,grid%normP(:,i)))
+            sensP(2,i)=-grid%aP(i)*0.5d0*dt/(2d0*dot_product(vMP,grid%normP(:,i)))
+          end if
         end if ! Rhie-Chow does not initiate penetration through boundary pair
       end if
       flow(i)=grid%aP(i)*dot_product(grid%normP(:,i),flux(:))
