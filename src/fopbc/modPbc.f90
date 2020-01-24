@@ -60,8 +60,7 @@ module modPbc
   double precision,allocatable::rho0(:),rhou0(:,:),rhoE0(:),p0(:),u0(:,:),temp0(:),massFrac0(:,:)
   
   ! state at the beginning of an outer iteration
-  double precision,allocatable::rho1(:)
-  double precision,allocatable::p1(:)
+  double precision,allocatable::rho1(:),p1(:)
   
   double precision,allocatable::visc(:) !< viscosity [Pa*s]
   double precision,allocatable::cond(:) !< thermal conductivity [W/m/K]
@@ -78,6 +77,9 @@ module modPbc
   double precision,allocatable::presF(:,:) !< pressure force applied on cell [N]
   double precision,allocatable::condQ(:) !< heat conduction into cell [W]
   double precision,allocatable::H(:) !< mass-specific enthalpy [J/kg]
+  
+  double precision,allocatable::massFlowSensP(:,:) !< sensitivity of mass flow rate on pressure
+  double precision,allocatable::pbcDiagPrec(:) !< diagonal preconditioner
   
   ! scales and scaling factors
   double precision,allocatable::rhoScale !< density scale [kg/m^3]
@@ -200,6 +202,8 @@ contains
     allocate(presF(DIMS,grid%nC))
     allocate(condQ(grid%nC))
     allocate(H(grid%nC))
+    allocate(massFlowSensP(2,grid%nP))
+    allocate(pbcDiagPrec((DIMS+1)*grid%nC))
     allocate(pbcXFact((DIMS+1)*grid%nC))
     allocate(pbcRFact((DIMS+1)*grid%nC))
     allocate(fullXFact((DIMS+2)*grid%nC))
@@ -595,6 +599,10 @@ contains
   
   !> momentum and pressure preconditioning matrix setup/factor
   function pbcPSet(c_x,c_xScale,c_f,c_fScale,dat)
+    use iso_c_binding
+    use modSUNDIALS
+    use modAdvection
+    use modPressure
     type(C_PTR),value::c_x,c_xScale,c_f,c_fScale,dat
     integer(C_INT)::pbcPSet
     double precision,pointer::x(:),xScale(:),f(:),fScale(:)
@@ -606,7 +614,44 @@ contains
     call associateVector(c_fScale,fScale)
     
     ! construct preconditioning matrix
+    !$omp parallel workshare
+    forall(i=1:grid%nC)
+      u(:,i)=x((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)
+      p(i)=x((DIMS+1)*(i-1)+(DIMS+1))
+      rho(i)=p1(i)/Rgas/temp(i)*(p(i)/p1(i))**(1d0/gamm)
+      rhou(:,i)=rho(i)*u(:,i)
+    end forall
+    !$omp end parallel workshare
+    call setBC()
+    call findPresForce(grid,p,gradP,presF)
+    call findMassFlow(grid,rho,u,p,presF,dt,flowRho,sensP=massFlowSensP)
+    !$omp parallel workshare
+    forall(i=1:grid%nC)
+      pbcDiagPrec((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=rho(i)
+      pbcDiagPrec((DIMS+1)*(i-1)+(DIMS+1))=p1(i)**(1d0-1d0/gamm)/Rgas/temp(i)&
+      &                                    *(1d0/gamm)*p(i)**(1d0/gamm-1d0)
+    end forall
+    !$omp end parallel workshare
+    do i=1,grid%nP
+      m=grid%iEP(1,i)
+      n=grid%iEP(2,i)
+      if(n<=grid%nC)then
+        pbcDiagPrec((DIMS+1)*(m-1)+(DIMS+1))=pbcDiagPrec((DIMS+1)*(m-1)+(DIMS+1))&
+        &                                    -dt/grid%v(m)*massFlowSensP(1,i)
+        pbcDiagPrec((DIMS+1)*(n-1)+(DIMS+1))=pbcDiagPrec((DIMS+1)*(n-1)+(DIMS+1))&
+        &                                    -dt/grid%v(n)*massFlowSensP(2,i)
+      else
+        pbcDiagPrec((DIMS+1)*(m-1)+(DIMS+1))=pbcDiagPrec((DIMS+1)*(m-1)+(DIMS+1))&
+        &                                    -dt/grid%v(m)*massFlowSensP(1,i)
+      end if
+    end do
+    ! FIXME: FIX THE PRESSURE PRECONDITIONING AND REMOVE THE BELOW CODE
+    forall(i=1:grid%nC)
+      pbcDiagPrec((DIMS+1)*(i-1)+(DIMS+1))=1d0
+    end forall
+    ! FIXME: FIX THE PRESSURE PRECONDITIONING AND REMOVE THE ABOVE CODE
     ! factor preconditioning matrix
+    pbcDiagPrec(:)=1d0/pbcDiagPrec(:)
     pbcPSet=0
     foo=dat
   end function
@@ -625,12 +670,9 @@ contains
     call associateVector(c_v,v)
     
     ! find x increment from f increment v and save back to v
-    !$omp parallel do
-    do i=1,grid%nC ! TODO: need to figure out why cannot use forall with omp workshare here
-      v((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=v((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)/rho(i)
-      v((DIMS+1)*(i-1)+(DIMS+1))=v((DIMS+1)*(i-1)+(DIMS+1))
-    end do
-    !$omp end parallel do
+    !$omp parallel workshare
+    v(1:(DIMS+1)*grid%nC)=v(1:(DIMS+1)*grid%nC)*pbcDiagPrec(:)
+    !$omp end parallel workshare
     pbcPsol=0
     foo=dat
   end function
