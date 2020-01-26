@@ -62,7 +62,7 @@ contains
       sensP(:,:)=0d0
     end if
     !$omp parallel do default(shared)&
-    !$omp& private(m,n,up,dn,rhoUp,rhoDn,dRho,r,rhof,vMN,vMP,vPN,eps,flux)
+    !$omp& private(m,n,sameDirection,up,dn,rhoUp,rhoDn,dRho,r,rhof,vMN,vMP,vPN,eps,flux)
     do i=1,grid%nP
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
@@ -127,7 +127,7 @@ contains
     end if
     flow(:,:)=0d0
     !$omp parallel do default(shared)&
-    !$omp& private(m,n,up,dn,dV,r,vf)
+    !$omp& private(m,n,sameDirection,up,dn,dV,r,vf)
     do i=1,grid%nP
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
@@ -168,7 +168,7 @@ contains
     end if
     flow(:)=0d0
     !$omp parallel do default(shared)&
-    !$omp& private(m,n,up,dn,dV,r,vf)
+    !$omp& private(m,n,sameDirection,up,dn,dV,r,vf)
     do i=1,grid%nP
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
