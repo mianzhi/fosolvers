@@ -35,7 +35,7 @@ contains
   
   !> find mass flow rate on polyFvGrid with Rhie-Chow u interpolation and TVD rho reconstruction
   !> \f[ \int_A \rho\mathbf{u} \cdot \hat{n} dA \f]
-  subroutine findMassFlowMagicPoly(grid,rho,u,p,presF,dt,flow,gradRho,sensP)
+  subroutine findMassFlowMagicPoly(grid,rho,u,p,presF,dt,flow,gradRho,sensU,sensP)
     use modPolyFvGrid
     class(polyFvGrid),intent(inout)::grid !< the grid
     double precision,intent(in)::rho(:) !< density
@@ -45,6 +45,7 @@ contains
     double precision,intent(in)::dt !< time step size
     double precision,allocatable,intent(inout)::flow(:) !< mass flow rate output
     double precision,intent(in),optional::gradRho(:,:) !< gradient of rho
+    double precision,allocatable,intent(inout),optional::sensU(:,:,:) !< flow's sensitivity on u
     double precision,allocatable,intent(inout),optional::sensP(:,:) !< flow's sensitivity on p
     integer::up,dn
     double precision::vMN(DIMS),vMP(DIMS),vPN(DIMS),flux(DIMS),eps,rhoUp,rhoDn,dRho,r,rhof
@@ -55,6 +56,12 @@ contains
       allocate(flow(grid%nP))
     end if
     flow(:)=0d0
+    if(present(sensU))then
+      if(.not.allocated(sensU))then
+        allocate(sensU(DIMS,2,grid%nP))
+      end if
+      sensU(:,:,:)=0d0
+    end if
     if(present(sensP))then
       if(.not.allocated(sensP))then
         allocate(sensP(2,grid%nP))
@@ -87,6 +94,10 @@ contains
         &       -dt/(1d0/rho(m)+1d0/rho(n))*&
         &        (presF(:,m)/grid%v(m)/rho(m)+presF(:,n)/grid%v(n)/rho(n))&
         &       +dt*grid%normP(:,i)*(p(m)-p(n))/dot_product(vMN,grid%normP(:,i))
+        if(present(sensU))then
+          sensU(:,1,i)=grid%aP(i)*grid%normP(:,i)*rhof*eps
+          sensU(:,2,i)=-grid%aP(i)*grid%normP(:,i)*rhof*(1d0-eps)
+        end if
         if(present(sensP))then
           sensP(1,i)=grid%aP(i)*dt/dot_product(vMN,grid%normP(:,i))
           sensP(2,i)=-grid%aP(i)*dt/dot_product(vMN,grid%normP(:,i))
@@ -97,6 +108,10 @@ contains
           vMP(:)=grid%pP(:,i)-grid%p(:,m)
           flux(:)=flux(:)-0.5d0*dt*presF(:,m)/grid%v(m)&
           &       +0.5d0*dt*grid%normP(:,i)*(p(m)-p(n))/(2d0*dot_product(vMP,grid%normP(:,i)))
+          if(present(sensU))then
+            sensU(:,1,i)=grid%aP(i)*grid%normP(:,i)*rhoUp*0.5d0
+            sensU(:,2,i)=-grid%aP(i)*grid%normP(:,i)*rhoUp*0.5d0
+          end if
           if(present(sensP))then
             sensP(1,i)=grid%aP(i)*0.5d0*dt/(2d0*dot_product(vMP,grid%normP(:,i)))
             sensP(2,i)=-grid%aP(i)*0.5d0*dt/(2d0*dot_product(vMP,grid%normP(:,i)))

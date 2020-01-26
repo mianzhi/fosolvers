@@ -78,6 +78,7 @@ module modPbc
   double precision,allocatable::condQ(:) !< heat conduction into cell [W]
   double precision,allocatable::H(:) !< mass-specific enthalpy [J/kg]
   
+  double precision,allocatable::massFlowSensU(:,:,:) !< sensitivity of mass flow rate on velocity
   double precision,allocatable::massFlowSensP(:,:) !< sensitivity of mass flow rate on pressure
   double precision,allocatable::pbcDiagPrec(:) !< diagonal preconditioner
   
@@ -202,6 +203,7 @@ contains
     allocate(presF(DIMS,grid%nC))
     allocate(condQ(grid%nC))
     allocate(H(grid%nC))
+    allocate(massFlowSensU(DIMS,2,grid%nP))
     allocate(massFlowSensP(2,grid%nP))
     allocate(pbcDiagPrec((DIMS+1)*grid%nC))
     allocate(pbcXFact((DIMS+1)*grid%nC))
@@ -624,7 +626,7 @@ contains
     !$omp end parallel workshare
     call setBC()
     call findPresForce(grid,p,gradP,presF)
-    call findMassFlow(grid,rho,u,p,presF,dt,flowRho,sensP=massFlowSensP)
+    call findMassFlow(grid,rho,u,p,presF,dt,flowRho,sensU=massFlowSensU,sensP=massFlowSensP)
     !$omp parallel workshare
     forall(i=1:grid%nC)
       pbcDiagPrec((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=rho(i)
