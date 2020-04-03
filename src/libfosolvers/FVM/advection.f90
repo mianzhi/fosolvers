@@ -96,7 +96,7 @@ contains
         &       +dt*grid%normP(:,i)*(p(m)-p(n))/dot_product(vMN,grid%normP(:,i))
         if(present(sensU))then
           sensU(:,1,i)=grid%aP(i)*grid%normP(:,i)*rhof*eps
-          sensU(:,2,i)=-grid%aP(i)*grid%normP(:,i)*rhof*(1d0-eps)
+          sensU(:,2,i)=grid%aP(i)*grid%normP(:,i)*rhof*(1d0-eps)
         end if
         if(present(sensP))then
           sensP(1,i)=grid%aP(i)*dt/dot_product(vMN,grid%normP(:,i))
@@ -110,7 +110,7 @@ contains
           &       +0.5d0*dt*grid%normP(:,i)*(p(m)-p(n))/(2d0*dot_product(vMP,grid%normP(:,i)))
           if(present(sensU))then
             sensU(:,1,i)=grid%aP(i)*grid%normP(:,i)*rhoUp*0.5d0
-            sensU(:,2,i)=-grid%aP(i)*grid%normP(:,i)*rhoUp*0.5d0
+            sensU(:,2,i)=grid%aP(i)*grid%normP(:,i)*rhoUp*0.5d0
           end if
           if(present(sensP))then
             sensP(1,i)=grid%aP(i)*0.5d0*dt/(2d0*dot_product(vMP,grid%normP(:,i)))
