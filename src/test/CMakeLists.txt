@@ -14,6 +14,7 @@ SET(tests_src
   fixPt1.f90
   NewtonKrylov1.f90
   BDFNewtonKrylov1.f90
+  ILU1.f90
 )
 
 ADD_EXECUTABLE(tests ${tests_src})

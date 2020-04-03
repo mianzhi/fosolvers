@@ -6,7 +6,7 @@ program test
   &                 readGTS1,readVTK1,writeVTK1,&
   &                 readCondTab1,&
   &                 UDF1,&
-  &                 fixPt1,NewtonKrylov1,BDFNewtonKrylov1
+  &                 fixPt1,NewtonKrylov1,BDFNewtonKrylov1,ILU1
   
   call try('otGrid1',otGrid1)
   call try('otGrid2',otGrid2)
@@ -22,6 +22,7 @@ program test
   call try('fixPt1',fixPt1)
   call try('NewtonKrylov1',NewtonKrylov1)
   call try('BDFNewtonKrylov1',BDFNewtonKrylov1)
+  call try('ILU1',ILU1)
   
   write(*,'(a)')'check md5 of output files:'
   call system('md5sum -c sums.md5')

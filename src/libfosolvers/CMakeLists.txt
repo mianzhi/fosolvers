@@ -22,7 +22,13 @@ SET(libfosolvers_src
   FVM/pressure.f90
   FVM/Euler.f90
   numerics/SUNDIALS.f90
+  numerics/sparse.f90
   contrib/fmetis/metis_interface.f90
+  contrib/SPARSKIT2/FORMATS/formats.f
+  contrib/SPARSKIT2/FORMATS/unary.f
+  contrib/SPARSKIT2/BLASSM/blassm.f
+  contrib/SPARSKIT2/BLASSM/matvec.f
+  contrib/SPARSKIT2/ITSOL/ilut.f
   misc/sort.f90
 )
 
