@@ -9,16 +9,6 @@ module modFileIO
   integer,parameter::C_DATA=3 !< cell data
   integer,parameter::F_DATA=4 !< facet data
   
-  !> read CGNS from fname into a generic object
-  interface readCGNS
-    !> read CGNS from fname into polyGrid
-    subroutine readCGNSPolyGrid(fname,grid)
-      use modPolyGrid
-      character(*),intent(in)::fname !< file name
-      class(polyGrid),intent(inout)::grid !< result
-    end subroutine
-  end interface
-  
   !> read GMSH from fid into a generic object
   interface readGMSH
     !> read GMSH from fid into polyGrid

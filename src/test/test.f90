@@ -2,7 +2,7 @@
 
 program test
   integer,external::otGrid1,otGrid2,&
-  &                 polyX1,polyMesh1,polyGrid1,polyFvGrid1,&
+  &                 polyX1,polyMesh1,polyGrid1,&
   &                 readGTS1,readVTK1,writeVTK1,&
   &                 readCondTab1,&
   &                 UDF1,&
@@ -13,7 +13,6 @@ program test
   call try('polyX1',polyX1)
   call try('polyMesh1',polyMesh1)
   call try('polyGrid1',polyGrid1)
-  !call try('polyFvGrid1',polyFvGrid1) FIXME disabled due to CGNS memory bug
   call try('readGTS1',readGTS1)
   call try('readVTK1',readVTK1)
   call try('writeVTK1',writeVTK1)

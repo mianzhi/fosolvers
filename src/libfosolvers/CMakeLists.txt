@@ -10,7 +10,6 @@ SET(libfosolvers_src
   fileIO/fileIO.f90
   fileIO/GTS.f90
   fileIO/VTK.f90
-  fileIO/CGNS.f90
   fileIO/GMSH.f90
   fileIO/condTab.f90
   fileIO/UDFTab.f90

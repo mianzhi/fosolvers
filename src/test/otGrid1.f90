@@ -17,7 +17,7 @@ function otGrid1()
     end if
   end do
   do i=1,grid%nC
-    if(grid%oid(i)/=int(i+o'400000'-1,kind=8))then
+    if(grid%oid(i)/=i+int(o'400000',kind=8)-1)then
       otGrid1=otGrid1+100
       exit
     end if
