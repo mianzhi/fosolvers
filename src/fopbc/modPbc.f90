@@ -6,6 +6,7 @@ module modPbc
   use modCondition
   use modUDF
   use modSUNDIALS
+  use modSparse
   use iso_c_binding
   
   public
@@ -17,6 +18,7 @@ module modPbc
   integer,parameter::MAXIT_ENERGY=50 !< max number of energy equation iterations
   integer,parameter::MAXIT_OUTER=20 !< max number of outer iterations
   integer,parameter::MAXIT_FULL=50 !< max number of full NS equation iterations
+  integer,parameter::PBC_PREC_FILL=50 !< filling parameter of PBC ILU preconditioner
   
   integer,parameter::BC_WALL_TEMP=1 !< wall boundary with prescribed temperature
   integer,parameter::BC_WALL_TEMP_UDF=101 !< wall boundary with prescribed temperature by UDF
@@ -80,7 +82,8 @@ module modPbc
   
   double precision,allocatable::massFlowSensU(:,:,:) !< sensitivity of mass flow rate on velocity
   double precision,allocatable::massFlowSensP(:,:) !< sensitivity of mass flow rate on pressure
-  double precision,allocatable::pbcDiagPrec(:) !< diagonal preconditioner
+  integer,allocatable::pbcPrecI(:),pbcPrecJ(:) !< PBC preconditioner COO index
+  double precision,allocatable::pbcPrecVal(:) !< PBC preconditioner COO value
   
   ! scales and scaling factors
   double precision,allocatable::rhoScale !< density scale [kg/m^3]
@@ -96,6 +99,7 @@ module modPbc
   
   ! data for algebraic solver
   type(NewtonKrylov)::pbcEq !< momentum and pressure equations (isothermal) solved by Newton-GMRES
+  type(ILU)::pbcPrec !< PBC preconditioner
   type(fixPt)::energyEq !< energy equation as a fix point problem
   type(NewtonKrylov)::fullEq !< full NS equations solved by Newton-GMRES
   integer::nItPBC,nItEnergy,nItOuter,nItFull !< number of iterations
@@ -166,6 +170,7 @@ contains
     ! initialize algebraic solver
     call pbcEq%init(grid%nC*(DIMS+1),pbcRHS,maxl=MAXL_PBC,pset=pbcPSet,psol=pbcPSol)
     call pbcEq%setMaxIt(MAXIT_PBC)
+    call pbcPrec%init(grid%nC*(DIMS+1),(size(grid%neib,1)+1)*(DIMS+1)*grid%nC,PBC_PREC_FILL)
     call energyEq%init(grid%nC,energyRHS,maa=MAXIT_ENERGY)
     call energyEq%setMaxIt(MAXIT_ENERGY)
     call fullEq%init(grid%nC*(DIMS+2),fullRHS,maxl=MAXIT_FULL,pset=fullPSet,psol=fullPSol)
@@ -205,7 +210,9 @@ contains
     allocate(H(grid%nC))
     allocate(massFlowSensU(DIMS,2,grid%nP))
     allocate(massFlowSensP(2,grid%nP))
-    allocate(pbcDiagPrec((DIMS+1)*grid%nC))
+    allocate(pbcPrecI((size(grid%neib,1)+1)*(DIMS+1)*grid%nC))
+    allocate(pbcPrecJ((size(grid%neib,1)+1)*(DIMS+1)*grid%nC))
+    allocate(pbcPrecVal((size(grid%neib,1)+1)*(DIMS+1)*grid%nC))
     allocate(pbcXFact((DIMS+1)*grid%nC))
     allocate(pbcRFact((DIMS+1)*grid%nC))
     allocate(fullXFact((DIMS+2)*grid%nC))
@@ -609,6 +616,7 @@ contains
     integer(C_INT)::pbcPSet
     double precision,pointer::x(:),xScale(:),f(:),fScale(:)
     type(C_PTR)::foo
+    double precision,parameter::PBC_PREC_DROPTOL=1e-6
     
     call associateVector(c_x,x)
     call associateVector(c_xScale,xScale)
@@ -629,31 +637,36 @@ contains
     call findMassFlow(grid,rho,u,p,presF,dt,flowRho,sensU=massFlowSensU,sensP=massFlowSensP)
     !$omp parallel workshare
     forall(i=1:grid%nC)
-      pbcDiagPrec((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=rho(i)
-      pbcDiagPrec((DIMS+1)*(i-1)+(DIMS+1))=p1(i)**(1d0-1d0/gamm)/Rgas/temp(i)&
-      &                                    *(1d0/gamm)*p(i)**(1d0/gamm-1d0)
+      forall(j=1:DIMS+1)
+        pbcPrecI((DIMS+1)*(i-1)+j)=(DIMS+1)*(i-1)+j
+        pbcPrecJ((DIMS+1)*(i-1)+j)=(DIMS+1)*(i-1)+j
+      end forall
+      pbcPrecVal((DIMS+1)*(i-1)+1:(DIMS+1)*(i-1)+DIMS)=1d0
+      pbcPrecVal((DIMS+1)*(i-1)+(DIMS+1))=1d0
     end forall
     !$omp end parallel workshare
+    l=grid%nC*(DIMS+1)
     do i=1,grid%nP
       m=grid%iEP(1,i)
       n=grid%iEP(2,i)
       if(n<=grid%nC)then
-        pbcDiagPrec((DIMS+1)*(m-1)+(DIMS+1))=pbcDiagPrec((DIMS+1)*(m-1)+(DIMS+1))&
-        &                                    -dt/grid%v(m)*massFlowSensP(1,i)
-        pbcDiagPrec((DIMS+1)*(n-1)+(DIMS+1))=pbcDiagPrec((DIMS+1)*(n-1)+(DIMS+1))&
-        &                                    -dt/grid%v(n)*massFlowSensP(2,i)
+        !pPrecVal(m)=pPrecVal(m)-dt/grid%v(m)*massFlowSensP(1,i)
+        !pPrecVal(n)=pPrecVal(n)+dt/grid%v(n)*massFlowSensP(2,i)
+        !l=l+1
+        !pPrecI(l)=m
+        !pPrecJ(l)=n
+        !pPrecVal(l)=-dt/grid%v(m)*massFlowSensP(2,i)
+        !l=l+1
+        !pPrecI(l)=n
+        !pPrecJ(l)=m
+        !pPrecVal(l)=dt/grid%v(n)*massFlowSensP(1,i)
       else
-        pbcDiagPrec((DIMS+1)*(m-1)+(DIMS+1))=pbcDiagPrec((DIMS+1)*(m-1)+(DIMS+1))&
-        &                                    -dt/grid%v(m)*massFlowSensP(1,i)
+        !pPrecVal(m)=pPrecVal(m)-dt/grid%v(m)*massFlowSensP(1,i)
       end if
     end do
-    ! FIXME: FIX THE PRESSURE PRECONDITIONING AND REMOVE THE BELOW CODE
-    forall(i=1:grid%nC)
-      pbcDiagPrec((DIMS+1)*(i-1)+(DIMS+1))=1d0
-    end forall
-    ! FIXME: FIX THE PRESSURE PRECONDITIONING AND REMOVE THE ABOVE CODE
-    ! factor preconditioning matrix
-    pbcDiagPrec(:)=1d0/pbcDiagPrec(:)
+    ! factorize preconditioning matrix
+    call pbcPrec%setCOO(pbcPrecI,pbcPrecJ,pbcPrecVal,l)
+    call pbcPrec%fact(PBC_PREC_DROPTOL)
     pbcPSet=0
     foo=dat
   end function
@@ -663,6 +676,7 @@ contains
     type(C_PTR),value::c_x,c_xScale,c_f,c_fScale,c_v,dat
     integer(C_INT)::pbcPSol
     double precision,pointer::x(:),xScale(:),f(:),v(:),fScale(:)
+    double precision,allocatable,save::pbcRst(:),pbcRHS(:)
     type(C_PTR)::foo
     
     call associateVector(c_x,x)
@@ -671,10 +685,15 @@ contains
     call associateVector(c_fScale,fScale)
     call associateVector(c_v,v)
     
+    if(.not.allocated(pbcRst))then
+      allocate(pbcRst(grid%nC*(DIMS+1)))
+      allocate(pbcRHS(grid%nC*(DIMS+1)))
+    end if
+    
     ! find x increment from f increment v and save back to v
-    !$omp parallel workshare
-    v(1:(DIMS+1)*grid%nC)=v(1:(DIMS+1)*grid%nC)*pbcDiagPrec(:)
-    !$omp end parallel workshare
+    pbcRHS(1:grid%nC*(DIMS+1))=v(1:grid%nC*(DIMS+1))
+    call pbcPrec%solve(pbcRHS,pbcRst)
+    v(1:grid%nC*(DIMS+1))=pbcRst(1:grid%nC*(DIMS+1))
     pbcPsol=0
     foo=dat
   end function
