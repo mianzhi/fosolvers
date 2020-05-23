@@ -126,7 +126,7 @@ contains
   
   !> translate the shape type of GMSH
   pure subroutine transShape(t,n)
-    use modPolyGrid,only:TRI,TRI_N,QUAD,QUAD_N,TET,TET_N,HEX,HEX_N
+    use modPolyGrid
     integer,intent(inout)::t !< shape type
     integer,intent(out)::n !< number of nodes
     
@@ -137,12 +137,18 @@ contains
     case(3)
       t=QUAD
       n=QUAD_N
+    case(9)
+      t=TRI6
+      n=TRI6_N
     case(4)
       t=TET
       n=TET_N
     case(5)
       t=HEX
       n=HEX_N
+    case(11)
+      t=TET10
+      n=TET10_N
     case default
       t=0
       n=0

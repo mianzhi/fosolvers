@@ -11,10 +11,14 @@ module modPolyGrid
   integer,public,parameter::TRI_N=3 !< 3 nodes per triangle
   integer,public,parameter::QUAD=11 !< quadrilateral
   integer,public,parameter::QUAD_N=4 !< 4 nodes per quadrilateral
+  integer,public,parameter::TRI6=110 !< 6-node triangle
+  integer,public,parameter::TRI6_N=6 !< 6 nodes per 6-node triangle
   integer,public,parameter::TET=20 !< tetrahedron
   integer,public,parameter::TET_N=4 !< 4 nodes per tetrahedron
   integer,public,parameter::HEX=21 !< hexahedron
   integer,public,parameter::HEX_N=8 !< 8 nodes per hexahedron
+  integer,public,parameter::TET10=120 !< 10-node tetrahedron
+  integer,public,parameter::TET10_N=10 !< 10 nodes per 10-node tetrahedron
   
   !> polyhedron and polygon grid type
   type,extends(polyX),public::polyGrid
@@ -68,8 +72,8 @@ contains
       allocate(this%v(this%nC))
       do i=1,this%nC
         select case(this%sE(i))
-        case(TET)
-          this%v(i)=v4p(this%pN(:,this%iNE(:,i)))
+        case(TET,TET10)
+          this%v(i)=v4p(this%pN(:,this%iNE(1:4,i)))
         case(HEX)
           this%v(i)=v8p(this%pN(:,this%iNE(:,i)))
         case default
@@ -93,7 +97,7 @@ contains
     allocate(gid(grid%nE),source=grid%gid)
     j=0
     do i=1,grid%nE
-      if(sE(i)==TET.or.se(i)==HEX)then
+      if(sE(i)==TET.or.sE(i)==HEX.or.sE(i)==TET10)then
         j=j+1
         grid%sE(j)=sE(i)
         grid%nNE(j)=nNE(i)
@@ -104,7 +108,7 @@ contains
     end do
     grid%nC=j
     do i=1,grid%nE
-      if(sE(i)==TRI.or.se(i)==QUAD)then
+      if(sE(i)==TRI.or.sE(i)==QUAD.or.sE(i)==TRI6)then
         j=j+1
         grid%sE(j)=sE(i)
         grid%nNE(j)=nNE(i)
@@ -115,7 +119,7 @@ contains
     end do
     grid%nF=j-grid%nC
     do i=1,grid%nE
-      if(all(sE(i)/=[TET,HEX,TRI,QUAD]))then
+      if(all(sE(i)/=[TET,HEX,TET10,TRI,QUAD,TRI6]))then
         j=j+1
         grid%sE(j)=sE(i)
         grid%nNE(j)=nNE(i)
@@ -144,11 +148,9 @@ contains
     integer::nF !< result
     
     select case(s)
-    case(TRI)
+    case(TRI,QUAD,TRI6)
       nF=1
-    case(QUAD)
-      nF=1
-    case(TET)
+    case(TET,TET10)
       nF=4
     case(HEX)
       nF=6
@@ -177,6 +179,12 @@ contains
         nNF=4
       case default
       end select
+    case(TRI6)
+      select case(i)
+      case(1)
+        nNF=6
+      case default
+      end select
     case(TET)
       select case(i)
       case(1:4)
@@ -187,6 +195,12 @@ contains
       select case(i)
       case(1:6)
         nNF=4
+      case default
+      end select
+    case(TET10)
+      select case(i)
+      case(1:4)
+        nNF=6
       case default
       end select
     case default
@@ -211,6 +225,12 @@ contains
       select case(i)
       case(1)
         ind(1:4)=[1,2,3,4]
+      case default
+      end select
+    case(TRI6)
+      select case(i)
+      case(1)
+        ind(1:6)=[1,2,3,4,5,6]
       case default
       end select
     case(TET)
@@ -239,6 +259,18 @@ contains
         ind(1:4)=[5,6,7,8]
       case(6)
         ind(1:4)=[1,4,3,2]
+      case default
+      end select
+    case(TET10)
+      select case(i)
+      case(1)
+        ind(1:6)=[1,3,2,7,6,5]
+      case(2)
+        ind(1:6)=[1,2,4,5,10,8]
+      case(3)
+        ind(1:6)=[1,4,3,8,9,7]
+      case(4)
+        ind(1:6)=[2,3,4,6,9,10]
       case default
       end select
     case default

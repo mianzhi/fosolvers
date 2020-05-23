@@ -82,6 +82,7 @@ end subroutine
 !> write VTK into fid from poly
 subroutine writeVTKPolyX(fid,poly)
   use modPolyX
+  use modPolyGrid
   integer,intent(in)::fid !< file id
   class(polyX),intent(in)::poly !< source
   
@@ -97,7 +98,11 @@ subroutine writeVTKPolyX(fid,poly)
   write(fid,'(a)')''
   write(fid,'(a,i10,i11)')'CELLS',poly%nE,poly%nE+sum(poly%nNE)
   do i=1,poly%nE
-    write(fid,*)poly%nNE(i),poly%iNE(1:poly%nNE(i),i)-1
+    if(poly%sE(i)==TET10)then !< node order difference for TET10
+      write(fid,*)poly%nNE(i),poly%iNE([1,2,3,4,5,6,7,8,10,9],i)-1
+    else
+      write(fid,*)poly%nNE(i),poly%iNE(1:poly%nNE(i),i)-1
+    end if
   end do
   write(fid,'(a)')''
   write(fid,'(a,i10)')'CELL_TYPES',poly%nE
@@ -109,8 +114,7 @@ contains
   
   !> translate to the shape type of VTK
   pure function transShape(s)
-    use modPolyMesh,only:TRI,QUAD
-    use modPolyGrid,only:TET,HEX
+    use modPolyGrid
     integer,intent(in)::s !< shape type
     integer::transShape !< shape type in VTK
     
@@ -119,10 +123,14 @@ contains
       transShape=5
     case(QUAD)
       transShape=9
+    case(TRI6)
+      transShape=22
     case(TET)
       transShape=10
     case(HEX)
       transShape=12
+    case(TET10)
+      transShape=24
     case default
       transShape=0
     end select
