@@ -5,6 +5,11 @@ module modSparse
   use iso_c_binding
   private
   
+  ! constants
+  integer,parameter,public::CSR_CLEAN=1 !< remove CSR duplicated/zero entries
+  integer,parameter,public::CSR_CLEAN_PSORT=2 !< remove CSR duplicated/zero entries, partial sort
+  integer,parameter,public::CSR_CLEAN_SORT=3 !< remove CSR duplicated/zero entries, full sort
+  
   !> generic CSR linear equation object
   type,public::linEq
     integer,private::nEq !< number of equations
@@ -13,7 +18,7 @@ module modSparse
     integer,allocatable,private::jA(:) !< CSR index array (size nNz)
     double precision,allocatable,private::A(:) !< CSR value array
   contains
-    procedure::initLinEq
+    procedure,public::initLinEq
     procedure,public::clear=>clearLinEq
     procedure,public::setCSR=>setCSRLinEq
     procedure,public::setCOO=>setCOOLinEq
@@ -42,6 +47,14 @@ module modSparse
       integer,intent(in)::ir(*),jc(*)
       double precision,intent(inout)::ao(*)
       integer,intent(inout)::jao(*),iao(*)
+    end subroutine
+    
+    !> CSR format cleanup and sort
+    subroutine clncsr(job,value2,nrow,a,ja,ia,indu,iwk)
+      integer,intent(in)::job,value2,nrow
+      integer,intent(inout)::ia(nrow+1),ja(*)
+      double precision,intent(inout)::a(*)
+      integer,intent(inout)::indu(nrow),iwk(nrow+1)
     end subroutine
     
     !> ILUT factorization
@@ -89,32 +102,50 @@ contains
   subroutine clearLinEq(this)
     class(linEq),intent(inout)::this !< this linEq
     
-    deallocate(this%iA,this%jA,this%A)
+    if(allocated(this%iA)) deallocate(this%iA)
+    if(allocated(this%jA)) deallocate(this%jA)
+    if(allocated(this%A)) deallocate(this%A)
   end subroutine
   
   !> set matrix with CSR format for this generic linEq
-  subroutine setCSRLinEq(this,iA,jA,A)
+  subroutine setCSRLinEq(this,iA,jA,A,job)
     class(linEq),intent(inout)::this !< this linEq
     integer,intent(in)::iA(*) !< CSR index array (size nEq+1)
     integer,intent(in)::jA(*) !< CSR index array (size nNz)
     double precision,intent(in)::A(*) !< CSR value array
+    integer,intent(in),optional::job !< additional cleanups
     integer::nNz
+    integer,allocatable::indu(:),iwk(:)
     
     this%iA(1:this%nEq+1)=iA(1:this%nEq+1)
     nNz=iA(this%nEq+1)-1
     this%jA(1:nNz)=jA(1:nNz)
     this%A(1:nNz)=A(1:nNz)
+    if(present(job))then
+      allocate(indu(this%nEq))
+      allocate(iwk(this%nEq+1))
+      call clncsr(job,1,this%nEq,this%A,this%jA,this%iA,indu,iwk)
+      deallocate(indu,iwk)
+    end if
   end subroutine
   
   !> set matrix with COO format for this generic linEq
-  subroutine setCOOLinEq(this,iA,jA,A,nNz)
+  subroutine setCOOLinEq(this,iA,jA,A,nNz,job)
     class(linEq),intent(inout)::this !< this linEq
     integer,intent(in)::iA(*) !< COO row index array (size nNz)
     integer,intent(in)::jA(*) !< COO column index array (size nNz)
     double precision,intent(in)::A(*) !< COO value array
     integer,intent(in)::nNz !< number of non-zeros
+    integer,intent(in),optional::job !< additional cleanups
+    integer,allocatable::indu(:),iwk(:)
     
     call coocsr(this%nEq,nNz,A,iA,jA,this%A,this%jA,this%iA)
+    if(present(job))then
+      allocate(indu(this%nEq))
+      allocate(iwk(this%nEq+1))
+      call clncsr(job,1,this%nEq,this%A,this%jA,this%iA,indu,iwk)
+      deallocate(indu,iwk)
+    end if
   end subroutine
   
   !> generic destructor of linEq
