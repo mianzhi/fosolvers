@@ -4,6 +4,7 @@ SET(libfosolvers_src
   polyGrid/polyX.f90
   polyGrid/polyGrid.f90
   polyGrid/polyFvGrid.f90
+  polyGrid/polyFeGrid.f90
   polyGrid/polyMesh.f90
   condition/condition.f90
   UDF/UDF.f90
@@ -20,6 +21,8 @@ SET(libfosolvers_src
   FVM/Newtonian.f90
   FVM/pressure.f90
   FVM/Euler.f90
+  FEM/SMQ.f90
+  FEM/basicFEM.f90
   numerics/SUNDIALS.f90
   numerics/sparse.f90
   contrib/fmetis/metis_interface.f90
