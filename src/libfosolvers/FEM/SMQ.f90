@@ -3,10 +3,10 @@
 !> shape, mapping, and quadrature
 !> NOTE: initSMQ() must be called to have full functionalists
 module modSMQ
-  private
+  public
   
   ! constants
-  integer,parameter::DIMS=3 !< dimensions
+  integer,private,parameter::DIMS=3 !< dimensions
   
   double precision,parameter::TET10_C(10,10)=reshape(& !< TET10 shape function factors
   &  [ 2d0, 2d0, 2d0, 4d0, 4d0, 4d0,-3d0,-3d0,-3d0, 1d0,&
@@ -44,8 +44,6 @@ module modSMQ
   double precision,public::TET10_GRAD_QP(DIMS,10,4) !< TET10 shape grad at QP
   double precision,public::TRI6_SHAPE_QP(6,3) !< TRI6 shape function at QP
   double precision,public::TRI6_GRAD_QP(2,6,3) !< TRI6 shape grad at QP
-  
-  public::initSMQ
   
 contains
   
@@ -88,8 +86,10 @@ contains
     double precision,intent(in)::xN(DIMS,10) !< the location of the 10 nodes
     double precision,intent(in)::xx(DIMS) !< location in reference coordinate where J is evaluated
     double precision::mapJTet10(DIMS,DIMS) !< the Jacobian matrix
+    double precision::grad(DIMS,10)
     
-    mapJTet10=matmul(gradShapeTet10(xx),transpose(xN))
+    grad=gradShapeTet10(xx)
+    mapJTet10=matmul(grad,transpose(xN))
   end function
   
   !> shape function of reference TRI6
@@ -118,8 +118,10 @@ contains
     double precision,intent(in)::xN(DIMS,6) !< the location of the 6 nodes
     double precision,intent(in)::xx(2) !< location in reference coordinate where J is evaluated
     double precision::mapJTri6(2,DIMS) !< the Jacobian matrix
+    double precision::grad(2,6)
     
-    mapJTri6=matmul(gradShapeTri6(xx),transpose(xN))
+    grad=gradShapeTri6(xx)
+    mapJTri6=matmul(grad,transpose(xN))
   end function
   
 end module
