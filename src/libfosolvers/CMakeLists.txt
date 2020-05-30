@@ -37,3 +37,6 @@ SET(libfosolvers_lib
 
 ADD_LIBRARY(fosolvers STATIC ${libfosolvers_src})
 TARGET_LINK_LIBRARIES(fosolvers ${libfosolvers_lib})
+TARGET_INCLUDE_DIRECTORIES(fosolvers INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/include)
+SET_TARGET_PROPERTIES(fosolvers PROPERTIES Fortran_MODULE_DIRECTORY
+                      ${CMAKE_CURRENT_BINARY_DIR}/include)
