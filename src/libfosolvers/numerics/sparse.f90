@@ -10,6 +10,10 @@ module modSparse
   integer,parameter,public::CSR_CLEAN_PSORT=2 !< remove CSR duplicated/zero entries, partial sort
   integer,parameter,public::CSR_CLEAN_SORT=3 !< remove CSR duplicated/zero entries, full sort
   
+  integer(C_INT),parameter::UMFPACK_CONTROL=20 !< size of umfpack control array
+  integer(C_INT),parameter::UMFPACK_INFO=90 !< size of umfpack info array
+  integer(C_INT),parameter::UMFPACK_AT=1 !< umfpack uses CSC format, so need to transpose
+  
   !> generic CSR linear equation object
   type,public::linEq
     integer,private::nEq !< number of equations
@@ -25,6 +29,21 @@ module modSparse
     final::purgeLinEq
   end type
   
+  !> CSR linear equation object solved by multi-front method of umfpack
+  type,extends(linEq),public::multiFront
+    type(C_PTR),private::symbolic=C_NULL_PTR !< symbolic object
+    type(C_PTR),private::numeric=C_NULL_PTR !< numeric object
+    integer(C_INT),private,allocatable::ciA(:),cjA(:) !< 0-based index
+    real(C_DOUBLE),private::control(UMFPACK_CONTROL) !< options
+    real(C_DOUBLE),private::info(UMFPACK_INFO) !< exiting info
+  contains
+    procedure,public::init=>initMultiFront
+    procedure,public::clear=>clearMultiFront
+    procedure,public::fact=>factMultiFront
+    procedure,public::solve=>solveMultiFront
+    final::purgeMultiFront
+  end type
+  
   !> CSR linear equation object (incompletely) solved by ILUT of SPARSKIT2/ITSOL
   type,extends(linEq),public::ILU
     integer,allocatable,private::ju(:),jlu(:),jw(:) !< auxiliary storage for ILUT
@@ -33,12 +52,70 @@ module modSparse
     integer,private::iwk !< length of alu, jlu
   contains
     procedure,public::init=>initILU
+    procedure,public::clear=>clearILU
     procedure,public::fact=>factILU
     procedure,public::solve=>solveILU
+    final::purgeILU
   end type
   
-  !> interface to SPARSKIT2
+  !> interface to umfpack C functions and SPARSKIT2
   interface
+    
+    !> symbolic factorization of CSC format
+    subroutine umfpack_di_symbolic(n_row,n_col,Ap,Ai,Ax,Symbolic,Control,Info)&
+    &  bind(c,name='umfpack_di_symbolic')
+      use iso_c_binding
+      integer(C_INT),value::n_row,n_col
+      integer(C_INT),intent(in)::Ap(*),Ai(*)
+      real(C_DOUBLE),intent(in)::Ax(*)
+      type(C_PTR)::Symbolic
+      real(C_DOUBLE),intent(in)::Control(*)
+      real(C_DOUBLE)::Info(*)
+    end subroutine
+    
+    !> numerical factorization of CSC format
+    subroutine umfpack_di_numeric(Ap,Ai,Ax,Symbolic,Numeric,Control,Info)&
+    &  bind(c,name='umfpack_di_numeric')
+      use iso_c_binding
+      integer(C_INT),intent(in)::Ap(*),Ai(*)
+      real(C_DOUBLE),intent(in)::Ax(*)
+      type(C_PTR),value::Symbolic
+      type(C_PTR)::Numeric
+      real(C_DOUBLE),intent(in)::Control(*)
+      real(C_DOUBLE)::Info(*)
+    end subroutine
+    
+    !> solve CSC format
+    subroutine umfpack_di_solve(sys,Ap,Ai,Ax,X,B,Numeric,Control,Info)&
+    &  bind(c,name='umfpack_di_solve')
+      use iso_c_binding
+      integer(C_INT),value::sys
+      integer(C_INT),intent(in)::Ap(*),Ai(*)
+      real(C_DOUBLE),intent(in)::Ax(*)
+      real(C_DOUBLE)::X(*)
+      real(C_DOUBLE),intent(in)::B(*)
+      type(C_PTR),value::Numeric
+      real(C_DOUBLE),intent(in)::Control(*)
+      real(C_DOUBLE)::Info(*)
+    end subroutine
+    
+    !> get default control array
+    subroutine umfpack_di_defaults(Control) bind(c,name='umfpack_di_defaults')
+      use iso_c_binding
+      real(C_DOUBLE)::Control(*)
+    end subroutine
+    
+    !> free symbolic factorization
+    subroutine umfpack_di_free_symbolic(Symbolic) bind(c,name='umfpack_di_free_symbolic')
+      use iso_c_binding
+      type(C_PTR)::Symbolic
+    end subroutine
+    
+    !> free numeric factorization
+    subroutine umfpack_di_free_numeric(Numeric) bind(c,name='umfpack_di_free_numeric')
+      use iso_c_binding
+      type(C_PTR)::Numeric
+    end subroutine
     
     !> convert COO format to CSR format
     subroutine coocsr(nrow,nnz,a,ir,jc,ao,jao,iao)
@@ -155,9 +232,66 @@ contains
     call this%clear()
   end subroutine
   
+  !> constructor of multiFront
+  subroutine initMultiFront(this,nEq,maxNNz)
+    class(multiFront),intent(inout)::this !< this multiFront
+    integer,intent(in)::nEq !< number of equations
+    integer,intent(in)::maxNNZ !< maximum number of non-zeros
+    
+    call this%initLinEq(nEq,maxNNz)
+    allocate(this%ciA(nEq+1))
+    allocate(this%cjA(maxNNZ))
+    call umfpack_di_defaults(this%control)
+  end subroutine
+  
+  !> clear this multiFront
+  subroutine clearMultiFront(this)
+    use iso_c_binding
+    class(multiFront),intent(inout)::this !< this multiFront
+    
+    call this%linEq%clear()
+    call umfpack_di_free_symbolic(this%symbolic)
+    call umfpack_di_free_numeric(this%numeric)
+    if(allocated(this%ciA)) deallocate(this%ciA)
+    if(allocated(this%cjA)) deallocate(this%cjA)
+  end subroutine
+  
+  !> destructor of multiFront
+  subroutine purgeMultiFront(this)
+    type(multiFront),intent(inout)::this !< this multiFront
+    
+    call this%clear()
+  end subroutine
+  
+  !> factorize this multiFront with umfpack
+  subroutine factMultiFront(this)
+    use iso_c_binding
+    class(multiFront),intent(inout)::this !< this multiFront
+    integer::nnz
+    
+    nnz=this%iA(this%nEq+1)-1
+    this%ciA(:)=this%iA(:)-1
+    this%cjA(1:nnz)=this%jA(1:nnz)-1
+    call umfpack_di_symbolic(this%nEq,this%nEq,this%ciA,this%cjA,this%A,this%symbolic,&
+    &                        this%control,this%info)
+    call umfpack_di_numeric(this%ciA,this%cjA,this%A,this%symbolic,this%numeric,&
+    &                       this%control,this%info)
+  end subroutine
+  
+  !> solve this multiFront which is already factorized
+  subroutine solveMultiFront(this,rhs,x)
+    use iso_c_binding
+    class(multiFront),intent(inout)::this !< this multiFront
+    double precision,intent(in)::rhs(this%nEq) !< the right-hand-side
+    double precision,intent(inout)::x(this%nEq) !< the solution
+    
+    call umfpack_di_solve(UMFPACK_AT,this%ciA,this%cjA,this%A,x,rhs,this%numeric,&
+    &                     this%control,this%info)
+  end subroutine
+  
   !> constructor of ILU
   subroutine initILU(this,nEq,maxNNz,lFill)
-    class(ILU),intent(inout)::this !< this linEq
+    class(ILU),intent(inout)::this !< this ILU
     integer,intent(in)::nEq !< number of equations
     integer,intent(in)::maxNNZ !< maximum number of non-zeros
     integer,intent(in)::lFill !< maximum number of non-diagonal L or U elements in a row
@@ -172,9 +306,28 @@ contains
     allocate(this%w(this%nEq+1))
   end subroutine
   
+  !> clear this ILU
+  subroutine clearILU(this)
+    class(ILU),intent(inout)::this !< this ILU
+    
+    call this%linEq%clear()
+    if(allocated(this%ju)) deallocate(this%ju)
+    if(allocated(this%jlu)) deallocate(this%jlu)
+    if(allocated(this%jw)) deallocate(this%jw)
+    if(allocated(this%alu)) deallocate(this%alu)
+    if(allocated(this%w)) deallocate(this%w)
+  end subroutine
+  
+  !> destructor of ILU
+  subroutine purgeILU(this)
+    type(ILU),intent(inout)::this !< this ILU
+    
+    call this%clear()
+  end subroutine
+  
   !> ILUT factorize this ILU with drop tolerance eps
   subroutine factILU(this,eps)
-    class(ILU),intent(inout)::this !< this linEq
+    class(ILU),intent(inout)::this !< this ILU
     double precision,intent(in),optional::eps !< drop tolerance
     double precision::droptol
     integer::ierr
@@ -190,7 +343,7 @@ contains
   
   !> solve this ILU which is already factorized
   subroutine solveILU(this,rhs,x)
-    class(ILU),intent(inout)::this !< this linEq
+    class(ILU),intent(inout)::this !< this ILU
     double precision,intent(in)::rhs(this%nEq) !< the right-hand-side
     double precision,intent(inout)::x(this%nEq) !< the solution
   

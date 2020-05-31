@@ -14,17 +14,17 @@ SET(tests_src
   NewtonKrylov1.f90
   BDFNewtonKrylov1.f90
   ILU1.f90
+  multiFront1.f90
 )
 
 ADD_EXECUTABLE(tests ${tests_src})
 
 TARGET_LINK_LIBRARIES(tests
   fosolvers
-  ${CGNS_LIBRARIES}
-  ${HDF5_LIBRARIES}
   ${BLAS_LIBRARIES}
   ${LAPACK_LIBRARIES}
   ${SUNDIALS_LIBRARIES}
+  ${UMFPACK_LIBRARIES}
   ${MATHEVAL_LIBRARIES}
   ${METIS_LIBRARIES}
 )
