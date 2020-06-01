@@ -45,7 +45,7 @@ contains
             jA(nnz)=grid%iNE(k,i)
             vA(nnz)=0d0
             do l=1,size(TET10_QW)
-              vA(nnz)=vA(nnz)+dot_prodict(matmul(grid%invJ(:,:,l,i),TET10_GRAD_QP(:,j,l)),&
+              vA(nnz)=vA(nnz)+dot_product(matmul(grid%invJ(:,:,l,i),TET10_GRAD_QP(:,j,l)),&
               &                           matmul(grid%invJ(:,:,l,i),TET10_GRAD_QP(:,k,l)))*&
               &               grid%detJ(l,i)*TET10_QW(l)
             end do
