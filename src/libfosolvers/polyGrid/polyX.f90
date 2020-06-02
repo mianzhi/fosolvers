@@ -37,9 +37,9 @@ contains
     this%nN=nN
     this%nE=nE
     allocate(this%pN(DIMS,nN))
-    allocate(this%sE(nE))
-    allocate(this%nNE(nE))
-    allocate(this%iNE(m,nE))
+    allocate(this%sE(nE),source=0)
+    allocate(this%nNE(nE),source=0)
+    allocate(this%iNE(m,nE),source=0)
     allocate(this%p(DIMS,nE))
     this%isUp=.false.
   end subroutine

@@ -48,11 +48,10 @@ subroutine readGMSHPolyGrid(fid,grid)
     end if
     if(tmpStr(1:9)=='$Elements'.and.version==4)then
       read(fid,*)nEntity,m
-      allocate(c(MAX_N_PER_E,m))
-      allocate(t(m))
-      allocate(np(m))
-      allocate(g(m))
-      c(:,:)=0
+      allocate(c(MAX_N_PER_E,m),source=0)
+      allocate(t(m),source=0)
+      allocate(np(m),source=0)
+      allocate(g(m),source=0)
       do iEntity=1,nEntity
         read(fid,*)tmpIArr(1:3),nThisEntity
         call transShape(tmpIArr(3),tmpIArr(4))
@@ -72,14 +71,14 @@ subroutine readGMSHPolyGrid(fid,grid)
           end do
         end if
       end do
+      exit
     end if
     if(tmpStr(1:9)=='$Elements'.and.version==2)then
       read(fid,*)m
-      allocate(c(MAX_N_PER_E,m))
-      allocate(t(m))
-      allocate(np(m))
-      allocate(g(m))
-      c(:,:)=0
+      allocate(c(MAX_N_PER_E,m),source=0)
+      allocate(t(m),source=0)
+      allocate(np(m),source=0)
+      allocate(g(m),source=0)
       do i=1,m
         tmpStr=''
         read(fid,'(a)')tmpStr
@@ -94,7 +93,7 @@ subroutine readGMSHPolyGrid(fid,grid)
   
   ! assemble grid object
   if(allocated(np))then
-    m=count(np(1:size(nP))>0) ! exclude un-supported elements
+    m=count(np(1:size(np))>0) ! exclude un-supported elements
   else
     write(*,'(a)')"[E] readGMSHPolyGrid(): element data not read"
     stop
