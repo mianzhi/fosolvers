@@ -5,6 +5,7 @@ SET(tests_src
   polyX1.f90
   polyMesh1.f90
   polyGrid1.f90
+  polyFeGrid1.f90
   readGTS1.f90
   readVTK1.f90
   writeVTK1.f90

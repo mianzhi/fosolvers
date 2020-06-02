@@ -2,10 +2,9 @@
 
 program test
   integer,external::otGrid1,otGrid2,&
-  &                 polyX1,polyMesh1,polyGrid1,&
+  &                 polyX1,polyMesh1,polyGrid1,polyFeGrid1,&
   &                 readGTS1,readVTK1,writeVTK1,&
-  &                 readCondTab1,&
-  &                 UDF1,&
+  &                 readCondTab1,UDF1,&
   &                 fixPt1,NewtonKrylov1,BDFNewtonKrylov1,ILU1,multiFront1
   
   call try('otGrid1',otGrid1)
@@ -13,6 +12,7 @@ program test
   call try('polyX1',polyX1)
   call try('polyMesh1',polyMesh1)
   call try('polyGrid1',polyGrid1)
+  call try('polyFeGrid1',polyFeGrid1)
   call try('readGTS1',readGTS1)
   call try('readVTK1',readVTK1)
   call try('writeVTK1',writeVTK1)
