@@ -16,6 +16,5 @@ function polyFeGrid1() result(ierr)
   do i=grid%nC+1,grid%nE
     if(any(abs(grid%detJ(1:3,i)-0.5d0)>1d-9)) ierr=ierr+100
   end do
-  call grid%up()
   close(10)
 end function

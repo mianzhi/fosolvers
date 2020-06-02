@@ -16,6 +16,7 @@ SET(tests_src
   BDFNewtonKrylov1.f90
   ILU1.f90
   multiFront1.f90
+  basicFEM1.f90
 )
 
 ADD_EXECUTABLE(tests ${tests_src})

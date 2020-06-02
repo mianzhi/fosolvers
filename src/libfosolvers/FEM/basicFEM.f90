@@ -32,10 +32,6 @@ contains
         do j=1,TET10_N
           if(present(isDirichlet))then
             if(isDirichlet(grid%iNE(j,i)))then
-              nnz=nnz+1
-              iA(nnz)=grid%iNE(j,i)
-              jA(nnz)=grid%iNE(j,i)
-              vA(nnz)=1d0
               cycle
             end if
           end if
@@ -54,7 +50,17 @@ contains
       case default
       end select
     end do
-    call A%setCOO(iA,jA,vA,nnz,job=CSR_CLEAN)
+    if(present(isDirichlet))then
+      do i=1,grid%nN
+        if(isDirichlet(i))then
+          nnz=nnz+1
+          iA(nnz)=i
+          jA(nnz)=i
+          vA(nnz)=1d0
+        end if
+      end do
+    end if
+    call A%setCOO(iA,jA,vA,nnz,job=CSR_CLEAN_SORT)
     deallocate(iA,jA,vA)
   end subroutine
   
