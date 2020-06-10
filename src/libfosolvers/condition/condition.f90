@@ -17,7 +17,7 @@ module modCondition
   
   !> map table of conditions to generic grid
   interface mapCondTab
-    module procedure::mapCondTabPolyFvGrid
+    module procedure::mapCondTabPolyGrid
   end interface
   public::mapCondTab
   
@@ -54,10 +54,10 @@ contains
     call this%clear()
   end subroutine
   
-  !> map table of conditions to polyFvGrid
-  pure subroutine mapCondTabPolyFvGrid(grid,cTab,iCond)
-    use modPolyFvGrid
-    class(polyFvGrid),intent(in)::grid !< grid
+  !> map table of conditions to polyGrid
+  pure subroutine mapCondTabPolyGrid(grid,cTab,iCond)
+    use modPolyGrid
+    class(polyGrid),intent(in)::grid !< grid
     class(condTab),intent(in)::cTab !< condition table
     integer,allocatable,intent(inout)::iCond(:) !< index of condition at each element in grid
     
