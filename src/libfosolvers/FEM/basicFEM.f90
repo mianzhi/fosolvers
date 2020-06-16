@@ -28,6 +28,25 @@ contains
     nnz=0
     do i=1,grid%nC
       select case(grid%sE(i))
+      case(TET)
+        do j=1,TET_N
+          if(present(isDirichlet))then
+            if(isDirichlet(grid%iNE(j,i)))then
+              cycle
+            end if
+          end if
+          do k=1,TET_N
+            nnz=nnz+1
+            iA(nnz)=grid%iNE(j,i)
+            jA(nnz)=grid%iNE(k,i)
+            vA(nnz)=0d0
+            do l=1,size(TET_QW)
+              vA(nnz)=vA(nnz)+dot_product(matmul(grid%invJ(:,:,l,i),TET_GRAD_QP(:,j,l)),&
+              &                           matmul(grid%invJ(:,:,l,i),TET_GRAD_QP(:,k,l)))*&
+              &               grid%detJ(l,i)*TET_QW(l)
+            end do
+          end do
+        end do
       case(TET10)
         do j=1,TET10_N
           if(present(isDirichlet))then
@@ -79,6 +98,12 @@ contains
     src(:)=0d0
     do i=1,grid%nC
       select case(grid%sE(i))
+      case(TET)
+        do j=1,TET_N
+          do l=1,size(TET_QW)
+            src(grid%iNE(j,i))=src(grid%iNE(j,i))+TET_SHAPE_QP(j,l)*grid%detJ(l,i)*TET_QW(l)
+          end do
+        end do
       case(TET10)
         do j=1,TET10_N
           do l=1,size(TET10_QW)
@@ -105,6 +130,12 @@ contains
     src(:)=0d0
     do i=grid%nC+1,grid%nE
       select case(grid%sE(i))
+      case(TRI)
+        do j=1,TRI_N
+          do l=1,size(TRI_QW)
+            src(grid%iNE(j,i))=src(grid%iNE(j,i))+TRI_SHAPE_QP(j,l)*grid%detJ(l,i)*TRI_QW(l)
+          end do
+        end do
       case(TRI6)
         do j=1,TRI6_N
           do l=1,size(TRI6_QW)

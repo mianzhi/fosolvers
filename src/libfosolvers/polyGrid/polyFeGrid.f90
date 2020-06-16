@@ -47,12 +47,31 @@ contains
       nQp=0
       do i=1,this%nE
         select case(this%sE(i))
+        case(TET)
+          n=size(TET_QW)
+          nQp=max(n,nQp)
+          do j=1,n
+            Jacobian=mapJTet(this%pN(:,this%iNE(1:this%nNE(i),i)),TET_QP(:,j))
+            call findInvDet3by3(Jacobian,invJ(:,:,j,i),detJ(j,i))
+          end do
         case(TET10)
           n=size(TET10_QW)
           nQp=max(n,nQp)
           do j=1,n
             Jacobian=mapJTet10(this%pN(:,this%iNE(1:this%nNE(i),i)),TET10_QP(:,j))
             call findInvDet3by3(Jacobian,invJ(:,:,j,i),detJ(j,i))
+          end do
+        case(TRI)
+          n=size(TRI_QW)
+          nQp=max(n,nQp)
+          do j=1,n
+            Jacobian(1:2,:)=mapJTri(this%pN(:,this%iNE(1:this%nNE(i),i)),TRI_QP(:,j))
+            ! save d(xi)/d(xx1) cross d(xi)/d(yy1) at the 3rd row
+            Jacobian(3,1)=Jacobian(1,2)*Jacobian(2,3)-Jacobian(1,3)*Jacobian(2,2)
+            Jacobian(3,2)=Jacobian(1,3)*Jacobian(2,1)-Jacobian(1,1)*Jacobian(2,3)
+            Jacobian(3,3)=Jacobian(1,1)*Jacobian(2,2)-Jacobian(1,2)*Jacobian(2,1)
+            invJ(:,:,j,i)=0d0 ! Jacobian is non-square
+            detJ(j,i)=norm2(Jacobian(3,:)) ! magnitude of d(xi)/d(xx1) cross d(xi)/d(yy1)
           end do
         case(TRI6)
           n=size(TRI6_QW)
