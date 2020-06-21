@@ -6,7 +6,7 @@ program test
   &                 readGTS1,readVTK1,writeVTK1,&
   &                 readCondTab1,UDF1,&
   &                 fixPt1,NewtonKrylov1,BDFNewtonKrylov1,ILU1,multiFront1,&
-  &                 basicFEM1
+  &                 basicFEM1,edgeFEM1
   
   call try('otGrid1',otGrid1)
   call try('otGrid2',otGrid2)
@@ -25,6 +25,7 @@ program test
   call try('ILU1',ILU1)
   call try('multiFront1',multiFront1)
   call try('basicFEM1',basicFEM1)
+  call try('edgeFEM1',edgeFEM1)
   
   write(*,'(a)')'check md5 of output files:'
   call system('md5sum -c sums.md5')

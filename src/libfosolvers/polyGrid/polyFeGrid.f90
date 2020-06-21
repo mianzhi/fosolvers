@@ -119,7 +119,7 @@ contains
     
   end subroutine
   
-  !> destructor of polyGrid
+  !> destructor of polyFeGrid
   elemental subroutine purgePolyFeGrid(this)
     type(polyFeGrid),intent(inout)::this !< this polyFeGrid
     

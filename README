@@ -11,8 +11,8 @@ project created with the following design goals:
 Currently the project consists of three major components:
 
   libfosolvers: unstructured grid data structures and procedures, grid and data
-  IO, interface to algebraic solvers, FVM spatial schemes, condition management
-  framework, UDF management framework.
+  IO, interface to algebraic solvers, FVM and FEM spatial schemes, condition
+  management framework, UDF management framework.
   
   fopbc: a general-purpose, compressible, "all-Mach-range" fluid solver. The
   solver employs a pressure-based-coupled method which solves the pressure and
