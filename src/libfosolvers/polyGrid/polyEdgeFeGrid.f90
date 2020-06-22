@@ -20,7 +20,7 @@ module modPolyEdgeFeGrid
     integer,allocatable::iNEdge(:,:) !< node index of each edge
     integer,allocatable::iEdgeE(:,:) !< edge index of each element
     integer,allocatable::nEdgeE(:) !< number of edges in each element
-    logical,allocatable::sameDir(:) !< whether the element edge and grid edge has the same direction
+    logical,allocatable::sameDir(:,:) !< if the element edge and grid edge has the same direction
   contains
     procedure,public::clear=>clearPolyEdgeFeGrid
     procedure,public::up=>upPolyEdgeFeGrid
@@ -47,7 +47,7 @@ contains
     integer,allocatable::iNEdge(:,:)
     integer,allocatable::iEdgeE(:,:)
     integer,allocatable::nEdgeE(:)
-    logical,allocatable::sameDir(:)
+    logical,allocatable::sameDir(:,:)
     integer,parameter::MAX_EDGE_PER_E=20 !< maximum 20 edges per element
     integer::nEdge,existingEdge
     
@@ -56,7 +56,7 @@ contains
       allocate(iNEdge(2,this%nE*MAX_EDGE_PER_E),source=0)
       allocate(iEdgeE(MAX_EDGE_PER_E,this%nE),source=0)
       allocate(nEdgeE(this%nE),source=0)
-      allocate(sameDir(this%nE*MAX_EDGE_PER_E),source=.true.)
+      allocate(sameDir(MAX_EDGE_PER_E,this%nE),source=.true.)
       nEdge=0
       do i=1,this%nE
         select case(this%sE(i))
@@ -74,11 +74,12 @@ contains
             end do
             if(existingEdge>0)then
               iEdgeE(j,i)=existingEdge
+              sameDir(j,i)=m<n
             else
               nEdge=nEdge+1
               iNEdge(:,nEdge)=[min(m,n),max(m,n)]
               iEdgeE(j,i)=nEdge
-              sameDir(nEdge)=m<n
+              sameDir(j,i)=m<n
             end if
           end do
         case(TRI)
@@ -95,11 +96,12 @@ contains
             end do
             if(existingEdge>0)then
               iEdgeE(j,i)=existingEdge
+              sameDir(j,i)=m<n
             else
               nEdge=nEdge+1
               iNEdge(:,nEdge)=[min(m,n),max(m,n)]
               iEdgeE(j,i)=nEdge
-              sameDir(nEdge)=m<n
+              sameDir(j,i)=m<n
             end if
           end do
         case default
@@ -113,7 +115,7 @@ contains
       allocate(this%iNEdge,source=iNEdge(:,1:nEdge))
       allocate(this%iEdgeE,source=iEdgeE(1:maxval(nEdgeE(:)),:))
       allocate(this%nEdgeE,source=nEdgeE(:))
-      allocate(this%sameDir,source=sameDir(1:nEdge))
+      allocate(this%sameDir,source=sameDir(1:maxval(nEdgeE(:)),:))
       deallocate(iNEdge,iEdgeE,nEdgeE,sameDir)
     end if
   end subroutine

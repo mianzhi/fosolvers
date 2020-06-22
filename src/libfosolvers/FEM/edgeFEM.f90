@@ -33,7 +33,7 @@ contains
           curlNj(1)=2*(gradNa(2)*gradNb(3)-gradNa(3)*gradNb(2))
           curlNj(2)=2*(gradNa(3)*gradNb(1)-gradNa(1)*gradNb(3))
           curlNj(3)=2*(gradNa(1)*gradNb(2)-gradNa(2)*gradNb(1))
-          curlNj=curlNj*merge(1,-1,grid%sameDir(grid%iEdgeE(j,i)))
+          curlNj=curlNj*merge(1,-1,grid%sameDir(j,i))
           rst(:,i)=rst(:,i)+curlNj*vp(grid%iEdgeE(j,i))
         end do
       case default
@@ -82,13 +82,13 @@ contains
               curlNj(1)=2*(gradNa(2)*gradNb(3)-gradNa(3)*gradNb(2))
               curlNj(2)=2*(gradNa(3)*gradNb(1)-gradNa(1)*gradNb(3))
               curlNj(3)=2*(gradNa(1)*gradNb(2)-gradNa(2)*gradNb(1))
-              curlNj=curlNj*merge(1,-1,grid%sameDir(grid%iEdgeE(j,i)))
+              curlNj=curlNj*merge(1,-1,grid%sameDir(j,i))
               gradNa=matmul(grid%invJ(:,:,l,i),TET_GRAD_QP(:,TET_NI_EDGE(1,k),l))
               gradNb=matmul(grid%invJ(:,:,l,i),TET_GRAD_QP(:,TET_NI_EDGE(2,k),l))
               curlNk(1)=2*(gradNa(2)*gradNb(3)-gradNa(3)*gradNb(2))
               curlNk(2)=2*(gradNa(3)*gradNb(1)-gradNa(1)*gradNb(3))
               curlNk(3)=2*(gradNa(1)*gradNb(2)-gradNa(2)*gradNb(1))
-              curlNk=curlNk*merge(1,-1,grid%sameDir(grid%iEdgeE(k,i)))
+              curlNk=curlNk*merge(1,-1,grid%sameDir(k,i))
               vA(nnz)=vA(nnz)+dot_product(curlNj,curlNk)*grid%detJ(l,i)*TET_QW(l)
             end do
           end do
@@ -134,7 +134,7 @@ contains
             gradNb=matmul(grid%invJ(:,:,l,i),TET_GRAD_QP(:,TET_NI_EDGE(2,j),l))
             Na=TET_SHAPE_QP(TET_NI_EDGE(1,j),l)
             Nb=TET_SHAPE_QP(TET_NI_EDGE(2,j),l)
-            Ne=(Na*gradNb-Nb*gradNa)*merge(1,-1,grid%sameDir(grid%iEdgeE(j,i)))
+            Ne=(Na*gradNb-Nb*gradNa)*merge(1,-1,grid%sameDir(j,i))
             rst(grid%iEdgeE(j,i))=rst(grid%iEdgeE(j,i))&
             &                     +dot_product(Ne,v(:,i))*grid%detJ(l,i)*TET_QW(l)
           end do

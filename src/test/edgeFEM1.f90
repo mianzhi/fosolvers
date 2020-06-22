@@ -7,12 +7,12 @@ function edgeFEM1() result(ierr)
   use modEdgeFEM
   type(polyEdgeFeGrid)::grid
   type(multiFront)::curlCurl
-  double precision,allocatable::A(:),rhs(:),J(:,:),H(:,:),fullH(:,:)
+  double precision,allocatable::A(:),rhs(:),J(:,:),H(:,:),full(:,:)
   logical,allocatable::isInactive(:)
   integer::ierr
   
   ierr=0
-  open(10,file='/home/mianzhi/Desktop/tmp.msh',action='read')
+  open(10,file='data/wireInBox.msh',action='read')
     call readGMSH(10,grid)
   close(10)
   call grid%up()
@@ -22,7 +22,7 @@ function edgeFEM1() result(ierr)
   allocate(isInactive(grid%nEdge))
   allocate(J(3,grid%nC))
   allocate(H(3,grid%nC))
-  allocate(fullH(3,grid%nE))
+  allocate(full(3,grid%nE))
   
   J(:,:)=0d0
   rhs(:)=0d0
@@ -40,22 +40,23 @@ function edgeFEM1() result(ierr)
       rhs(grid%iEdgeE(1:grid%nEdgeE(i),i))=0d0
     end if
   end do
-  call curlCurl%init(grid%nEdge,size(grid%iEdgeE,1)**2*grid%nE)
+  call curlCurl%init(grid%nEdge,size(grid%iEdgeE,1)**2*grid%nC)
   call findCurlCurl(grid,curlCurl,isInactive)
   
   call curlCurl%fact()
   call curlCurl%solve(rhs,A)
   
   call findCellCurl(grid,A,H)
-  fullH(:,:)=0d0
-  fullH(:,1:grid%nC)=H(:,:)
   
-  open(10,file='/home/mianzhi/Desktop/tmp.vtk',action='write')
+  open(10,file='edgeFEM1.vtk',action='write')
   call writeVTK(10,grid)
   call writeVTK(10,grid,E_DATA)
-  call writeVTK(10,'H',fullH)
+  full(:,:)=0d0
+  full(:,1:grid%nC)=H(:,:)
+  call writeVTK(10,'H',full)
+  full(:,:)=0d0
+  full(:,1:grid%nC)=J(:,:)
+  call writeVTK(10,'J',full)
   close(10)
-  
-  ierr=1
   
 end function
