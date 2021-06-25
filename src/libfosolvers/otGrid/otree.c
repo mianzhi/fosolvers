@@ -4,9 +4,9 @@
 #include <stdio.h>
 #include "otree.h"
 
-int const BPD=3; /// bit per digit
-int const I_HEAD=04U; /// index prefix
-int const N_FACE=6; /// number of faces
+#define BPD 3 /// bit per digit
+#define I_HEAD 04U /// index prefix
+#define N_FACE 6 /// number of faces
 
 /**
  * initialize node
