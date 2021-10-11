@@ -1924,8 +1924,10 @@ c----------------------------------------------------------------------c
          k2 = ia(j+1)-1
          t = 0.0d0
          do 111 k = k1,k2
- 111        t = t+a(k)*a(k)
- 110        diag(j) = sqrt(t)
+            t = t+a(k)*a(k)
+ 111     continue
+            diag(j) = sqrt(t)
+ 110        continue
             goto 12
  11   continue
       call retmx (n,a,ja,ia,diag)

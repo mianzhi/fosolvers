@@ -2884,9 +2884,10 @@ c- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 c   Initial output arrays to zero:
 c
       do 4 in = 1,ner
-         do 4 innz =1,n
+         do 5 innz =1,n
             jac(innz,in) = n
             ac(innz,in) = 0.0d0
+ 5       continue
  4    continue
 c     
 c- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

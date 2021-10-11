@@ -709,7 +709,8 @@ c
       ipos = 1
       call csrcsc (ncol,ljob,ipos,b,jb,ib,c,jc,ic) 
       do 2 k=1,len
- 2       c(k) = c(k)*s
+         c(k) = c(k)*s
+ 2    continue
 c     
 c     main loop. add rows from ii = 1 to nrow.
 c     
