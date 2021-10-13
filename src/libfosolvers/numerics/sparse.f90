@@ -14,19 +14,22 @@ module modSparse
   integer(C_INT),parameter::UMFPACK_INFO=90 !< size of umfpack info array
   integer(C_INT),parameter::UMFPACK_AT=1 !< umfpack uses CSC format, so need to transpose
   
+  integer,parameter,public::APLDIA_IN_PLACE=0 !< add diagonal values in-place
+  
   !> generic CSR linear equation object
   type,public::linEq
-    integer,private::nEq !< number of equations
+    integer::nEq !< number of equations
     integer,private::maxNNz !< maximum number of non-zeros
-    integer,allocatable,private::iA(:) !< CSR index array (size nEq+1)
-    integer,allocatable,private::jA(:) !< CSR index array (size nNz)
-    double precision,allocatable,private::A(:) !< CSR value array
+    integer,allocatable::iA(:) !< CSR index array (size nEq+1)
+    integer,allocatable::jA(:) !< CSR index array (size nNz)
+    double precision,allocatable::A(:) !< CSR value array
   contains
     procedure,public::initLinEq
     procedure,public::clear=>clearLinEq
     procedure,public::setCSR=>setCSRLinEq
     procedure,public::setCOO=>setCOOLinEq
     procedure,public::mulVec=>mulVecLinEq
+    procedure,public::addDiag=>addDiagLinEq
     final::purgeLinEq
   end type
   
@@ -144,6 +147,14 @@ module modSparse
       integer,intent(in)::ja(*),ia(*)
     end subroutine
     
+    !> add diagonal values to CSR format matrix B=A+Diag
+    subroutine apldia(nrow,job,a,ja,ia,diag,b,jb,ib,iw)
+      integer,intent(in)::nrow,job
+      double precision,intent(inout)::a(*),b(*)
+      integer,intent(inout)::ja(*),jb(*),ia(nrow+1),ib(nrow+1),iw(*)
+      double precision,intent(in)::diag(nrow)
+    end subroutine
+    
     !> ILUT factorization
     subroutine ilut(n,a,ja,ia,lfil,droptol,alu,jlu,ju,iwk,w,jw,ierr)
       integer,intent(in)::n
@@ -242,6 +253,17 @@ contains
     double precision,intent(inout)::y(*) !< result vector
     
     call amux(this%nEq,x,y,this%A,this%jA,this%iA)
+  end subroutine
+  
+  !> add diagonal d into matrix this=this+diag
+  subroutine addDiagLinEq(this,diag)
+    class(linEq),intent(inout)::this !< this linEq
+    double precision,intent(in)::diag(*) !< the diagonal values
+    integer,allocatable::iw(:)
+    
+    allocate(iw(this%nEq))
+    call apldia(this%nEq,APLDIA_IN_PLACE,this%A,this%jA,this%iA,diag,this%A,this%jA,this%iA,iw)
+    deallocate(iw)
   end subroutine
   
   !> generic destructor of linEq
