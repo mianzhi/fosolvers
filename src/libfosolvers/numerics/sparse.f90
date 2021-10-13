@@ -26,6 +26,7 @@ module modSparse
     procedure,public::clear=>clearLinEq
     procedure,public::setCSR=>setCSRLinEq
     procedure,public::setCOO=>setCOOLinEq
+    procedure,public::mulVec=>mulVecLinEq
     final::purgeLinEq
   end type
   
@@ -134,6 +135,15 @@ module modSparse
       integer,intent(inout)::indu(nrow),iwk(nrow+1)
     end subroutine
     
+    !> CSR format matrix vector product y=Ax
+    subroutine amux(n,x,y,a,ja,ia) 
+      integer,intent(in)::n
+      double precision,intent(in)::x(*)
+      double precision,intent(inout)::y(*)
+      double precision,intent(in)::a(*)
+      integer,intent(in)::ja(*),ia(*)
+    end subroutine
+    
     !> ILUT factorization
     subroutine ilut(n,a,ja,ia,lfil,droptol,alu,jlu,ju,iwk,w,jw,ierr)
       integer,intent(in)::n
@@ -223,6 +233,15 @@ contains
       call clncsr(job,1,this%nEq,this%A,this%jA,this%iA,indu,iwk)
       deallocate(indu,iwk)
     end if
+  end subroutine
+  
+  !> multiply matrix by a vector y=this*x
+  subroutine mulVecLinEq(this,x,y)
+    class(linEq),intent(in)::this !< this linEq
+    double precision,intent(in)::x(*) !< vector to multiply with
+    double precision,intent(inout)::y(*) !< result vector
+    
+    call amux(this%nEq,x,y,this%A,this%jA,this%iA)
   end subroutine
   
   !> generic destructor of linEq

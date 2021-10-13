@@ -16,6 +16,7 @@ SET(tests_src
   BDFNewtonKrylov1.f90
   ILU1.f90
   multiFront1.f90
+  matVecMul.f90
   basicFEM1.f90
   edgeFEM1.f90
 )

@@ -5,7 +5,7 @@ program test
   &                 polyX1,polyMesh1,polyGrid1,polyFeGrid1,&
   &                 readGTS1,readVTK1,writeVTK1,&
   &                 readCondTab1,UDF1,&
-  &                 fixPt1,NewtonKrylov1,BDFNewtonKrylov1,ILU1,multiFront1,&
+  &                 fixPt1,NewtonKrylov1,BDFNewtonKrylov1,ILU1,multiFront1,matVecMul,&
   &                 basicFEM1,edgeFEM1
   
   call try('otGrid1',otGrid1)
@@ -24,6 +24,7 @@ program test
   call try('BDFNewtonKrylov1',BDFNewtonKrylov1)
   call try('ILU1',ILU1)
   call try('multiFront1',multiFront1)
+  call try('matVecMul',matVecMul)
   call try('basicFEM1',basicFEM1)
   call try('edgeFEM1',edgeFEM1)
   
