@@ -39,6 +39,7 @@ module modSUNDIALS
     procedure,public::init=>initNewtonKrylov
     procedure,public::solve=>solveNewtonKrylov
     procedure,public::clear=>clearNewtonKrylov
+    procedure,public::setLazyPset=>setLazyPsetNewtonKrylov
     final::purgeNewtonKrylov
   end type
   
@@ -179,6 +180,22 @@ module modSUNDIALS
       type(C_PTR),value::mem !< memory pointer
       integer(C_LONG),value::maa !< number of iterations for Anderson acceleration
       integer(C_INT)::kinsetmaa !< error code
+    end function
+    
+    !> KINSOL set whether to skip initial preconditioner setup
+    function kinsetnoinitsetup(mem,noInitSetup) bind(c,name='KINSetNoInitSetup')
+      use iso_c_binding
+      type(C_PTR),value::mem !< memory pointer
+      logical(C_BOOL),value::noInitSetup !< whether to skip
+      integer(C_INT)::kinsetnoinitsetup !< error code
+    end function
+    
+    !> KINSOL set maximum nonlinear iterations between preconditioner setups
+    function kinsetmaxsetupcalls(mem,m) bind(c,name='KINSetMaxSetupCalls')
+      use iso_c_binding
+      type(C_PTR),value::mem !< memory pointer
+      integer(C_INT),value::m !< maximum number of nonlinear iterations
+      integer(C_INT)::kinsetmaxsetupcalls !< error code
     end function
     
     !> KINSOL get number of iterations performed for the non-linear system
@@ -515,6 +532,36 @@ contains
         stop
       end if
       this%ls=C_NULL_PTR
+    end if
+  end subroutine
+  
+  !> set this NewtonKrylov to skip initial prec. setup and has low prec. setup frequency
+  subroutine setLazyPsetNewtonKrylov(this,skip,nit)
+    class(NewtonKrylov),intent(inout)::this !< this NewtonKrylov
+    logical,intent(in),optional::skip !< whether to skip initial prec. setup
+    integer,intent(in),optional::nit !< maximum number of nonlinear iterations between prec. setups
+    integer(C_INT)::info,c_nit
+    logical(C_BOOL)::c_skip
+    
+    if(present(skip))then
+      c_skip=skip
+    else
+      c_skip=.true.
+    end if
+    if(present(nit))then
+      c_nit=nit
+    else
+      c_nit=100
+    end if
+    info=kinsetnoinitsetup(this%work,c_skip)
+    if(info/=0)then
+      write(*,'(a,i3)')"[E] setLazyPsetNewtonKrylov(): KINSetNoInitSetup error code ",info
+      stop
+    end if
+    info=kinsetmaxsetupcalls(this%work,c_nit)
+    if(info/=0)then
+      write(*,'(a,i3)')"[E] setLazyPsetNewtonKrylov(): KINSetMaxSetupCalls error code ",info
+      stop
     end if
   end subroutine
   
