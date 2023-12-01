@@ -13,6 +13,7 @@ module modSUNDIALS
     type(C_PTR),private::x=C_NULL_PTR !< pointer to the solution N_Vector
     type(C_PTR),private::xScale=C_NULL_PTR !< pointer to the solution scaling N_Vector
     type(C_PTR),private::rScale=C_NULL_PTR !< pointer to the residual scaling N_Vector
+    type(C_PTR),private::ctx=C_NULL_PTR !< the SUNDIALS "context"
   contains
     procedure::initNoLinEq ! specific class uses different arguments, saved the init() name
     procedure,public::clear=>clearNoLinEq
@@ -49,6 +50,7 @@ module modSUNDIALS
     type(C_FUNPTR),private::f=C_NULL_FUNPTR !< pointer to the RHS function
     type(C_PTR),private::work=C_NULL_PTR !< pointer to CVODE problem object
     type(C_PTR),private::x=C_NULL_PTR !< pointer to the solution N_Vector
+    type(C_PTR),private::ctx=C_NULL_PTR !< the SUNDIALS "context"
   contains
     procedure::initODE ! specific class uses different arguments, saved the init() name
     procedure,public::clear=>clearODE
@@ -74,10 +76,25 @@ module modSUNDIALS
   !> interface to SUNDIALS C functions
   interface
     
+    !> create "context" object
+    function context_create(comm,ctx) bind(c,name='SUNContext_Create')
+      use iso_c_binding
+      type(C_PTR),value::comm !< MPI communicator
+      type(C_PTR)::ctx !< context
+      integer(C_INT)::context_create !< error code
+    end function
+    
+    !> destroy "context" object
+    subroutine context_free(ctx) bind(c,name='SUNContext_Free')
+      use iso_c_binding
+      type(C_PTR)::ctx !< context
+    end subroutine
+    
     !> NVECTOR create N_Vector object
-    function n_vnew(nEq) bind(c,name='N_VNew_Serial')
+    function n_vnew(nEq,ctx) bind(c,name='N_VNew_Serial')
       use iso_c_binding
       integer(C_INT),value::nEq !< number of equations
+      type(C_PTR),value::ctx !< context
       type(C_PTR)::n_vnew !< value of the N_Vector pointer
     end function
     
@@ -109,8 +126,9 @@ module modSUNDIALS
     end function
     
     !> KINSOL create memory object
-    function kincreate() bind(c,name='KINCreate')
+    function kincreate(ctx) bind(c,name='KINCreate')
       use iso_c_binding
+      type(C_PTR),value::ctx !< context
       type(C_PTR)::kincreate !< value of the memory pointer
     end function
     
@@ -207,10 +225,11 @@ module modSUNDIALS
     end function
     
     !> CVODE create memory object
-    function cvodecreate(m1,m2) bind(c,name='CVodeCreate')
+    function cvodecreate(m1,m2,ctx) bind(c,name='CVodeCreate')
       use iso_c_binding
       integer(C_INT),value::m1 !< ODE method
       integer(C_INT),value::m2 !< nonlinear equation method
+      type(C_PTR),value::ctx !< context
       type(C_PTR)::cvodecreate !< value of the memory pointer
     end function
     
@@ -294,11 +313,12 @@ module modSUNDIALS
     end function
     
     !> SUNLinearSolver create GMRES linear solver
-    function sunlinsol_spgmr(tmpl,pType,maxl) bind(c,name='SUNLinSol_SPGMR')
+    function sunlinsol_spgmr(tmpl,pType,maxl,ctx) bind(c,name='SUNLinSol_SPGMR')
       use iso_c_binding
       type(C_PTR),value::tmpl !< template N_Vector pointer
       integer(C_INT),value::pType !< preconditioning type
       integer(C_INT),value::maxl !< maximum dimensions of the Krylov subspace
+      type(C_PTR),value::ctx !< context
       type(C_PTR)::sunlinsol_spgmr !< value of the linear solver pointer
     end function
     
@@ -333,25 +353,27 @@ contains
     class(noLinEq),intent(inout)::this !< this noLinEq
     integer,intent(in)::nEq !< number of equations
     procedure(integer(C_INT))::f !< the RHS subroutine in Fortran
+    integer(C_INT)::ierr
     
     this%nEq=nEq
     this%f=c_funloc(f)
-    this%work=kincreate()
+    ierr=context_create(C_NULL_PTR,this%ctx)
+    this%work=kincreate(this%ctx)
     if(.not.c_associated(this%work))then
       write(*,'(a)')"[E] initNoLinEq(): KINSOL memory object not created"
       stop
     end if
-    this%x=n_vnew(this%nEq)
+    this%x=n_vnew(this%nEq,this%ctx)
     if(.not.c_associated(this%x))then
       write(*,'(a)')"[E] initNoLinEq(): solution N_Vector not allocated"
       stop
     end if
-    this%xScale=n_vnew(this%nEq)
+    this%xScale=n_vnew(this%nEq,this%ctx)
     if(.not.c_associated(this%xScale))then
       write(*,'(a)')"[E] initNoLinEq(): solution scaling N_Vector not allocated"
       stop
     end if
-    this%rScale=n_vnew(this%nEq)
+    this%rScale=n_vnew(this%nEq,this%ctx)
     if(.not.c_associated(this%rScale))then
       write(*,'(a)')"[E] initNoLinEq(): residual scaling N_Vector not allocated"
       stop
@@ -380,6 +402,7 @@ contains
       call n_vdestroy(this%rScale)
       this%rScale=C_NULL_PTR ! NOTE: NVECTOR does not nullify pointer value
     end if
+    if(c_associated(this%ctx)) call context_free(this%ctx)
   end subroutine
   
   !> set the residual tolerance for this noLinEq
@@ -496,7 +519,7 @@ contains
     else
       c_maxl=0
     end if
-    this%ls=sunlinsol_spgmr(this%x,pOpt,c_maxl) ! use solution vector as template
+    this%ls=sunlinsol_spgmr(this%x,pOpt,c_maxl,this%ctx) ! use solution vector as template
     if(.not.c_associated(this%ls))then
       write(*,'(a)')"[E] initNewtonKrylov(): linear solver object not allocated"
       stop
@@ -619,10 +642,12 @@ contains
     class(ODE),intent(inout)::this !< this ODE
     integer,intent(in)::nEq !< number of equations
     procedure(integer(C_INT))::f !< the RHS subroutine in Fortran
+    integer(C_INT)::ierr
     
     this%nEq=nEq
     this%f=c_funloc(f)
-    this%x=n_vnew(this%nEq)
+    ierr=context_create(C_NULL_PTR,this%ctx)
+    this%x=n_vnew(this%nEq,this%ctx)
     if(.not.c_associated(this%x))then
       write(*,'(a)')"[E] initODE(): solution N_Vector not allocated"
       stop
@@ -640,6 +665,7 @@ contains
       call n_vdestroy(this%x)
       this%x=C_NULL_PTR ! NOTE: NVECTOR does not nullify pointer value
     end if
+    if(c_associated(this%ctx)) call context_free(this%ctx)
   end subroutine
   
   !> set the initial time and state values for this ODE
@@ -731,7 +757,7 @@ contains
     integer(C_INT),parameter::PREC_LEFT=1
     
     call this%ODE%initODE(nEq,f)
-    this%work=cvodecreate(CV_BDF,CV_NEWTON)
+    this%work=cvodecreate(CV_BDF,CV_NEWTON,this%ctx)
     if(.not.c_associated(this%work))then
       write(*,'(a)')"[E] initBDFNewtonKrylov(): CVODE memory object not created"
       stop
@@ -747,7 +773,7 @@ contains
     else
       c_maxl=0
     end if
-    this%ls=sunlinsol_spgmr(this%x,pOpt,c_maxl) ! use solution vector as template
+    this%ls=sunlinsol_spgmr(this%x,pOpt,c_maxl,this%ctx) ! use solution vector as template
     if(.not.c_associated(this%ls))then
       write(*,'(a)')"[E] initBDFNewtonKrylov(): linear solver object not allocated"
       stop
