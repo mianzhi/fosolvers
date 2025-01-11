@@ -23,6 +23,8 @@ module modPbc
   integer,parameter::BC_WALL_TEMP=1 !< wall boundary with prescribed temperature
   integer,parameter::BC_WALL_TEMP_UDF=101 !< wall boundary with prescribed temperature by UDF
   integer,parameter::BC_WALL_SLIP=2 !< adiabatic slip wall
+  integer,parameter::BC_WALL_GLIDE=3 !< gliding wall with prescribed velocity and temperature
+  integer,parameter::BC_WALL_ROTATE=4 !< rotating wall with prescribed rotation and temperature
   integer,parameter::BC_IN_STATIC=10 !< inflow boundary with static properties
   integer,parameter::BC_IN_STATIC_UDF=110 !< inflow boundary with static properties by UDF
   integer,parameter::BC_IN_TOTAL=11 !< inflow boundary with total properties
@@ -416,7 +418,7 @@ contains
   !> set the boundary conditions
   subroutine setBC()
     double precision::pGst,TGst,uGst(DIMS),rhoGst,rhouGst(DIMS),rhoEGst,Mach,pP(DIMS),Tt,pt,&
-    &                 un(DIMS),ut(DIMS),ui(DIMS),charI,charO
+    &                 un(DIMS),ut(DIMS),ui(DIMS),charI,charO,r(DIMS),rot(DIMS)
     
     do i=grid%nPi+1,grid%nPi+grid%nPb
       m=grid%iEP(1,i)
@@ -436,6 +438,20 @@ contains
           pGst=p(m)
           TGst=temp(m)
           uGst(:)=u(:,m)-2d0*grid%normP(:,i)*dot_product(grid%normP(:,i),u(:,m))
+        case(BC_WALL_GLIDE) ! gliding wall
+          ! TODO implement wall temperature
+          ui(:)=bc%p(2:4,iBC(n))
+          ut(:)=ui(:)-grid%normP(:,i)*dot_product(grid%normP(:,i),ui(:))
+          uGst(:)=ut(:)-grid%normP(:,i)*dot_product(grid%normP(:,i),u(:,m))
+        case(BC_WALL_ROTATE) ! rotating wall
+          ! TODO implement wall temperature
+          r(:)=grid%pP(:,i)-bc%p(2:4,iBC(n))
+          rot(:)=bc%p(5:7,iBC(n))
+          ui(1)=rot(2)*r(3)-rot(3)*r(2)
+          ui(2)=rot(3)*r(1)-rot(1)*r(3)
+          ui(3)=rot(1)*r(2)-rot(2)*r(1)
+          ut(:)=ui(:)-grid%normP(:,i)*dot_product(grid%normP(:,i),ui(:))
+          uGst(:)=ut(:)-grid%normP(:,i)*dot_product(grid%normP(:,i),u(:,m))
         case(BC_IN_STATIC,BC_IN_STATIC_UDF) ! inflow boundary with static properties
           if(bc%t(iBC(n))==BC_IN_STATIC)then
             pGst=bc%p(1,iBC(n))
