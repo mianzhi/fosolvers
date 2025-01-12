@@ -71,6 +71,7 @@ module modPbc
   double precision,allocatable::flowRho(:) !< mass flow through pair [kg/s]
   double precision,allocatable::flowRhou(:,:) !< momentum flow through pair [kg*m/s^2]
   double precision,allocatable::flowRhoH(:) !< enthalpy flow through pair [W]
+  logical,allocatable::isWallPair(:) !< if the pair is wall and flow through which should be zero
   double precision,allocatable::advRho(:) !< mass advection into cell [kg/s]
   double precision,allocatable::advRhou(:,:) !< momentum advection into cell [kg*m/s^2]
   double precision,allocatable::advRhoH(:) !< enthalpy advection into cell [W]
@@ -200,6 +201,7 @@ contains
     allocate(flowRho(grid%nP))
     allocate(flowRhou(DIMS,grid%nP))
     allocate(flowRhoH(grid%nP))
+    allocate(isWallPair(grid%nP))
     allocate(advRho(grid%nC))
     allocate(advRhou(DIMS,grid%nC))
     allocate(advRhoH(grid%nC))
@@ -237,6 +239,22 @@ contains
       massFrac(:,i)=massFracInit(:)
     end do
     call recoverState(p,u,temp,massFrac,rho,rhou,rhoE)
+    ! mark wall pairs where flow is zero
+    isWallPair(:)=.false.
+    do i=grid%nPi+1,grid%nPi+grid%nPb
+      n=grid%iEP(2,i)
+      if(iBC(n)==0)then
+        isWallPair(i)=.true.
+      else
+        if(bc%t(iBC(n))==BC_WALL_TEMP.or.&
+        &  bc%t(iBC(n))==BC_WALL_TEMP_UDF.or.&
+        &  bc%t(iBC(n))==BC_WALL_SLIP.or.&
+        &  bc%t(iBC(n))==BC_WALL_GLIDE.or.&
+        &  bc%t(iBC(n))==BC_WALL_ROTATE)then
+          isWallPair(i)=.true.
+        end if
+      end if
+    end do
     t=0d0
     tNext=tInt
     iOut=0
@@ -442,7 +460,7 @@ contains
           ! TODO implement wall temperature
           ui(:)=bc%p(2:4,iBC(n))
           ut(:)=ui(:)-grid%normP(:,i)*dot_product(grid%normP(:,i),ui(:))
-          uGst(:)=ut(:)-grid%normP(:,i)*dot_product(grid%normP(:,i),u(:,m))
+          uGst(:)=2d0*ut(:)-u(:,m)
         case(BC_WALL_ROTATE) ! rotating wall
           ! TODO implement wall temperature
           r(:)=grid%pP(:,i)-bc%p(2:4,iBC(n))
@@ -451,7 +469,7 @@ contains
           ui(2)=rot(3)*r(1)-rot(1)*r(3)
           ui(3)=rot(1)*r(2)-rot(2)*r(1)
           ut(:)=ui(:)-grid%normP(:,i)*dot_product(grid%normP(:,i),ui(:))
-          uGst(:)=ut(:)-grid%normP(:,i)*dot_product(grid%normP(:,i),u(:,m))
+          uGst(:)=2d0*ut(:)-u(:,m)
         case(BC_IN_STATIC,BC_IN_STATIC_UDF) ! inflow boundary with static properties
           if(bc%t(iBC(n))==BC_IN_STATIC)then
             pGst=bc%p(1,iBC(n))
@@ -606,6 +624,9 @@ contains
     call findPresForce(grid,p,gradP,presF)
     call findViscForce(grid,u,gradU,visc,viscF)
     call findMassFlow(grid,rho,u,p,presF,dt,flowRho)
+    forall(i=1:grid%nP,isWallPair(i))
+      flowRho(i)=0d0
+    end forall
     call findVarFlow(grid,u,flowRho,flowRhou)
     call findAdv(grid,flowRho,advRho)
     call findAdv(grid,flowRhou,advRhou)
@@ -651,6 +672,9 @@ contains
     call setBC()
     call findPresForce(grid,p,gradP,presF)
     call findMassFlow(grid,rho,u,p,presF,dt,flowRho,sensU=massFlowSensU,sensP=massFlowSensP)
+    forall(i=1:grid%nP,isWallPair(i))
+      flowRho(i)=0d0
+    end forall
     !$omp parallel workshare
     forall(i=1:grid%nC)
       forall(j=1:DIMS+1)
@@ -839,6 +863,9 @@ contains
     call findPresForce(grid,p,gradP,presF)
     call findViscForce(grid,u,gradU,visc,viscF)
     call findMassFlow(grid,rho,u,p,presF,dt,flowRho)
+    forall(i=1:grid%nP,isWallPair(i))
+      flowRho(i)=0d0
+    end forall
     call findVarFlow(grid,u,flowRho,flowRhou)
     call findVarFlow(grid,H,flowRho,flowRhoH)
     call findAdv(grid,flowRho,advRho)
